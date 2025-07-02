@@ -1,14 +1,16 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Menu, X, Sparkles } from "lucide-react";
+import { Menu, X, Sparkles, User } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Link } from "react-router-dom";
 import AuthButton from "./AuthButton";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const isMobile = useIsMobile();
+  const { user } = useAuth();
 
   return (
     <header className="bg-white/80 backdrop-blur-md border-b border-gray-100 sticky top-0 z-50 shadow-sm">
@@ -33,9 +35,21 @@ const Header = () => {
             <Link to="/jobs" className="text-slate-600 hover:text-indigo-600 transition-colors font-medium">
               Browse Jobs
             </Link>
-            <Link to="/auth" className="text-slate-600 hover:text-indigo-600 transition-colors font-medium">
-              Post a Job
-            </Link>
+            {user ? (
+              <>
+                <Link to="/post-job" className="text-slate-600 hover:text-indigo-600 transition-colors font-medium">
+                  Post a Job
+                </Link>
+                <Link to="/profile" className="text-slate-600 hover:text-indigo-600 transition-colors font-medium flex items-center gap-1">
+                  <User className="w-4 h-4" />
+                  Profile
+                </Link>
+              </>
+            ) : (
+              <Link to="/auth" className="text-slate-600 hover:text-indigo-600 transition-colors font-medium">
+                Post a Job
+              </Link>
+            )}
             <a href="#about" className="text-slate-600 hover:text-indigo-600 transition-colors font-medium">About</a>
             <AuthButton />
           </nav>
@@ -61,13 +75,32 @@ const Header = () => {
             >
               Browse Jobs
             </Link>
-            <Link 
-              to="/auth" 
-              className="block text-slate-600 hover:text-indigo-600 transition-colors py-2 font-medium"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Post a Job
-            </Link>
+            {user ? (
+              <>
+                <Link 
+                  to="/post-job" 
+                  className="block text-slate-600 hover:text-indigo-600 transition-colors py-2 font-medium"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Post a Job
+                </Link>
+                <Link 
+                  to="/profile" 
+                  className="block text-slate-600 hover:text-indigo-600 transition-colors py-2 font-medium"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Profile
+                </Link>
+              </>
+            ) : (
+              <Link 
+                to="/auth" 
+                className="block text-slate-600 hover:text-indigo-600 transition-colors py-2 font-medium"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Post a Job
+              </Link>
+            )}
             <a 
               href="#about" 
               className="block text-slate-600 hover:text-indigo-600 transition-colors py-2 font-medium"
