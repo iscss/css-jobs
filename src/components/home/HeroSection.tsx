@@ -2,8 +2,27 @@
 import { Button } from "@/components/ui/button";
 import { Search, Sparkles, TrendingUp, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 
 const HeroSection = () => {
+  const navigate = useNavigate();
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const handleSearch = () => {
+    if (searchTerm.trim()) {
+      navigate(`/jobs?search=${encodeURIComponent(searchTerm)}`);
+    } else {
+      navigate("/jobs");
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  };
+
   return (
     <section className="relative overflow-hidden bg-gradient-to-br from-slate-50 via-white to-indigo-50 py-24">
       {/* Background decorations */}
@@ -40,8 +59,14 @@ const HeroSection = () => {
               <Input 
                 placeholder="Search by keywords, institution, or research area..."
                 className="pl-14 pr-4 py-6 text-lg border-2 border-slate-200 focus:border-indigo-400 rounded-2xl shadow-lg focus:shadow-xl transition-all duration-300 bg-white/80 backdrop-blur-sm"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyPress={handleKeyPress}
               />
-              <Button className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 px-8 py-3 rounded-xl shadow-md hover:shadow-lg transition-all duration-300">
+              <Button 
+                onClick={handleSearch}
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 px-8 py-3 rounded-xl shadow-md hover:shadow-lg transition-all duration-300"
+              >
                 Search
               </Button>
             </div>
@@ -49,11 +74,20 @@ const HeroSection = () => {
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-6 justify-center items-center mb-16">
-            <Button size="lg" className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 px-10 py-4 text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 group">
+            <Button 
+              size="lg" 
+              onClick={() => navigate("/jobs")}
+              className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 px-10 py-4 text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 group"
+            >
               <TrendingUp className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" />
               Browse All Jobs
             </Button>
-            <Button size="lg" variant="outline" className="border-2 border-slate-300 text-slate-700 hover:bg-slate-50 px-10 py-4 text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 group">
+            <Button 
+              size="lg" 
+              variant="outline" 
+              onClick={() => navigate("/auth")}
+              className="border-2 border-slate-300 text-slate-700 hover:bg-slate-50 px-10 py-4 text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 group"
+            >
               <Users className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" />
               Post a Position
             </Button>
