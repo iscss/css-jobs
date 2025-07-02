@@ -9,7 +9,193 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      job_tags: {
+        Row: {
+          created_at: string
+          id: string
+          job_id: string
+          tag: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          job_id: string
+          tag: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          job_id?: string
+          tag?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_tags_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      jobs: {
+        Row: {
+          application_deadline: string | null
+          application_url: string | null
+          contact_email: string | null
+          created_at: string
+          department: string | null
+          description: string
+          duration: string | null
+          funding_source: string | null
+          id: string
+          institution: string
+          is_featured: boolean | null
+          is_published: boolean | null
+          is_remote: boolean | null
+          job_type: Database["public"]["Enums"]["job_type"]
+          location: string
+          pi_name: string | null
+          posted_by: string
+          requirements: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          application_deadline?: string | null
+          application_url?: string | null
+          contact_email?: string | null
+          created_at?: string
+          department?: string | null
+          description: string
+          duration?: string | null
+          funding_source?: string | null
+          id?: string
+          institution: string
+          is_featured?: boolean | null
+          is_published?: boolean | null
+          is_remote?: boolean | null
+          job_type?: Database["public"]["Enums"]["job_type"]
+          location: string
+          pi_name?: string | null
+          posted_by: string
+          requirements?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          application_deadline?: string | null
+          application_url?: string | null
+          contact_email?: string | null
+          created_at?: string
+          department?: string | null
+          description?: string
+          duration?: string | null
+          funding_source?: string | null
+          id?: string
+          institution?: string
+          is_featured?: boolean | null
+          is_published?: boolean | null
+          is_remote?: boolean | null
+          job_type?: Database["public"]["Enums"]["job_type"]
+          location?: string
+          pi_name?: string | null
+          posted_by?: string
+          requirements?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      poster_applications: {
+        Row: {
+          created_at: string
+          id: string
+          institution: string
+          justification: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["application_status"] | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          institution: string
+          justification: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["application_status"] | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          institution?: string
+          justification?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["application_status"] | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      saved_jobs: {
+        Row: {
+          created_at: string
+          job_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          job_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          job_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_jobs_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_profiles: {
+        Row: {
+          created_at: string
+          full_name: string | null
+          id: string
+          institution: string | null
+          is_approved_poster: boolean | null
+          orcid_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          full_name?: string | null
+          id: string
+          institution?: string | null
+          is_approved_poster?: boolean | null
+          orcid_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          institution?: string | null
+          is_approved_poster?: boolean | null
+          orcid_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -18,7 +204,8 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      application_status: "pending" | "approved" | "rejected"
+      job_type: "PhD" | "Postdoc" | "Faculty" | "RA" | "Internship" | "Other"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -133,6 +320,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      application_status: ["pending", "approved", "rejected"],
+      job_type: ["PhD", "Postdoc", "Faculty", "RA", "Internship", "Other"],
+    },
   },
 } as const
