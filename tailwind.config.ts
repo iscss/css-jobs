@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -61,6 +62,31 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				// Academic color palette
+				academic: {
+					50: '#f0f4f8',
+					100: '#d6e4ed',
+					200: '#adc2d0',
+					300: '#85a1b2',
+					400: '#5c7f95',
+					500: '#3d5e78',
+					600: '#2f4a5f',
+					700: '#213647',
+					800: '#13222e',
+					900: '#060f16'
+				},
+				navy: {
+					50: '#f0f2f9',
+					100: '#d6dbf0',
+					200: '#adb8e0',
+					300: '#8595d1',
+					400: '#5c72c1',
+					500: '#334fb2',
+					600: '#293e8e',
+					700: '#1f2e6b',
+					800: '#141d47',
+					900: '#0a0d24'
 				}
 			},
 			borderRadius: {
@@ -84,11 +110,26 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				'fade-in': {
+					'0%': {
+						opacity: '0',
+						transform: 'translateY(10px)'
+					},
+					'100%': {
+						opacity: '1',
+						transform: 'translateY(0)'
+					}
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'fade-in': 'fade-in 0.3s ease-out'
+			},
+			fontFamily: {
+				serif: ['Playfair Display', 'serif'],
+				sans: ['Inter', 'system-ui', 'sans-serif']
 			}
 		}
 	},
