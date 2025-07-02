@@ -248,7 +248,7 @@ const JobPostingForm = () => {
               <Checkbox
                 id="is_remote"
                 checked={isRemote}
-                onCheckedChange={setIsRemote}
+                onCheckedChange={(checked) => setIsRemote(checked === true)}
               />
               <Label htmlFor="is_remote">This is a remote position</Label>
             </div>
