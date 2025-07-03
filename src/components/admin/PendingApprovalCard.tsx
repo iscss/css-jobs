@@ -14,7 +14,7 @@ interface PendingApprovalCardProps {
   profile: UserProfile & { 
     auth_users?: { 
       email: string; 
-    } 
+    } | null;
   };
 }
 
@@ -99,7 +99,7 @@ const PendingApprovalCard = ({ profile }: PendingApprovalCardProps) => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
               <div className="flex items-center gap-2 text-gray-600">
                 <Mail className="w-4 h-4" />
-                <span>Email: {profile.auth_users?.email || 'Not available'}</span>
+                <span>Email: {profile.auth_users?.email || 'Email not available'}</span>
               </div>
               
               {profile.institution && (

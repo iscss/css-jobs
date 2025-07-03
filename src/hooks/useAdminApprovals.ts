@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -17,19 +16,39 @@ export const useAdminApprovals = () => {
     queryFn: async () => {
       if (!user || !isAdmin) throw new Error('User must be authenticated admin');
 
-      const { data, error } = await supabase
+      // First get pending user profiles
+      const { data: profiles, error: profilesError } = await supabase
         .from('user_profiles')
-        .select(`
-          *,
-          auth_users:id (
-            email
-          )
-        `)
+        .select('*')
         .eq('approval_status', 'pending')
         .order('requested_at', { ascending: true });
 
-      if (error) throw error;
-      return data;
+      if (profilesError) throw profilesError;
+      if (!profiles || profiles.length === 0) return [];
+
+      // Get user emails from auth.users using admin access
+      const userIds = profiles.map(p => p.id);
+      const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
+      
+      if (authError) {
+        console.error('Error fetching auth users:', authError);
+        // Return profiles without emails if we can't fetch them
+        return profiles.map(profile => ({
+          ...profile,
+          auth_users: null
+        }));
+      }
+
+      // Match profiles with their emails
+      const profilesWithEmails = profiles.map(profile => {
+        const authUser = authData.users.find(u => u.id === profile.id);
+        return {
+          ...profile,
+          auth_users: authUser ? { email: authUser.email || 'No email' } : null
+        };
+      });
+
+      return profilesWithEmails;
     },
     enabled: !!user && !!isAdmin,
   });
