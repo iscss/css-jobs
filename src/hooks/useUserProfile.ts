@@ -15,16 +15,27 @@ export const useUserProfile = () => {
     queryFn: async () => {
       if (!user) throw new Error('User must be authenticated');
 
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
+      try {
+        const { data, error } = await supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
 
-      if (error) throw error;
-      return data;
+        if (error) {
+          console.error('Profile fetch error:', error);
+          throw error;
+        }
+        
+        return data;
+      } catch (error) {
+        console.error('Profile fetch error:', error);
+        throw error;
+      }
     },
     enabled: !!user,
+    retry: 3,
+    retryDelay: 1000,
   });
 };
 

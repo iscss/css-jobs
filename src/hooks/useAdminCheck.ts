@@ -11,20 +11,27 @@ export const useAdminCheck = () => {
     queryFn: async () => {
       if (!user) return false;
 
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .select('is_admin')
-        .eq('id', user.id)
-        .single();
+      try {
+        const { data, error } = await supabase
+          .from('user_profiles')
+          .select('is_admin')
+          .eq('id', user.id)
+          .single();
 
-      if (error) {
+        if (error) {
+          console.error('Admin check error:', error);
+          return false;
+        }
+
+        return data?.is_admin || false;
+      } catch (error) {
         console.error('Admin check error:', error);
         return false;
       }
-
-      return data?.is_admin || false;
     },
     enabled: !!user,
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+    retry: 3,
+    retryDelay: 1000,
   });
 };
