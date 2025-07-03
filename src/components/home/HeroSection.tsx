@@ -54,8 +54,8 @@ const HeroSection = () => {
           {/* Enhanced Search Section */}
           <div className="max-w-4xl mx-auto mb-16">
             <form onSubmit={handleSearch} className="mb-8">
-              <div className="relative bg-white rounded-3xl shadow-2xl p-3 border border-gray-100 backdrop-blur-sm">
-                <div className="flex flex-col lg:flex-row gap-3">
+              <div className="relative bg-white rounded-3xl shadow-2xl border border-gray-100 backdrop-blur-sm overflow-hidden">
+                <div className="flex items-center">
                   <div className="relative flex-1">
                     <Search className="absolute left-6 top-1/2 transform -translate-y-1/2 text-gray-400 w-6 h-6" />
                     <input
@@ -63,17 +63,19 @@ const HeroSection = () => {
                       placeholder="Search by position, institution, keywords, or location..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full pl-16 pr-6 py-5 text-lg border-0 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-transparent placeholder:text-gray-400"
+                      className="w-full pl-16 pr-6 py-6 text-lg border-0 focus:outline-none focus:ring-0 bg-transparent placeholder:text-gray-400"
                     />
                   </div>
-                  <Button 
-                    type="submit" 
-                    size="lg" 
-                    className="px-10 py-5 text-lg font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all duration-200 rounded-2xl whitespace-nowrap"
-                  >
-                    <Search className="w-5 h-5 mr-2" />
-                    Search Positions
-                  </Button>
+                  <div className="pr-3">
+                    <Button 
+                      type="submit" 
+                      size="lg" 
+                      className="px-8 py-6 text-lg font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all duration-200 rounded-2xl whitespace-nowrap"
+                    >
+                      <Search className="w-5 h-5 mr-2" />
+                      Search
+                    </Button>
+                  </div>
                 </div>
               </div>
             </form>
@@ -95,11 +97,11 @@ const HeroSection = () => {
               </div>
             </div>
 
-            {/* Quick action hint */}
-            <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl border border-blue-100">
-              <p className="text-sm text-blue-800 flex items-center justify-center gap-2">
+            {/* Enhanced hint section */}
+            <div className="mt-8 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl border border-blue-100 shadow-lg">
+              <p className="text-sm text-blue-800 flex items-center justify-center gap-2 font-medium">
                 <TrendingUp className="w-4 h-4" />
-                <span>Featured positions are highlighted below • Browse all positions for comprehensive results</span>
+                <span>✨ Featured positions are highlighted below • Browse all positions for comprehensive results</span>
               </p>
             </div>
           </div>
