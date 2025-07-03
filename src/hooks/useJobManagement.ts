@@ -75,3 +75,47 @@ export const useRetractJob = () => {
     },
   });
 };
+
+export const useToggleFeatured = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ 
+      jobId, 
+      isFeatured 
+    }: { 
+      jobId: string; 
+      isFeatured: boolean;
+    }) => {
+      if (!user) throw new Error('User must be authenticated');
+
+      const { data, error } = await supabase
+        .from('jobs')
+        .update({ is_featured: isFeatured })
+        .eq('id', jobId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['all-jobs-admin'] });
+      queryClient.invalidateQueries({ queryKey: ['jobs'] });
+      
+      toast({
+        title: `Job ${variables.isFeatured ? 'Featured' : 'Unfeatured'}`,
+        description: `The job post has been ${variables.isFeatured ? 'marked as featured' : 'removed from featured'}.`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error updating featured status",
+        description: "There was an error updating the job's featured status.",
+        variant: "destructive",
+      });
+    },
+  });
+};

@@ -41,7 +41,7 @@ export const useAdminApprovals = () => {
 
       // Match profiles with their emails
       const profilesWithEmails = profiles.map(profile => {
-        const authUser = authData.users.find(u => u.id === profile.id);
+        const authUser = authData.users.find((u: any) => u.id === profile.id);
         return {
           ...profile,
           auth_users: authUser ? { email: authUser.email || 'No email' } : null

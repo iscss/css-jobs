@@ -12,17 +12,25 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
-import { useAllJobs, useRetractJob } from '@/hooks/useJobManagement';
-import { Briefcase, Eye, EyeOff, Trash2 } from 'lucide-react';
+import { useAllJobs, useRetractJob, useToggleFeatured } from '@/hooks/useJobManagement';
+import { Briefcase, Eye, EyeOff, Star, StarOff } from 'lucide-react';
 
 const JobManagementTable = () => {
   const { data: allJobs, isLoading } = useAllJobs();
   const retractJob = useRetractJob();
+  const toggleFeatured = useToggleFeatured();
 
   const handleRetractJob = (jobId: string, currentStatus: boolean) => {
     retractJob.mutate({
       jobId,
       isPublished: !currentStatus
+    });
+  };
+
+  const handleToggleFeatured = (jobId: string, currentStatus: boolean) => {
+    toggleFeatured.mutate({
+      jobId,
+      isFeatured: !currentStatus
     });
   };
 
@@ -117,6 +125,24 @@ const JobManagementTable = () => {
                         <>
                           <Eye className="w-4 h-4 mr-1" />
                           Publish
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={job.is_featured ? "default" : "outline"}
+                      onClick={() => handleToggleFeatured(job.id, job.is_featured || false)}
+                      disabled={toggleFeatured.isPending}
+                    >
+                      {job.is_featured ? (
+                        <>
+                          <StarOff className="w-4 h-4 mr-1" />
+                          Unfeature
+                        </>
+                      ) : (
+                        <>
+                          <Star className="w-4 h-4 mr-1" />
+                          Feature
                         </>
                       )}
                     </Button>
