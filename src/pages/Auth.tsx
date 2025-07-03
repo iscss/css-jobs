@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -42,7 +41,7 @@ const Auth = () => {
             const { error: profileError } = await supabase
               .from('user_profiles')
               .update({
-                user_type,
+                user_type: userType,
                 approval_status: userType === 'job_seeker' ? 'approved' : 'pending',
                 requested_at: userType !== 'job_seeker' ? new Date().toISOString() : null
               })
