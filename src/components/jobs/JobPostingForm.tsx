@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
@@ -9,9 +8,12 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useCreateJob } from '@/hooks/useJobs';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserProfile } from '@/hooks/useUserProfile';
+import { AlertCircle, CheckCircle2, Clock } from 'lucide-react';
 
 interface JobFormData {
   title: string;
@@ -35,6 +37,7 @@ const JobPostingForm = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { data: userProfile, isLoading: profileLoading } = useUserProfile();
   const createJobMutation = useCreateJob();
   const [isRemote, setIsRemote] = useState(false);
 
@@ -45,6 +48,15 @@ const JobPostingForm = () => {
       toast({
         title: "Authentication required",
         description: "Please sign in to post a job.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!userProfile?.is_approved_poster) {
+      toast({
+        title: "Approval required",
+        description: "You need to be approved as a job poster before you can post jobs. Please contact an administrator.",
         variant: "destructive",
       });
       return;
@@ -90,13 +102,76 @@ const JobPostingForm = () => {
     );
   }
 
+  if (profileLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Card className="max-w-md mx-auto">
+          <CardContent className="p-6 text-center">
+            <p className="text-gray-600">Loading your profile...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const getApprovalStatusAlert = () => {
+    if (!userProfile) return null;
+
+    const status = userProfile.approval_status;
+    const isApprovedPoster = userProfile.is_approved_poster;
+
+    if (isApprovedPoster) {
+      return (
+        <Alert className="border-green-200 bg-green-50">
+          <CheckCircle2 className="h-4 w-4 text-green-600" />
+          <AlertDescription className="text-green-800">
+            You are approved to post jobs. You can create job postings below.
+          </AlertDescription>
+        </Alert>
+      );
+    }
+
+    if (status === 'pending') {
+      return (
+        <Alert className="border-yellow-200 bg-yellow-50">
+          <Clock className="h-4 w-4 text-yellow-600" />
+          <AlertDescription className="text-yellow-800">
+            Your job posting approval is pending review. You cannot post jobs until approved by an administrator.
+          </AlertDescription>
+        </Alert>
+      );
+    }
+
+    if (status === 'rejected') {
+      return (
+        <Alert className="border-red-200 bg-red-50">
+          <AlertCircle className="h-4 w-4 text-red-600" />
+          <AlertDescription className="text-red-800">
+            Your job posting request was rejected. Please contact an administrator for more information.
+          </AlertDescription>
+        </Alert>
+      );
+    }
+
+    return (
+      <Alert className="border-blue-200 bg-blue-50">
+        <AlertCircle className="h-4 w-4 text-blue-600" />
+        <AlertDescription className="text-blue-800">
+          You need to request approval to post jobs. Please update your profile to request job posting privileges.
+        </AlertDescription>
+      </Alert>
+    );
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       <Card className="max-w-4xl mx-auto">
         <CardHeader>
           <CardTitle className="text-2xl">Post a New Job</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-6">
+          {getApprovalStatusAlert()}
+          
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div className="grid md:grid-cols-2 gap-6">
               <div className="space-y-2">
@@ -263,7 +338,7 @@ const JobPostingForm = () => {
               </Button>
               <Button
                 type="submit"
-                disabled={createJobMutation.isPending}
+                disabled={createJobMutation.isPending || !userProfile?.is_approved_poster}
               >
                 {createJobMutation.isPending ? 'Posting...' : 'Post Job'}
               </Button>

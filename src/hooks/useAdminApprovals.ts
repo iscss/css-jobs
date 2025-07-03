@@ -19,7 +19,12 @@ export const useAdminApprovals = () => {
 
       const { data, error } = await supabase
         .from('user_profiles')
-        .select('*')
+        .select(`
+          *,
+          auth_users:id (
+            email
+          )
+        `)
         .eq('approval_status', 'pending')
         .order('requested_at', { ascending: true });
 

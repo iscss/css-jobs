@@ -4,17 +4,23 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useUpdateApprovalStatus } from '@/hooks/useAdminApprovals';
-import { Check, X, User, Building2, Calendar, Mail } from 'lucide-react';
+import { Check, X, User, Building2, Calendar, Mail, Info } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import type { Tables } from '@/integrations/supabase/types';
 
 type UserProfile = Tables<'user_profiles'>;
 
 interface PendingApprovalCardProps {
-  profile: UserProfile;
+  profile: UserProfile & { 
+    auth_users?: { 
+      email: string; 
+    } 
+  };
 }
 
 const PendingApprovalCard = ({ profile }: PendingApprovalCardProps) => {
   const updateApprovalMutation = useUpdateApprovalStatus();
+  const { toast } = useToast();
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'N/A';
@@ -59,6 +65,15 @@ const PendingApprovalCard = ({ profile }: PendingApprovalCardProps) => {
     });
   };
 
+  const handleRequestMoreInfo = () => {
+    // For now, we'll just show a toast with instructions
+    // In a real implementation, this would send an email
+    toast({
+      title: "Feature Coming Soon",
+      description: "Email functionality will be implemented to request more information from users.",
+    });
+  };
+
   return (
     <Card className="border border-gray-200 hover:shadow-md transition-shadow">
       <CardContent className="p-6">
@@ -84,7 +99,7 @@ const PendingApprovalCard = ({ profile }: PendingApprovalCardProps) => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
               <div className="flex items-center gap-2 text-gray-600">
                 <Mail className="w-4 h-4" />
-                <span>Email: Contact via profile</span>
+                <span>Email: {profile.auth_users?.email || 'Not available'}</span>
               </div>
               
               {profile.institution && (
@@ -140,6 +155,17 @@ const PendingApprovalCard = ({ profile }: PendingApprovalCardProps) => {
             >
               <X className="w-4 h-4" />
               Reject
+            </Button>
+
+            <Button
+              onClick={handleRequestMoreInfo}
+              disabled={updateApprovalMutation.isPending}
+              variant="outline"
+              className="flex items-center gap-2"
+              size="sm"
+            >
+              <Info className="w-4 h-4" />
+              Request Info
             </Button>
           </div>
         </div>
