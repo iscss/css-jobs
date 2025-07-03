@@ -168,31 +168,46 @@ export type Database = {
       }
       user_profiles: {
         Row: {
+          approval_status: string | null
+          approved_at: string | null
+          approved_by: string | null
           created_at: string
           full_name: string | null
           id: string
           institution: string | null
           is_approved_poster: boolean | null
           orcid_id: string | null
+          requested_at: string | null
           updated_at: string
+          user_type: string | null
         }
         Insert: {
+          approval_status?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string
           full_name?: string | null
           id: string
           institution?: string | null
           is_approved_poster?: boolean | null
           orcid_id?: string | null
+          requested_at?: string | null
           updated_at?: string
+          user_type?: string | null
         }
         Update: {
+          approval_status?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string
           full_name?: string | null
           id?: string
           institution?: string | null
           is_approved_poster?: boolean | null
           orcid_id?: string | null
+          requested_at?: string | null
           updated_at?: string
+          user_type?: string | null
         }
         Relationships: []
       }

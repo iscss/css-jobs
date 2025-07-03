@@ -36,21 +36,21 @@ const Header = () => {
               Browse Jobs
             </Link>
             {user ? (
-              <>
-                <Link to="/post-job" className="text-slate-600 hover:text-indigo-600 transition-colors font-medium">
-                  Post a Job
-                </Link>
-                <Link to="/profile" className="text-slate-600 hover:text-indigo-600 transition-colors font-medium flex items-center gap-1">
-                  <User className="w-4 h-4" />
-                  Profile
-                </Link>
-              </>
+              <Link to="/post-job" className="text-slate-600 hover:text-indigo-600 transition-colors font-medium">
+                Post a Job
+              </Link>
             ) : (
               <Link to="/auth" className="text-slate-600 hover:text-indigo-600 transition-colors font-medium">
                 Post a Job
               </Link>
             )}
             <a href="#about" className="text-slate-600 hover:text-indigo-600 transition-colors font-medium">About</a>
+            {user && (
+              <Link to="/profile" className="text-slate-600 hover:text-indigo-600 transition-colors font-medium flex items-center gap-1">
+                <User className="w-4 h-4" />
+                Profile
+              </Link>
+            )}
             <AuthButton />
           </nav>
 
@@ -76,22 +76,13 @@ const Header = () => {
               Browse Jobs
             </Link>
             {user ? (
-              <>
-                <Link 
-                  to="/post-job" 
-                  className="block text-slate-600 hover:text-indigo-600 transition-colors py-2 font-medium"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Post a Job
-                </Link>
-                <Link 
-                  to="/profile" 
-                  className="block text-slate-600 hover:text-indigo-600 transition-colors py-2 font-medium"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Profile
-                </Link>
-              </>
+              <Link 
+                to="/post-job" 
+                className="block text-slate-600 hover:text-indigo-600 transition-colors py-2 font-medium"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Post a Job
+              </Link>
             ) : (
               <Link 
                 to="/auth" 
@@ -108,6 +99,15 @@ const Header = () => {
             >
               About
             </a>
+            {user && (
+              <Link 
+                to="/profile" 
+                className="block text-slate-600 hover:text-indigo-600 transition-colors py-2 font-medium"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Profile
+              </Link>
+            )}
             <div className="pt-4 border-t border-gray-100">
               <AuthButton />
             </div>

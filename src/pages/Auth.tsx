@@ -5,14 +5,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { UserCheck, Briefcase, Users } from 'lucide-react';
 
 const Auth = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
+  const [userType, setUserType] = useState('job_seeker');
   const [loading, setLoading] = useState(false);
   const { signUp, signIn, user } = useAuth();
   const navigate = useNavigate();
@@ -33,9 +37,27 @@ const Auth = () => {
       if (isSignUp) {
         ({ error } = await signUp(email, password, fullName));
         if (!error) {
+          // Update user profile with selected role
+          setTimeout(async () => {
+            const { error: profileError } = await supabase
+              .from('user_profiles')
+              .update({
+                user_type,
+                approval_status: userType === 'job_seeker' ? 'approved' : 'pending',
+                requested_at: userType !== 'job_seeker' ? new Date().toISOString() : null
+              })
+              .eq('id', (await supabase.auth.getUser()).data.user?.id);
+
+            if (profileError) {
+              console.error('Error updating profile:', profileError);
+            }
+          }, 1000);
+
           toast({
-            title: "Account created!",
-            description: "Please check your email to verify your account.",
+            title: "Account created successfully!",
+            description: userType === 'job_seeker' 
+              ? "Welcome! You can now browse and save job positions."
+              : "Your account has been created. Job posting privileges require admin approval.",
           });
         }
       } else {
@@ -83,18 +105,57 @@ const Auth = () => {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             {isSignUp && (
-              <div className="space-y-2">
-                <Label htmlFor="fullName">Full Name</Label>
-                <Input
-                  id="fullName"
-                  type="text"
-                  placeholder="Enter your full name"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  required
-                />
-              </div>
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="fullName">Full Name</Label>
+                  <Input
+                    id="fullName"
+                    type="text"
+                    placeholder="Enter your full name"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <Label>I am here to:</Label>
+                  <RadioGroup value={userType} onValueChange={setUserType}>
+                    <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 transition-colors">
+                      <RadioGroupItem value="job_seeker" id="job_seeker" />
+                      <Label htmlFor="job_seeker" className="flex items-center gap-2 cursor-pointer flex-1">
+                        <UserCheck className="w-4 h-4 text-blue-600" />
+                        <div>
+                          <div className="font-medium">Look for jobs</div>
+                          <div className="text-sm text-gray-500">Browse and apply to research positions</div>
+                        </div>
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 transition-colors">
+                      <RadioGroupItem value="job_poster" id="job_poster" />
+                      <Label htmlFor="job_poster" className="flex items-center gap-2 cursor-pointer flex-1">
+                        <Briefcase className="w-4 h-4 text-green-600" />
+                        <div>
+                          <div className="font-medium">Post jobs</div>
+                          <div className="text-sm text-gray-500">Requires admin approval</div>
+                        </div>
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 transition-colors">
+                      <RadioGroupItem value="both" id="both" />
+                      <Label htmlFor="both" className="flex items-center gap-2 cursor-pointer flex-1">
+                        <Users className="w-4 h-4 text-purple-600" />
+                        <div>
+                          <div className="font-medium">Both</div>
+                          <div className="text-sm text-gray-500">Look for and post jobs (requires approval)</div>
+                        </div>
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+              </>
             )}
+            
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
