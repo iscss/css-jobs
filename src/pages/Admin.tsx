@@ -4,14 +4,15 @@ import { useNavigate } from "react-router-dom";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import PendingApprovalCard from "@/components/admin/PendingApprovalCard";
-import { useAdminApprovals, useIsAdmin } from "@/hooks/useAdminApprovals";
+import { useAdminApprovals } from "@/hooks/useAdminApprovals";
+import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { useAuth } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Shield, Users, Clock } from "lucide-react";
 
 const Admin = () => {
   const { user, loading: authLoading } = useAuth();
-  const { data: isAdmin, isLoading: adminLoading } = useIsAdmin();
+  const { data: isAdmin, isLoading: adminLoading } = useAdminCheck();
   const { data: pendingApprovals, isLoading: approvalsLoading } = useAdminApprovals();
   const navigate = useNavigate();
 

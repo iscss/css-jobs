@@ -5,14 +5,15 @@ import { Button } from '@/components/ui/button';
 import { Menu, X, Search, Briefcase, Plus, User, Shield } from 'lucide-react';
 import AuthButton from './AuthButton';
 import { useAuth } from '@/contexts/AuthContext';
-import { useIsAdmin, useAdminApprovals } from '@/hooks/useAdminApprovals';
+import { useAdminCheck } from '@/hooks/useAdminCheck';
+import { useAdminApprovals } from '@/hooks/useAdminApprovals';
 import { Badge } from '@/components/ui/badge';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { data: isAdmin } = useIsAdmin();
+  const { data: isAdmin } = useAdminCheck();
   const { data: pendingApprovals } = useAdminApprovals();
 
   const handleSearch = () => {

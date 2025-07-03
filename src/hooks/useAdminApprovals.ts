@@ -3,17 +3,19 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { useAdminCheck } from './useAdminCheck';
 import type { Tables } from '@/integrations/supabase/types';
 
 type UserProfile = Tables<'user_profiles'>;
 
 export const useAdminApprovals = () => {
   const { user } = useAuth();
+  const { data: isAdmin } = useAdminCheck();
 
   return useQuery({
     queryKey: ['admin-approvals'],
     queryFn: async () => {
-      if (!user) throw new Error('User must be authenticated');
+      if (!user || !isAdmin) throw new Error('User must be authenticated admin');
 
       const { data, error } = await supabase
         .from('user_profiles')
@@ -24,7 +26,7 @@ export const useAdminApprovals = () => {
       if (error) throw error;
       return data;
     },
-    enabled: !!user,
+    enabled: !!user && !!isAdmin,
   });
 };
 
@@ -83,23 +85,5 @@ export const useUpdateApprovalStatus = () => {
   });
 };
 
-export const useIsAdmin = () => {
-  const { user } = useAuth();
-
-  return useQuery({
-    queryKey: ['is-admin', user?.id],
-    queryFn: async () => {
-      if (!user) return false;
-
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .select('is_admin')
-        .eq('id', user.id)
-        .single();
-
-      if (error) return false;
-      return data.is_admin || false;
-    },
-    enabled: !!user,
-  });
-};
+// Use the new admin check hook
+export const useIsAdmin = useAdminCheck;
