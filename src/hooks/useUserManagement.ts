@@ -4,25 +4,25 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useAdminCheck } from './useAdminCheck';
-import type { Tables } from '@/integrations/supabase/types';
+import type { Tables, TablesUpdate } from '@/integrations/supabase/types';
 
 type UserProfile = Tables<'user_profiles'>;
+type UserProfileUpdate = TablesUpdate<'user_profiles'>;
 
-export const useAdminApprovals = () => {
+export const useAllUsers = () => {
   const { user } = useAuth();
   const { data: isAdmin } = useAdminCheck();
 
   return useQuery({
-    queryKey: ['admin-approvals'],
+    queryKey: ['all-users'],
     queryFn: async () => {
       if (!user || !isAdmin) throw new Error('User must be authenticated admin');
 
-      // First get pending user profiles
+      // First get all user profiles
       const { data: profiles, error: profilesError } = await supabase
         .from('user_profiles')
         .select('*')
-        .eq('approval_status', 'pending')
-        .order('requested_at', { ascending: true });
+        .order('created_at', { ascending: false });
 
       if (profilesError) throw profilesError;
       if (!profiles || profiles.length === 0) return [];
@@ -54,7 +54,7 @@ export const useAdminApprovals = () => {
   });
 };
 
-export const useUpdateApprovalStatus = () => {
+export const useUpdateUserPermissions = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -62,29 +62,16 @@ export const useUpdateApprovalStatus = () => {
   return useMutation({
     mutationFn: async ({ 
       userId, 
-      status, 
-      userType 
+      updates 
     }: { 
       userId: string; 
-      status: 'approved' | 'rejected';
-      userType: string;
+      updates: UserProfileUpdate;
     }) => {
       if (!user) throw new Error('User must be authenticated');
 
-      const updateData: any = {
-        approval_status: status,
-        approved_at: new Date().toISOString(),
-        approved_by: user.id,
-      };
-
-      // If approving a job poster or both, set is_approved_poster to true
-      if (status === 'approved' && (userType === 'job_poster' || userType === 'both')) {
-        updateData.is_approved_poster = true;
-      }
-
       const { data, error } = await supabase
         .from('user_profiles')
-        .update(updateData)
+        .update(updates)
         .eq('id', userId)
         .select()
         .single();
@@ -93,21 +80,24 @@ export const useUpdateApprovalStatus = () => {
       return data;
     },
     onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['all-users'] });
       queryClient.invalidateQueries({ queryKey: ['admin-approvals'] });
+      
+      const action = variables.updates.is_admin !== undefined 
+        ? (variables.updates.is_admin ? 'granted admin' : 'revoked admin')
+        : (variables.updates.is_approved_poster ? 'granted poster' : 'revoked poster');
+      
       toast({
-        title: `User ${variables.status === 'approved' ? 'Approved' : 'Rejected'}`,
-        description: `The user has been successfully ${variables.status}.`,
+        title: "Permissions Updated",
+        description: `Successfully ${action} permissions for the user.`,
       });
     },
     onError: (error) => {
       toast({
-        title: "Error updating approval status",
-        description: "There was an error updating the user's approval status.",
+        title: "Error updating permissions",
+        description: "There was an error updating the user's permissions.",
         variant: "destructive",
       });
     },
   });
 };
-
-// Use the new admin check hook
-export const useIsAdmin = useAdminCheck;

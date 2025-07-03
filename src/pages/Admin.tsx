@@ -1,14 +1,17 @@
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import PendingApprovalCard from "@/components/admin/PendingApprovalCard";
+import UserManagementTable from "@/components/admin/UserManagementTable";
+import JobManagementTable from "@/components/admin/JobManagementTable";
 import { useAdminApprovals } from "@/hooks/useAdminApprovals";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { useAuth } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Shield, Users, Clock } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Shield, Users, Clock, Briefcase } from "lucide-react";
 
 const Admin = () => {
   const { user, loading: authLoading } = useAuth();
@@ -61,7 +64,7 @@ const Admin = () => {
               </h1>
             </div>
             <p className="text-gray-600 text-lg">
-              Manage user approvals and account permissions
+              Manage user approvals, permissions, and job posts
             </p>
           </div>
         </div>
@@ -83,55 +86,73 @@ const Admin = () => {
             <div className="flex items-center gap-3">
               <Users className="w-6 h-6 text-blue-500" />
               <div>
-                <p className="text-sm text-gray-600">Total Users</p>
-                <p className="text-2xl font-bold text-blue-600">--</p>
+                <p className="text-sm text-gray-600">User Management</p>
+                <p className="text-2xl font-bold text-blue-600">Active</p>
               </div>
             </div>
           </div>
           
           <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
             <div className="flex items-center gap-3">
-              <Shield className="w-6 h-6 text-green-500" />
+              <Briefcase className="w-6 h-6 text-green-500" />
               <div>
-                <p className="text-sm text-gray-600">Admin Status</p>
+                <p className="text-sm text-gray-600">Job Management</p>
                 <p className="text-2xl font-bold text-green-600">Active</p>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100">
-          <div className="p-6 border-b border-gray-100">
-            <h2 className="text-2xl font-bold text-gray-900">Pending Approval Requests</h2>
-            <p className="text-gray-600 mt-1">Review and approve user account upgrade requests</p>
-          </div>
+        <Tabs defaultValue="approvals" className="space-y-4">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="approvals">Pending Approvals</TabsTrigger>
+            <TabsTrigger value="users">User Management</TabsTrigger>
+            <TabsTrigger value="jobs">Job Management</TabsTrigger>
+          </TabsList>
           
-          <div className="p-6">
-            {approvalsLoading ? (
-              <div className="space-y-4">
-                {[...Array(3)].map((_, i) => (
-                  <div key={i} className="border rounded-lg p-4">
-                    <Skeleton className="h-6 w-1/3 mb-2" />
-                    <Skeleton className="h-4 w-1/2 mb-2" />
-                    <Skeleton className="h-4 w-2/3" />
+          <TabsContent value="approvals">
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-100">
+              <div className="p-6 border-b border-gray-100">
+                <h2 className="text-2xl font-bold text-gray-900">Pending Approval Requests</h2>
+                <p className="text-gray-600 mt-1">Review and approve user account upgrade requests</p>
+              </div>
+              
+              <div className="p-6">
+                {approvalsLoading ? (
+                  <div className="space-y-4">
+                    {[...Array(3)].map((_, i) => (
+                      <div key={i} className="border rounded-lg p-4">
+                        <Skeleton className="h-6 w-1/3 mb-2" />
+                        <Skeleton className="h-4 w-1/2 mb-2" />
+                        <Skeleton className="h-4 w-2/3" />
+                      </div>
+                    ))}
                   </div>
-                ))}
+                ) : pendingApprovals && pendingApprovals.length > 0 ? (
+                  <div className="space-y-4">
+                    {pendingApprovals.map((profile) => (
+                      <PendingApprovalCard key={profile.id} profile={profile} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <div className="text-gray-400 text-6xl mb-4">✓</div>
+                    <h3 className="text-xl font-semibold text-gray-700 mb-2">All caught up!</h3>
+                    <p className="text-gray-600">No pending approval requests at the moment.</p>
+                  </div>
+                )}
               </div>
-            ) : pendingApprovals && pendingApprovals.length > 0 ? (
-              <div className="space-y-4">
-                {pendingApprovals.map((profile) => (
-                  <PendingApprovalCard key={profile.id} profile={profile} />
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <div className="text-gray-400 text-6xl mb-4">✓</div>
-                <h3 className="text-xl font-semibold text-gray-700 mb-2">All caught up!</h3>
-                <p className="text-gray-600">No pending approval requests at the moment.</p>
-              </div>
-            )}
-          </div>
-        </div>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="users">
+            <UserManagementTable />
+          </TabsContent>
+          
+          <TabsContent value="jobs">
+            <JobManagementTable />
+          </TabsContent>
+        </Tabs>
       </div>
 
       <Footer />
