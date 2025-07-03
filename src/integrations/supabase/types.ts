@@ -175,6 +175,7 @@ export type Database = {
           full_name: string | null
           id: string
           institution: string | null
+          is_admin: boolean | null
           is_approved_poster: boolean | null
           orcid_id: string | null
           requested_at: string | null
@@ -189,6 +190,7 @@ export type Database = {
           full_name?: string | null
           id: string
           institution?: string | null
+          is_admin?: boolean | null
           is_approved_poster?: boolean | null
           orcid_id?: string | null
           requested_at?: string | null
@@ -203,6 +205,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           institution?: string | null
+          is_admin?: boolean | null
           is_approved_poster?: boolean | null
           orcid_id?: string | null
           requested_at?: string | null
