@@ -42,13 +42,13 @@ const CompactJobCard = ({ job, onViewDetails }: CompactJobCardProps) => {
 
   if (job.is_featured) {
     return (
-      <div className="relative group">
-        <div className="absolute inset-0 bg-gradient-to-br from-violet-500/10 via-purple-500/10 to-pink-500/10 rounded-2xl blur-xl"></div>
-        <div className="relative bg-white/95 backdrop-blur-sm border border-violet-200/50 rounded-2xl p-6 hover:border-violet-300/70 transition-all duration-300 hover:-translate-y-1 shadow-sm hover:shadow-lg min-h-[380px] flex flex-col">
+      <div className="relative group h-[400px]">
+        <div className="absolute inset-0 bg-gradient-to-br from-violet-300/5 via-purple-300/5 to-pink-300/5 rounded-2xl blur-xl"></div>
+        <div className="relative bg-white/98 backdrop-blur-sm border border-violet-100/80 rounded-2xl p-6 hover:border-violet-200/80 transition-all duration-300 hover:-translate-y-1 shadow-sm hover:shadow-lg h-full flex flex-col">
           
           {/* Featured badge */}
           <div className="absolute -top-2 -right-2 z-10">
-            <div className="bg-gradient-to-r from-violet-600 to-purple-600 text-white px-3 py-1.5 rounded-full text-xs font-medium shadow-lg">
+            <div className="bg-gradient-to-r from-violet-400 to-purple-400 text-white px-3 py-1.5 rounded-full text-xs font-medium shadow-lg">
               ✨ Featured
             </div>
           </div>
@@ -56,35 +56,43 @@ const CompactJobCard = ({ job, onViewDetails }: CompactJobCardProps) => {
           {/* Header */}
           <div className="flex-shrink-0 mb-4">
             <div className="flex items-center gap-2 mb-3">
-              <div className="px-3 py-1 bg-gradient-to-r from-violet-100 to-purple-100 text-violet-700 rounded-full text-sm font-medium border border-violet-200">
+              <div className="px-3 py-1 bg-gradient-to-r from-violet-50 to-purple-50 text-violet-600 rounded-full text-sm font-medium border border-violet-100">
                 {job.job_type}
               </div>
               {job.is_remote && (
-                <div className="px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full text-sm font-medium border border-emerald-200">
+                <div className="px-3 py-1 bg-emerald-25 text-emerald-600 rounded-full text-sm font-medium border border-emerald-100">
                   Remote
                 </div>
               )}
             </div>
-            <h3 className="text-xl font-semibold text-gray-900 group-hover:text-violet-700 transition-colors leading-tight">
-              {truncateText(job.title, 60)}
+            <h3 className="text-lg font-semibold text-gray-900 group-hover:text-violet-600 transition-colors leading-tight">
+              {truncateText(job.title, 65)}
             </h3>
           </div>
 
           {/* Institution info */}
           <div className="flex-shrink-0 mb-4">
             <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-violet-100 to-purple-100 rounded-xl flex items-center justify-center">
-                <Building2 className="w-5 h-5 text-violet-600" />
+              <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-violet-50 to-purple-50 rounded-xl flex items-center justify-center">
+                <Building2 className="w-5 h-5 text-violet-500" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-gray-900 text-base">{job.institution}</p>
+                <p className="font-semibold text-gray-900 text-base truncate">{job.institution}</p>
                 {job.department && (
-                  <p className="text-gray-600 text-sm mt-0.5">{job.department}</p>
+                  <p className="text-gray-600 text-sm mt-0.5 truncate">{job.department}</p>
                 )}
                 <div className="flex items-center gap-1 mt-1">
-                  <MapPin className="w-4 h-4 text-gray-400" />
-                  <p className="text-gray-600 text-sm">{job.location}</p>
+                  <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                  <p className="text-gray-600 text-sm truncate">{job.location}</p>
                 </div>
+                {job.pi_name && (
+                  <div className="flex items-center gap-1 mt-1">
+                    <User className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    <p className="text-gray-600 text-sm truncate">
+                      <span className="font-medium">PI:</span> {truncateText(job.pi_name, 25)}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -93,14 +101,14 @@ const CompactJobCard = ({ job, onViewDetails }: CompactJobCardProps) => {
           {job.job_tags && job.job_tags.length > 0 && (
             <div className="flex-shrink-0 mb-4">
               <div className="flex flex-wrap gap-2">
-                {job.job_tags.slice(0, 4).map((tag) => (
-                  <span key={tag.id} className="px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-xs font-medium">
+                {job.job_tags.slice(0, 3).map((tag) => (
+                  <span key={tag.id} className="px-2 py-1 bg-gray-50 text-gray-600 rounded-md text-xs font-medium">
                     {tag.tag}
                   </span>
                 ))}
-                {job.job_tags.length > 4 && (
-                  <span className="px-2 py-1 bg-gray-100 text-gray-500 rounded-md text-xs">
-                    +{job.job_tags.length - 4}
+                {job.job_tags.length > 3 && (
+                  <span className="px-2 py-1 bg-gray-50 text-gray-500 rounded-md text-xs">
+                    +{job.job_tags.length - 3}
                   </span>
                 )}
               </div>
@@ -108,24 +116,24 @@ const CompactJobCard = ({ job, onViewDetails }: CompactJobCardProps) => {
           )}
 
           {/* Description */}
-          <div className="flex-1 mb-6">
+          <div className="flex-1 mb-6 overflow-hidden">
             <p className="text-gray-600 text-sm leading-relaxed line-clamp-3">
-              {truncateText(job.description, 140)}
+              {truncateText(job.description, 120)}
             </p>
           </div>
 
           {/* Footer */}
-          <div className="flex-shrink-0 space-y-3">
+          <div className="flex-shrink-0 space-y-3 mt-auto">
             {(job.application_deadline || job.duration) && (
               <div className="flex flex-wrap gap-2">
                 {job.application_deadline && (
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-700 rounded-lg text-xs font-medium">
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-red-25 text-red-600 rounded-lg text-xs font-medium">
                     <Calendar className="w-3.5 h-3.5" />
                     Due {formatDate(job.application_deadline)}
                   </div>
                 )}
                 {job.duration && (
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-xs font-medium">
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-25 text-blue-600 rounded-lg text-xs font-medium">
                     <Clock className="w-3.5 h-3.5" />
                     {job.duration}
                   </div>
@@ -135,7 +143,7 @@ const CompactJobCard = ({ job, onViewDetails }: CompactJobCardProps) => {
             
             <button 
               onClick={() => onViewDetails(job)}
-              className="w-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white py-3 px-4 rounded-xl font-medium transition-all duration-200 hover:shadow-lg flex items-center justify-center gap-2"
+              className="w-full bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 text-white py-3 px-4 rounded-xl font-medium transition-all duration-200 hover:shadow-lg flex items-center justify-center gap-2"
             >
               <Eye className="w-4 h-4" />
               View Details
