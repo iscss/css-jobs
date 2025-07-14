@@ -122,7 +122,7 @@ const Index = () => {
         
         {/* Featured Jobs Section */}
         {featuredJobs.length > 0 && (
-          <section className="py-16 bg-gradient-to-br from-primary/5 to-secondary/5">
+          <section className="py-16 bg-gradient-to-br from-slate-50 via-blue-50/50 to-purple-50/50">
             <div className="container mx-auto px-4">
               <div className="text-center mb-12">
                 <h2 className="text-3xl font-bold text-foreground mb-4">Featured Opportunities</h2>
