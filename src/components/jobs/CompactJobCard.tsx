@@ -43,11 +43,11 @@ const CompactJobCard = ({ job, onViewDetails }: CompactJobCardProps) => {
   if (job.is_featured) {
     return (
       <div className="group h-[380px]">
-        <div className="relative bg-gradient-to-br from-white via-blue-50/30 to-indigo-50/50 backdrop-blur-sm border border-blue-100/50 rounded-2xl p-6 hover:border-blue-200/70 transition-all duration-300 hover:-translate-y-1 shadow-sm hover:shadow-lg h-full flex flex-col">
+        <div className="relative bg-gradient-to-br from-white via-purple-50/30 to-violet-50/50 backdrop-blur-sm border border-purple-100/50 rounded-2xl p-6 hover:border-purple-200/70 transition-all duration-300 hover:-translate-y-1 shadow-sm hover:shadow-lg h-full flex flex-col">
           
           {/* Featured badge */}
           <div className="absolute -top-2 -right-2 z-10">
-            <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-3 py-1.5 rounded-full text-xs font-medium shadow-lg">
+            <div className="bg-gradient-to-r from-purple-500 to-violet-600 text-white px-3 py-1.5 rounded-full text-xs font-medium shadow-lg">
               ✨ Featured
             </div>
           </div>
@@ -55,7 +55,7 @@ const CompactJobCard = ({ job, onViewDetails }: CompactJobCardProps) => {
           {/* Header */}
           <div className="flex-shrink-0 mb-4">
             <div className="flex items-center gap-2 mb-3">
-              <div className="px-3 py-1 bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700 rounded-full text-sm font-medium">
+              <div className="px-3 py-1 bg-gradient-to-r from-purple-100 to-violet-100 text-purple-700 rounded-full text-sm font-medium">
                 {job.job_type}
               </div>
               {job.is_remote && (
@@ -64,7 +64,7 @@ const CompactJobCard = ({ job, onViewDetails }: CompactJobCardProps) => {
                 </div>
               )}
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-700 transition-colors leading-tight">
+            <h3 className="text-lg font-semibold text-gray-900 group-hover:text-purple-700 transition-colors leading-tight">
               {truncateText(job.title, 60)}
             </h3>
           </div>
@@ -72,8 +72,8 @@ const CompactJobCard = ({ job, onViewDetails }: CompactJobCardProps) => {
           {/* Institution info - more compact */}
           <div className="flex-shrink-0 mb-4">
             <div className="flex items-center gap-3">
-              <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-lg flex items-center justify-center">
-                <Building2 className="w-4 h-4 text-blue-600" />
+              <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-purple-100 to-violet-100 rounded-lg flex items-center justify-center">
+                <Building2 className="w-4 h-4 text-purple-600" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-gray-900 text-sm truncate">{job.institution}</p>
@@ -132,7 +132,7 @@ const CompactJobCard = ({ job, onViewDetails }: CompactJobCardProps) => {
                   </div>
                 )}
                 {job.duration && (
-                  <div className="flex items-center gap-1.5 px-2 py-1 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 rounded-lg text-xs">
+                  <div className="flex items-center gap-1.5 px-2 py-1 bg-gradient-to-r from-purple-50 to-violet-50 text-purple-700 rounded-lg text-xs">
                     <Clock className="w-3 h-3" />
                     {job.duration}
                   </div>
@@ -142,7 +142,7 @@ const CompactJobCard = ({ job, onViewDetails }: CompactJobCardProps) => {
             
             <button 
               onClick={() => onViewDetails(job)}
-              className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white py-3 px-4 rounded-xl font-medium transition-all duration-200 hover:shadow-lg flex items-center justify-center gap-2"
+              className="w-full bg-gradient-to-r from-purple-500 to-violet-600 hover:from-purple-600 hover:to-violet-700 text-white py-3 px-4 rounded-xl font-medium transition-all duration-200 hover:shadow-lg flex items-center justify-center gap-2"
             >
               <Eye className="w-4 h-4" />
               View Details
