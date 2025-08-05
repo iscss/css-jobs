@@ -93,7 +93,7 @@ const UserManagementTable = () => {
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <Mail className="w-4 h-4 text-gray-400" />
-                    <span className="text-sm">{user.auth_users?.email || 'No email'}</span>
+                    <span className="text-sm">{user.email || 'No email'}</span>
                   </div>
                 </TableCell>
                 <TableCell>

@@ -17,7 +17,6 @@ export const useAdminApprovals = () => {
     queryFn: async () => {
       if (!user || !isAdmin) throw new Error('User must be authenticated admin');
 
-      // First get pending user profiles
       const { data: profiles, error: profilesError } = await supabase
         .from('user_profiles')
         .select('*')
@@ -25,30 +24,8 @@ export const useAdminApprovals = () => {
         .order('requested_at', { ascending: true });
 
       if (profilesError) throw profilesError;
-      if (!profiles || profiles.length === 0) return [];
-
-      // Get user emails from auth.users using admin access
-      const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
       
-      if (authError) {
-        console.error('Error fetching auth users:', authError);
-        // Return profiles without emails if we can't fetch them
-        return profiles.map(profile => ({
-          ...profile,
-          auth_users: null
-        }));
-      }
-
-      // Match profiles with their emails
-      const profilesWithEmails = profiles.map(profile => {
-        const authUser = authData.users.find((u: any) => u.id === profile.id);
-        return {
-          ...profile,
-          auth_users: authUser ? { email: authUser.email || 'No email' } : null
-        };
-      });
-
-      return profilesWithEmails;
+      return profiles || [];
     },
     enabled: !!user && !!isAdmin,
   });
