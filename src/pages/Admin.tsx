@@ -6,6 +6,7 @@ import Footer from "@/components/layout/Footer";
 import PendingApprovalCard from "@/components/admin/PendingApprovalCard";
 import UserManagementTable from "@/components/admin/UserManagementTable";
 import JobManagementTable from "@/components/admin/JobManagementTable";
+import AdminStats from "@/components/admin/AdminStats";
 import { useAdminApprovals } from "@/hooks/useAdminApprovals";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { useAuth } from "@/contexts/AuthContext";
@@ -69,39 +70,7 @@ const Admin = () => {
           </div>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-3 mb-8">
-          <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-            <div className="flex items-center gap-3">
-              <Clock className="w-6 h-6 text-orange-500" />
-              <div>
-                <p className="text-sm text-gray-600">Pending Approvals</p>
-                <p className="text-2xl font-bold text-orange-600">
-                  {approvalsLoading ? '...' : pendingApprovals?.length || 0}
-                </p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-            <div className="flex items-center gap-3">
-              <Users className="w-6 h-6 text-blue-500" />
-              <div>
-                <p className="text-sm text-gray-600">User Management</p>
-                <p className="text-2xl font-bold text-blue-600">Active</p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-            <div className="flex items-center gap-3">
-              <Briefcase className="w-6 h-6 text-green-500" />
-              <div>
-                <p className="text-sm text-gray-600">Job Management</p>
-                <p className="text-2xl font-bold text-green-600">Active</p>
-              </div>
-            </div>
-          </div>
-        </div>
+        <AdminStats />
 
         <Tabs defaultValue="approvals" className="space-y-4">
           <TabsList className="grid w-full grid-cols-3">
