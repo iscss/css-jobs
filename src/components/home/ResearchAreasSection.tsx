@@ -4,22 +4,22 @@ import { Card, CardContent } from "@/components/ui/card";
 const ResearchAreasSection = () => {
   const sponsors = [
     {
-      name: "National Science Foundation",
-      image: "https://images.unsplash.com/photo-1605810230434-7631ac76ec81?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
-      url: "https://nsf.gov",
-      description: "Supporting fundamental research and education"
+      name: "ISCSS",
+      image: "/sponsors/ISCSS Logo.png",
+      url: "https://iscss.org/",
+      description: "The International Society for Computational Social Science"
     },
     {
-      name: "Microsoft Research",
-      image: "https://images.unsplash.com/photo-1498050108023-c5249f4df085?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
-      url: "https://microsoft.com/research",
-      description: "Advancing computational social science"
+      name: "IC2S2",
+      image: "/sponsors/IC2S2 Logo White.png",
+      url: "https://ic2s2.org/",
+      description: "The International Conference on Computational Social Science"
     },
     {
-      name: "Stanford Digital Economy Lab",
-      image: "https://images.unsplash.com/photo-1488590528505-98d2b5aba04b?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
-      url: "https://digitaleconomy.stanford.edu",
-      description: "Research on digital transformation"
+      name: "ICWSM",
+      image: "/sponsors/ICWSM 2025.png",
+      url: "https://icwsm.org/",
+      description: "International AAAI Conference on Web and Social Media"
     }
   ];
 
@@ -31,23 +31,23 @@ const ResearchAreasSection = () => {
             Our <span className="text-gradient-primary">Sponsors</span>
           </h2>
           <p className="text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed">
-            Collaborating with leading institutions and organizations to advance computational social science.
+            Collaborating with leading institutions, organizations, and conferences to advance computational social science.
           </p>
         </div>
 
         <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
           {sponsors.map((sponsor, index) => (
-            <Card 
-              key={index} 
+            <Card
+              key={index}
               className="modern-card modern-card-hover cursor-pointer group border-0 overflow-hidden"
               onClick={() => window.open(sponsor.url, '_blank')}
             >
               <CardContent className="p-0">
-                <div className="aspect-[4/3] overflow-hidden">
-                  <img 
-                    src={sponsor.image} 
+                <div className="aspect-[4/3] overflow-hidden bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-8">
+                  <img
+                    src={sponsor.image}
                     alt={sponsor.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    className="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-300"
                   />
                 </div>
                 <div className="p-6">
