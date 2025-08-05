@@ -172,7 +172,7 @@ const CompactJobCard = ({ job, onViewDetails }: CompactJobCardProps) => {
                   disabled={saveJob.isPending || unsaveJob.isPending}
                   className={`px-3 py-3 rounded-xl font-medium transition-all duration-200 flex items-center justify-center ${
                     isSaved 
-                      ? 'bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-lg' 
+                      ? 'bg-gradient-to-r from-purple-500 to-violet-600 text-white shadow-lg' 
                       : 'bg-white border-2 border-purple-200 text-purple-600 hover:border-purple-300 hover:bg-purple-50'
                   }`}
                 >
@@ -283,7 +283,7 @@ const CompactJobCard = ({ job, onViewDetails }: CompactJobCardProps) => {
               disabled={saveJob.isPending || unsaveJob.isPending}
               className={`px-3 py-2.5 rounded-lg font-medium transition-all duration-200 flex items-center justify-center ${
                 isSaved 
-                  ? 'bg-emerald-500 text-white hover:bg-emerald-600' 
+                  ? 'secondary-gradient text-white shadow-lg' 
                   : 'border border-gray-300 text-gray-600 hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50'
               }`}
             >
