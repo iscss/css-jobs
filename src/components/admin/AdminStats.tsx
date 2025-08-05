@@ -15,6 +15,7 @@ const AdminStats = () => {
   const approvedPosters = users?.filter(user => user.is_approved_poster) || [];
   const adminUsers = users?.filter(user => user.is_admin) || [];
   const publishedJobs = jobs?.filter(job => job.is_published) || [];
+  const unpublishedJobs = jobs?.filter(job => !job.is_published) || [];
   const featuredJobs = jobs?.filter(job => job.is_featured) || [];
 
   const userStats = [
@@ -60,13 +61,6 @@ const AdminStats = () => {
       color: "text-emerald-500",
       bgColor: "bg-emerald-50",
     },
-    {
-      title: "Admin Users",
-      value: usersLoading ? "..." : adminUsers.length,
-      icon: CheckCircle,
-      color: "text-slate-500",
-      bgColor: "bg-slate-50",
-    },
   ];
 
   const jobStats = [
@@ -85,9 +79,16 @@ const AdminStats = () => {
       bgColor: "bg-emerald-50",
     },
     {
+      title: "Draft Jobs",
+      value: jobsLoading ? "..." : unpublishedJobs.length,
+      icon: XCircle,
+      color: "text-yellow-500",
+      bgColor: "bg-yellow-50",
+    },
+    {
       title: "Featured Jobs",
       value: jobsLoading ? "..." : featuredJobs.length,
-      icon: XCircle,
+      icon: CheckCircle,
       color: "text-pink-500",
       bgColor: "bg-pink-50",
     },
@@ -98,7 +99,7 @@ const AdminStats = () => {
       {/* User Statistics */}
       <div>
         <h3 className="text-lg font-semibold text-gray-800 mb-4">User Management</h3>
-        <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-7">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
           {userStats.map((stat, index) => {
             const IconComponent = stat.icon;
             return (
@@ -123,7 +124,7 @@ const AdminStats = () => {
       {/* Job Statistics */}
       <div>
         <h3 className="text-lg font-semibold text-gray-800 mb-4">Job Management</h3>
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {jobStats.map((stat, index) => {
             const IconComponent = stat.icon;
             return (
