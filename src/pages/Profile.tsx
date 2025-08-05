@@ -1,6 +1,6 @@
 
 import Header from "@/components/layout/Header";
-import SimpleFooter from "@/components/layout/SimpleFooter";
+import Footer from "@/components/layout/Footer";
 import UserProfile from "@/components/profile/UserProfile";
 import UserDashboard from "@/components/profile/UserDashboard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -27,7 +27,7 @@ const Profile = () => {
           </Tabs>
         </div>
       </main>
-      <SimpleFooter />
+      <Footer />
     </div>
   );
 };

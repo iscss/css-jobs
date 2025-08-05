@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import Header from "@/components/layout/Header";
-import SimpleFooter from "@/components/layout/SimpleFooter";
+import Footer from "@/components/layout/Footer";
 import HeroSection from "@/components/home/HeroSection";
 import StatsSection from "@/components/home/StatsSection";
 import ResearchAreasSection from "@/components/home/ResearchAreasSection";
@@ -147,7 +147,7 @@ const Index = () => {
         <StatsSection />
         <ResearchAreasSection />
       </div>
-      <SimpleFooter />
+      <Footer />
 
       {/* Job Details Modal */}
       <JobDetailsModal

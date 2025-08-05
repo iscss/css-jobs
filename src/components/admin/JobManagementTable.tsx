@@ -74,6 +74,7 @@ const JobManagementTable = () => {
             <TableRow>
               <TableHead>Job Title</TableHead>
               <TableHead>Institution</TableHead>
+              <TableHead>Posted By</TableHead>
               <TableHead>Type</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Posted</TableHead>
@@ -91,6 +92,12 @@ const JobManagementTable = () => {
                 </TableCell>
                 <TableCell>
                   <span className="text-sm">{job.institution}</span>
+                </TableCell>
+                <TableCell>
+                  <div className="text-sm">
+                    <div className="font-medium">{job.user_profiles?.full_name || 'Unknown User'}</div>
+                    <div className="text-gray-500">{job.user_profiles?.email || 'No email'}</div>
+                  </div>
                 </TableCell>
                 <TableCell>
                   <Badge variant="outline">{job.job_type}</Badge>

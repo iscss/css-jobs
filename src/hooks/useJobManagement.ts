@@ -21,6 +21,11 @@ export const useAllJobs = () => {
           job_tags (
             id,
             tag
+          ),
+          user_profiles!jobs_posted_by_fkey (
+            id,
+            full_name,
+            email
           )
         `)
         .order('created_at', { ascending: false });
