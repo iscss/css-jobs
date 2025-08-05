@@ -54,8 +54,9 @@ export const useSaveJob = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data, jobId) => {
       queryClient.invalidateQueries({ queryKey: ['saved-jobs', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['check-saved-job', user?.id, jobId] });
       toast({
         title: "Job Saved",
         description: "Job has been added to your saved list.",
@@ -88,8 +89,9 @@ export const useUnsaveJob = () => {
 
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: (data, jobId) => {
       queryClient.invalidateQueries({ queryKey: ['saved-jobs', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['check-saved-job', user?.id, jobId] });
       toast({
         title: "Job Removed",
         description: "Job has been removed from your saved list.",

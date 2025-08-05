@@ -4,7 +4,6 @@ import { useSearchParams } from "react-router-dom";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import HeroSection from "@/components/home/HeroSection";
-import StatsSection from "@/components/home/StatsSection";
 import ResearchAreasSection from "@/components/home/ResearchAreasSection";
 
 import CompactJobCard from "@/components/jobs/CompactJobCard";
@@ -63,8 +62,8 @@ const Index = () => {
           job.funding_source || '',
           ...job.job_tags.map(tag => tag.tag)
         ];
-        
-        return searchFields.some(field => 
+
+        return searchFields.some(field =>
           field.toLowerCase().includes(searchLower)
         );
       });
@@ -77,7 +76,7 @@ const Index = () => {
 
     // Filter by topics
     if (filters.topics && filters.topics.length > 0) {
-      filtered = filtered.filter(job => 
+      filtered = filtered.filter(job =>
         job.job_tags?.some((tag: any) => filters.topics.includes(tag.tag))
       );
     }
@@ -120,7 +119,7 @@ const Index = () => {
       <div className="min-h-screen">
         <Header />
         <HeroSection />
-        
+
         {/* Featured Jobs Section */}
         {featuredJobs.length > 0 && (
           <section className="py-16 bg-gradient-to-br from-slate-50 via-blue-50/50 to-purple-50/50">
@@ -143,8 +142,6 @@ const Index = () => {
             </div>
           </section>
         )}
-
-        <StatsSection />
         <ResearchAreasSection />
       </div>
       <Footer />
