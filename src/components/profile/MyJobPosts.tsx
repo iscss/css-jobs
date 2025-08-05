@@ -12,9 +12,10 @@ import {
   TableRow 
 } from '@/components/ui/table';
 import { useUserJobs } from '@/hooks/useJobs';
-import { useRetractJob, useToggleFeatured } from '@/hooks/useJobManagement';
-import { Briefcase, Edit, Eye, EyeOff, Star, StarOff, Trash2 } from 'lucide-react';
+import { useRetractJob } from '@/hooks/useJobManagement';
+import { Briefcase, Edit, Eye, EyeOff, Trash2 } from 'lucide-react';
 import JobDetailsModal from '@/components/jobs/JobDetailsModal';
+import EditJobModal from '@/components/jobs/EditJobModal';
 import type { Tables } from '@/integrations/supabase/types';
 
 type Job = Tables<'jobs'> & {
@@ -24,20 +25,13 @@ type Job = Tables<'jobs'> & {
 const MyJobPosts = () => {
   const { data: userJobs, isLoading } = useUserJobs();
   const retractJob = useRetractJob();
-  const toggleFeatured = useToggleFeatured();
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [editingJob, setEditingJob] = useState<Job | null>(null);
 
   const handleRetractJob = (jobId: string, currentStatus: boolean) => {
     retractJob.mutate({
       jobId,
       isPublished: !currentStatus
-    });
-  };
-
-  const handleToggleFeatured = (jobId: string, currentStatus: boolean) => {
-    toggleFeatured.mutate({
-      jobId,
-      isFeatured: !currentStatus
     });
   };
 
@@ -135,6 +129,14 @@ const MyJobPosts = () => {
                         </Button>
                         <Button
                           size="sm"
+                          variant="outline"
+                          onClick={() => setEditingJob(job as Job)}
+                        >
+                          <Edit className="w-4 h-4 mr-1" />
+                          Edit
+                        </Button>
+                        <Button
+                          size="sm"
                           variant={job.is_published ? "destructive" : "outline"}
                           onClick={() => handleRetractJob(job.id, job.is_published || false)}
                           disabled={retractJob.isPending}
@@ -148,24 +150,6 @@ const MyJobPosts = () => {
                             <>
                               <Eye className="w-4 h-4 mr-1" />
                               Publish
-                            </>
-                          )}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant={job.is_featured ? "default" : "outline"}
-                          onClick={() => handleToggleFeatured(job.id, job.is_featured || false)}
-                          disabled={toggleFeatured.isPending}
-                        >
-                          {job.is_featured ? (
-                            <>
-                              <StarOff className="w-4 h-4 mr-1" />
-                              Unfeature
-                            </>
-                          ) : (
-                            <>
-                              <Star className="w-4 h-4 mr-1" />
-                              Feature
                             </>
                           )}
                         </Button>
@@ -184,6 +168,14 @@ const MyJobPosts = () => {
           job={selectedJob}
           isOpen={!!selectedJob}
           onClose={() => setSelectedJob(null)}
+        />
+      )}
+
+      {editingJob && (
+        <EditJobModal
+          job={editingJob}
+          isOpen={!!editingJob}
+          onClose={() => setEditingJob(null)}
         />
       )}
     </>

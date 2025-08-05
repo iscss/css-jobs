@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,11 +14,18 @@ import {
 } from '@/components/ui/table';
 import { useAllJobs, useRetractJob, useToggleFeatured } from '@/hooks/useJobManagement';
 import { Briefcase, Eye, EyeOff, Star, StarOff } from 'lucide-react';
+import JobDetailsModal from '@/components/jobs/JobDetailsModal';
+import type { Tables } from '@/integrations/supabase/types';
+
+type Job = Tables<'jobs'> & {
+  job_tags: { id: string; tag: string; }[]
+};
 
 const JobManagementTable = () => {
   const { data: allJobs, isLoading } = useAllJobs();
   const retractJob = useRetractJob();
   const toggleFeatured = useToggleFeatured();
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
 
   const handleRetractJob = (jobId: string, currentStatus: boolean) => {
     retractJob.mutate({
@@ -61,6 +68,7 @@ const JobManagementTable = () => {
   }
 
   return (
+    <>
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
@@ -119,6 +127,14 @@ const JobManagementTable = () => {
                   <div className="flex gap-2">
                     <Button
                       size="sm"
+                      variant="outline"
+                      onClick={() => setSelectedJob(job as Job)}
+                    >
+                      <Eye className="w-4 h-4 mr-1" />
+                      View
+                    </Button>
+                    <Button
+                      size="sm"
                       variant={job.is_published ? "destructive" : "outline"}
                       onClick={() => handleRetractJob(job.id, job.is_published || false)}
                       disabled={retractJob.isPending}
@@ -161,6 +177,15 @@ const JobManagementTable = () => {
         </Table>
       </CardContent>
     </Card>
+
+    {selectedJob && (
+      <JobDetailsModal
+        job={selectedJob}
+        isOpen={!!selectedJob}
+        onClose={() => setSelectedJob(null)}
+      />
+    )}
+    </>
   );
 };
 

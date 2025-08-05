@@ -43,7 +43,7 @@ const JobPostingForm = () => {
 
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<JobFormData>();
 
-  const onSubmit = async (data: JobFormData) => {
+  const onSubmit = async (data: JobFormData, isDraft = false) => {
     if (!user) {
       toast({
         title: "Authentication required",
@@ -67,18 +67,20 @@ const JobPostingForm = () => {
         ...data,
         is_remote: isRemote,
         application_deadline: data.application_deadline || null,
-        is_published: true,
+        is_published: !isDraft,
         tags: data.tags ? data.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : []
       };
 
       await createJobMutation.mutateAsync(jobData);
       
       toast({
-        title: "Job posted successfully!",
-        description: "Your job posting has been created and is now live.",
+        title: isDraft ? "Draft saved successfully!" : "Job posted successfully!",
+        description: isDraft 
+          ? "Your job draft has been saved. You can publish it later from your profile."
+          : "Your job posting has been created and is now live.",
       });
       
-      navigate('/jobs');
+      navigate(isDraft ? '/profile' : '/jobs');
     } catch (error) {
       toast({
         title: "Error posting job",
@@ -172,7 +174,7 @@ const JobPostingForm = () => {
         <CardContent className="space-y-6">
           {getApprovalStatusAlert()}
           
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <form className="space-y-6">
             <div className="grid md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="title">Job Title *</Label>
@@ -337,10 +339,19 @@ const JobPostingForm = () => {
                 Cancel
               </Button>
               <Button
-                type="submit"
+                type="button"
+                variant="secondary"
+                onClick={handleSubmit((data) => onSubmit(data, true))}
                 disabled={createJobMutation.isPending || !userProfile?.is_approved_poster}
               >
-                {createJobMutation.isPending ? 'Posting...' : 'Post Job'}
+                {createJobMutation.isPending ? 'Saving...' : 'Save as Draft'}
+              </Button>
+              <Button
+                type="button"
+                onClick={handleSubmit((data) => onSubmit(data, false))}
+                disabled={createJobMutation.isPending || !userProfile?.is_approved_poster}
+              >
+                {createJobMutation.isPending ? 'Publishing...' : 'Publish Job'}
               </Button>
             </div>
           </form>
