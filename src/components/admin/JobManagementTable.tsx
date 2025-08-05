@@ -95,8 +95,8 @@ const JobManagementTable = () => {
                 </TableCell>
                 <TableCell>
                   <div className="text-sm">
-                    <div className="font-medium">{job.user_profiles?.full_name || 'Unknown User'}</div>
-                    <div className="text-gray-500">{job.user_profiles?.email || 'No email'}</div>
+                    <div className="font-medium">{(job as any).user_profiles?.full_name || 'Unknown User'}</div>
+                    <div className="text-gray-500">{(job as any).user_profiles?.email || 'No email'}</div>
                   </div>
                 </TableCell>
                 <TableCell>

@@ -115,7 +115,7 @@ export const useCheckSavedJob = (jobId: string) => {
 
       const { data, error } = await supabase
         .from('saved_jobs')
-        .select('id')
+        .select('user_id')
         .eq('user_id', user.id)
         .eq('job_id', jobId)
         .single();

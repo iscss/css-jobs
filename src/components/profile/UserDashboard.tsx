@@ -129,7 +129,7 @@ const UserDashboard = () => {
                       )
                       .map((savedJob: any) => (
                         <CompactJobCard
-                          key={savedJob.id}
+                          key={`saved-${savedJob.id}`}
                           job={savedJob.jobs}
                           onViewDetails={setSelectedJob}
                         />
