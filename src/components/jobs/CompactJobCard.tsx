@@ -2,7 +2,9 @@ import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MapPin, Building2, Calendar, Eye, User, Clock, Globe } from 'lucide-react';
+import { MapPin, Building2, Calendar, Eye, User, Clock, Globe, Bookmark, BookmarkCheck } from 'lucide-react';
+import { useSaveJob, useUnsaveJob, useCheckSavedJob } from '@/hooks/useSavedJobs';
+import { useAuth } from '@/contexts/AuthContext';
 import type { Tables } from '@/integrations/supabase/types';
 
 type Job = Tables<'jobs'> & {
@@ -15,6 +17,21 @@ interface CompactJobCardProps {
 }
 
 const CompactJobCard = ({ job, onViewDetails }: CompactJobCardProps) => {
+  const { user } = useAuth();
+  const { data: isSaved } = useCheckSavedJob(job?.id || '');
+  const saveJob = useSaveJob();
+  const unsaveJob = useUnsaveJob();
+
+  const handleSaveToggle = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!user) return;
+    
+    if (isSaved) {
+      unsaveJob.mutate(job.id);
+    } else {
+      saveJob.mutate(job.id);
+    }
+  };
   const formatDate = (dateString: string | null) => {
     if (!dateString) return null;
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -235,13 +252,27 @@ const CompactJobCard = ({ job, onViewDetails }: CompactJobCardProps) => {
           </div>
         )}
         
-        <button 
-          onClick={() => onViewDetails(job)}
-          className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 px-4 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center gap-2"
-        >
-          <Eye className="w-4 h-4" />
-          View Details
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => onViewDetails(job)}
+            className="flex-1 modern-gradient text-white py-2.5 px-4 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2 hover:shadow-lg"
+          >
+            <Eye className="w-4 h-4" />
+            View Details
+          </button>
+          
+          {user && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSaveToggle}
+              disabled={saveJob.isPending || unsaveJob.isPending}
+              className="px-3"
+            >
+              {isSaved ? <BookmarkCheck className="w-4 h-4" /> : <Bookmark className="w-4 h-4" />}
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );

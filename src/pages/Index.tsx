@@ -144,8 +144,8 @@ const Index = () => {
         )}
 
         <StatsSection />
-        <SimpleFooter />
       </div>
+      <SimpleFooter />
 
       {/* Job Details Modal */}
       <JobDetailsModal

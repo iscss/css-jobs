@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      job_alerts: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          keywords: string | null
+          location: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          keywords?: string | null
+          location?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          keywords?: string | null
+          location?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       job_tags: {
         Row: {
           created_at: string
@@ -109,6 +139,36 @@ export type Database = {
           requirements?: string | null
           title?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      notification_settings: {
+        Row: {
+          created_at: string
+          deadline_reminders: boolean
+          id: string
+          new_jobs: boolean
+          updated_at: string
+          user_id: string
+          weekly_digest: boolean
+        }
+        Insert: {
+          created_at?: string
+          deadline_reminders?: boolean
+          id?: string
+          new_jobs?: boolean
+          updated_at?: string
+          user_id: string
+          weekly_digest?: boolean
+        }
+        Update: {
+          created_at?: string
+          deadline_reminders?: boolean
+          id?: string
+          new_jobs?: boolean
+          updated_at?: string
+          user_id?: string
+          weekly_digest?: boolean
         }
         Relationships: []
       }
