@@ -34,6 +34,23 @@ const Auth = () => {
     try {
       let error;
       if (isSignUp) {
+        // Check if email already exists
+        const { data: existingUser } = await supabase
+          .from('user_profiles')
+          .select('email')
+          .eq('email', email)
+          .single();
+
+        if (existingUser) {
+          toast({
+            title: "Email already registered",
+            description: "An account with this email already exists. Please sign in instead.",
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
+
         ({ error } = await signUp(email, password, fullName));
         if (!error) {
           // Update user profile with selected role
@@ -55,8 +72,8 @@ const Auth = () => {
           toast({
             title: "Account created successfully!",
             description: userType === 'job_seeker' 
-              ? "Welcome! You can now browse and save job positions."
-              : "Your account has been created. Job posting privileges require admin approval.",
+              ? "Welcome! Please check your email to verify your account, then you can browse and save job positions."
+              : "Your account has been created. Please verify your email and wait for admin approval for job posting privileges.",
           });
         }
       } else {
@@ -70,11 +87,26 @@ const Auth = () => {
       }
 
       if (error) {
-        toast({
-          title: "Error",
-          description: error.message,
-          variant: "destructive",
-        });
+        const errorMessage = error.message;
+        if (errorMessage.includes('Invalid login credentials')) {
+          toast({
+            title: "Invalid credentials",
+            description: "Please check your email and password and try again.",
+            variant: "destructive",
+          });
+        } else if (errorMessage.includes('Email not confirmed')) {
+          toast({
+            title: "Email not verified",
+            description: "Please check your email and click the verification link before signing in.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: errorMessage,
+            variant: "destructive",
+          });
+        }
       }
     } catch (error) {
       toast({

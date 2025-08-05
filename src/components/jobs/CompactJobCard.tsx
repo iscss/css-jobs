@@ -157,13 +157,29 @@ const CompactJobCard = ({ job, onViewDetails }: CompactJobCardProps) => {
               </div>
             )}
             
-            <button 
-              onClick={() => onViewDetails(job)}
-              className="w-full bg-gradient-to-r from-purple-500 to-violet-600 hover:from-purple-600 hover:to-violet-700 text-white py-3 px-4 rounded-xl font-medium transition-all duration-200 hover:shadow-lg flex items-center justify-center gap-2"
-            >
-              <Eye className="w-4 h-4" />
-              View Details
-            </button>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => onViewDetails(job)}
+                className="flex-1 bg-gradient-to-r from-purple-500 to-violet-600 hover:from-purple-600 hover:to-violet-700 text-white py-3 px-4 rounded-xl font-medium transition-all duration-200 hover:shadow-lg flex items-center justify-center gap-2"
+              >
+                <Eye className="w-4 h-4" />
+                View Details
+              </button>
+              
+              {user && (
+                <button
+                  onClick={handleSaveToggle}
+                  disabled={saveJob.isPending || unsaveJob.isPending}
+                  className={`px-3 py-3 rounded-xl font-medium transition-all duration-200 flex items-center justify-center ${
+                    isSaved 
+                      ? 'bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-lg' 
+                      : 'bg-white border-2 border-purple-200 text-purple-600 hover:border-purple-300 hover:bg-purple-50'
+                  }`}
+                >
+                  {isSaved ? <BookmarkCheck className="w-5 h-5" /> : <Bookmark className="w-5 h-5" />}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -252,25 +268,27 @@ const CompactJobCard = ({ job, onViewDetails }: CompactJobCardProps) => {
           </div>
         )}
         
-        <div className="flex gap-2">
+        <div className="flex items-center justify-between">
           <button
             onClick={() => onViewDetails(job)}
-            className="flex-1 modern-gradient text-white py-2.5 px-4 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2 hover:shadow-lg"
+            className="flex-1 modern-gradient text-white py-2.5 px-4 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2 hover:shadow-lg mr-3"
           >
             <Eye className="w-4 h-4" />
             View Details
           </button>
           
           {user && (
-            <Button
-              variant="outline"
-              size="sm"
+            <button
               onClick={handleSaveToggle}
               disabled={saveJob.isPending || unsaveJob.isPending}
-              className="px-3"
+              className={`px-3 py-2.5 rounded-lg font-medium transition-all duration-200 flex items-center justify-center ${
+                isSaved 
+                  ? 'bg-emerald-500 text-white hover:bg-emerald-600' 
+                  : 'border border-gray-300 text-gray-600 hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50'
+              }`}
             >
               {isSaved ? <BookmarkCheck className="w-4 h-4" /> : <Bookmark className="w-4 h-4" />}
-            </Button>
+            </button>
           )}
         </div>
       </div>

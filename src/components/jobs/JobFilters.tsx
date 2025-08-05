@@ -171,9 +171,6 @@ const JobFilters = ({ onFiltersChange }: JobFiltersProps) => {
           </div>
         )}
 
-        <Button onClick={handleSearch} className="w-full bg-navy-600 hover:bg-navy-700">
-          Apply Filters
-        </Button>
       </CardContent>
     </Card>
   );

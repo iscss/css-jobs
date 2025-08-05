@@ -14,7 +14,7 @@ const AdminStats = () => {
   const publishedJobs = jobs?.filter(job => job.is_published) || [];
   const featuredJobs = jobs?.filter(job => job.is_featured) || [];
 
-  const stats = [
+  const userStats = [
     {
       title: "Pending Approvals",
       value: approvalsLoading ? "..." : pendingApprovals?.length || 0,
@@ -43,6 +43,9 @@ const AdminStats = () => {
       color: "text-purple-500",
       bgColor: "bg-purple-50",
     },
+  ];
+
+  const jobStats = [
     {
       title: "Total Jobs",
       value: jobsLoading ? "..." : jobs?.length || 0,
@@ -67,25 +70,56 @@ const AdminStats = () => {
   ];
 
   return (
-    <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 mb-8">
-      {stats.map((stat, index) => {
-        const IconComponent = stat.icon;
-        return (
-          <div key={index} className="bg-white rounded-xl p-4 shadow-lg border border-gray-100">
-            <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 ${stat.bgColor} rounded-lg flex items-center justify-center`}>
-                <IconComponent className={`w-5 h-5 ${stat.color}`} />
+    <div className="space-y-8 mb-8">
+      {/* User Statistics */}
+      <div>
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">User Management</h3>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {userStats.map((stat, index) => {
+            const IconComponent = stat.icon;
+            return (
+              <div key={index} className="bg-white rounded-xl p-4 shadow-lg border border-gray-100">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 ${stat.bgColor} rounded-lg flex items-center justify-center`}>
+                    <IconComponent className={`w-5 h-5 ${stat.color}`} />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600 font-medium">{stat.title}</p>
+                    <p className={`text-lg font-bold ${stat.color}`}>
+                      {stat.value}
+                    </p>
+                  </div>
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-gray-600 font-medium">{stat.title}</p>
-                <p className={`text-lg font-bold ${stat.color}`}>
-                  {stat.value}
-                </p>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Job Statistics */}
+      <div>
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">Job Management</h3>
+        <div className="grid gap-4 md:grid-cols-3">
+          {jobStats.map((stat, index) => {
+            const IconComponent = stat.icon;
+            return (
+              <div key={index} className="bg-white rounded-xl p-4 shadow-lg border border-gray-100">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 ${stat.bgColor} rounded-lg flex items-center justify-center`}>
+                    <IconComponent className={`w-5 h-5 ${stat.color}`} />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600 font-medium">{stat.title}</p>
+                    <p className={`text-lg font-bold ${stat.color}`}>
+                      {stat.value}
+                    </p>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-        );
-      })}
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 };
