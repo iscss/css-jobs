@@ -9,19 +9,15 @@ const AdminStats = () => {
   const { data: jobs, isLoading: jobsLoading } = useAllJobs();
   const { data: pendingApprovals, isLoading: approvalsLoading } = useAdminApprovals();
 
+  const jobSeekers = users?.filter(user => user.user_type === 'job_seeker') || [];
+  const jobPosters = users?.filter(user => user.user_type === 'job_poster') || [];
+  const bothType = users?.filter(user => user.user_type === 'both') || [];
   const approvedPosters = users?.filter(user => user.is_approved_poster) || [];
   const adminUsers = users?.filter(user => user.is_admin) || [];
   const publishedJobs = jobs?.filter(job => job.is_published) || [];
   const featuredJobs = jobs?.filter(job => job.is_featured) || [];
 
   const userStats = [
-    {
-      title: "Pending Approvals",
-      value: approvalsLoading ? "..." : pendingApprovals?.length || 0,
-      icon: Clock,
-      color: "text-orange-500",
-      bgColor: "bg-orange-50",
-    },
     {
       title: "Total Users",
       value: usersLoading ? "..." : users?.length || 0,
@@ -30,18 +26,46 @@ const AdminStats = () => {
       bgColor: "bg-blue-50",
     },
     {
+      title: "Job Seekers",
+      value: usersLoading ? "..." : jobSeekers.length,
+      icon: Users,
+      color: "text-green-500",
+      bgColor: "bg-green-50",
+    },
+    {
+      title: "Job Posters",
+      value: usersLoading ? "..." : jobPosters.length,
+      icon: UserCheck,
+      color: "text-purple-500",
+      bgColor: "bg-purple-50",
+    },
+    {
+      title: "Both Types",
+      value: usersLoading ? "..." : bothType.length,
+      icon: CheckCircle,
+      color: "text-indigo-500",
+      bgColor: "bg-indigo-50",
+    },
+    {
+      title: "Pending Approvals",
+      value: approvalsLoading ? "..." : pendingApprovals?.length || 0,
+      icon: Clock,
+      color: "text-orange-500",
+      bgColor: "bg-orange-50",
+    },
+    {
       title: "Approved Posters",
       value: usersLoading ? "..." : approvedPosters.length,
       icon: UserCheck,
-      color: "text-green-500",
-      bgColor: "bg-green-50",
+      color: "text-emerald-500",
+      bgColor: "bg-emerald-50",
     },
     {
       title: "Admin Users",
       value: usersLoading ? "..." : adminUsers.length,
       icon: CheckCircle,
-      color: "text-purple-500",
-      bgColor: "bg-purple-50",
+      color: "text-slate-500",
+      bgColor: "bg-slate-50",
     },
   ];
 
@@ -74,12 +98,12 @@ const AdminStats = () => {
       {/* User Statistics */}
       <div>
         <h3 className="text-lg font-semibold text-gray-800 mb-4">User Management</h3>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-7">
           {userStats.map((stat, index) => {
             const IconComponent = stat.icon;
             return (
               <div key={index} className="bg-white rounded-xl p-4 shadow-lg border border-gray-100">
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col items-center text-center gap-2">
                   <div className={`w-10 h-10 ${stat.bgColor} rounded-lg flex items-center justify-center`}>
                     <IconComponent className={`w-5 h-5 ${stat.color}`} />
                   </div>
