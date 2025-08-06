@@ -54,25 +54,21 @@ const Auth = () => {
           return;
         }
 
-        ({ error } = await signUp(email, password, fullName));
-        if (!error) {
-          // Update user profile with selected role and additional info
-          setTimeout(async () => {
-            const { error: profileError } = await supabase
-              .from('user_profiles')
-              .update({
-                user_type: userType,
-                approval_status: userType === 'job_seeker' ? 'approved' : 'pending',
-                requested_at: userType !== 'job_seeker' ? new Date().toISOString() : null,
-                google_scholar_url: googleScholarUrl || null,
-                website_url: websiteUrl || null
-              })
-              .eq('id', (await supabase.auth.getUser()).data.user?.id);
-
-            if (profileError) {
-              console.error('Error updating profile:', profileError);
+        // Pass all user data in signup metadata so the trigger can handle it properly
+        ({ error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              full_name: fullName,
+              user_type: userType,
+              google_scholar_url: googleScholarUrl || null,
+              website_url: websiteUrl || null
             }
-          }, 1000);
+          }
+        }));
+        
+        if (!error) {
 
           toast({
             title: "Account created successfully!",
