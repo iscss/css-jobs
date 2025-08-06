@@ -4,6 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { 
   Table, 
   TableBody, 
@@ -23,7 +30,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useAllJobs, useRetractJob, useToggleFeatured, useDeleteJob } from '@/hooks/useJobManagement';
-import { Briefcase, Eye, EyeOff, Star, StarOff, Trash2 } from 'lucide-react';
+import { Briefcase, Eye, EyeOff, Star, StarOff, Trash2, MoreHorizontal, User, Building2, Calendar, MapPin } from 'lucide-react';
 import JobDetailsModal from '@/components/jobs/JobDetailsModal';
 import type { Tables } from '@/integrations/supabase/types';
 
@@ -96,114 +103,154 @@ const JobManagementTable = () => {
   return (
     <>
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Briefcase className="w-5 h-5" />
+      <CardHeader className="pb-6">
+        <CardTitle className="flex items-center gap-3 text-xl">
+          <Briefcase className="w-6 h-6" />
           All Job Posts ({allJobs?.length || 0})
         </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-0">
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead>Job Title</TableHead>
-              <TableHead>Institution</TableHead>
-              <TableHead>Posted By</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Posted</TableHead>
-              <TableHead>Actions</TableHead>
+            <TableRow className="border-b">
+              <TableHead className="pl-6 py-4 font-semibold">Job Details</TableHead>
+              <TableHead className="py-4 font-semibold">Posted By</TableHead>
+              <TableHead className="py-4 font-semibold">Type & Status</TableHead>
+              <TableHead className="py-4 font-semibold">Posted Date</TableHead>
+              <TableHead className="pr-6 py-4 font-semibold text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {allJobs?.map((job) => (
-              <TableRow key={job.id}>
-                <TableCell>
-                  <div>
-                    <div className="font-medium">{job.title}</div>
-                    <div className="text-sm text-gray-500">{job.location}</div>
+              <TableRow key={job.id} className="hover:bg-muted/50 transition-colors">
+                <TableCell className="pl-6 py-6">
+                  <div className="space-y-2">
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                        <Briefcase className="w-5 h-5 text-primary" />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="font-medium text-base leading-tight mb-1" title={job.title}>
+                          {job.title}
+                        </h3>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Building2 className="w-4 h-4" />
+                            <span title={job.institution}>{job.institution}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <MapPin className="w-4 h-4" />
+                            <span title={job.location}>{job.location}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </TableCell>
-                <TableCell>
-                  <span className="text-sm">{job.institution}</span>
-                </TableCell>
-                <TableCell>
-                  <div className="text-sm">
-                    <div className="font-medium">{(job as any).user_profiles?.full_name || 'Unknown User'}</div>
-                    <div className="text-gray-500">{(job as any).user_profiles?.email || 'No email'}</div>
+                <TableCell className="py-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-secondary/50 flex items-center justify-center">
+                      <User className="w-4 h-4 text-secondary-foreground" />
+                    </div>
+                    <div>
+                      <div className="font-medium text-sm">
+                        {(job as any).user_profiles?.full_name || 'Unknown User'}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {(job as any).user_profiles?.email || 'No email'}
+                      </div>
+                    </div>
                   </div>
                 </TableCell>
-                <TableCell>
-                  <Badge variant="outline">{job.job_type}</Badge>
-                </TableCell>
-                <TableCell>
-                  <div className="flex gap-2">
-                    <Badge variant={job.is_published ? "default" : "secondary"}>
-                      {job.is_published ? "Published" : "Draft"}
+                <TableCell className="py-6">
+                  <div className="space-y-2">
+                    <Badge variant="outline" className="font-medium">
+                      {job.job_type}
                     </Badge>
-                    {job.is_featured && (
-                      <Badge variant="destructive">Featured</Badge>
-                    )}
+                    <div className="flex flex-col gap-1">
+                      <Badge variant={job.is_published ? "default" : "secondary"} className="w-fit">
+                        {job.is_published ? "Published" : "Draft"}
+                      </Badge>
+                      {job.is_featured && (
+                        <Badge variant="destructive" className="w-fit">
+                          <Star className="w-3 h-3 mr-1" />
+                          Featured
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                 </TableCell>
-                <TableCell>
-                  <span className="text-sm">{formatDate(job.created_at)}</span>
+                <TableCell className="py-6">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Calendar className="w-4 h-4" />
+                    <span>{formatDate(job.created_at)}</span>
+                  </div>
                 </TableCell>
-                <TableCell>
-                  <div className="flex gap-2">
+                <TableCell className="pr-6 py-6">
+                  <div className="flex items-center justify-end gap-2">
                     <Button
                       size="sm"
                       variant="outline"
                       onClick={() => setSelectedJob(job as Job)}
+                      className="h-8 px-3"
                     >
                       <Eye className="w-4 h-4 mr-1" />
                       View
                     </Button>
-                    <Button
-                      size="sm"
-                      variant={job.is_published ? "destructive" : "outline"}
-                      onClick={() => handleRetractJob(job.id, job.is_published || false)}
-                      disabled={retractJob.isPending}
-                    >
-                      {job.is_published ? (
-                        <>
-                          <EyeOff className="w-4 h-4 mr-1" />
-                          Retract
-                        </>
-                      ) : (
-                        <>
-                          <Eye className="w-4 h-4 mr-1" />
-                          Publish
-                        </>
-                      )}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={job.is_featured ? "default" : "outline"}
-                      onClick={() => handleToggleFeatured(job.id, job.is_featured || false)}
-                      disabled={toggleFeatured.isPending}
-                    >
-                      {job.is_featured ? (
-                        <>
-                          <StarOff className="w-4 h-4 mr-1" />
-                          Unfeature
-                        </>
-                      ) : (
-                        <>
-                          <Star className="w-4 h-4 mr-1" />
-                          Feature
-                        </>
-                      )}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => handleDeleteJob(job as Job)}
-                      disabled={deleteJob.isPending}
-                    >
-                      <Trash2 className="w-4 h-4 mr-1" />
-                      Delete
-                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 w-8 p-0"
+                          disabled={retractJob.isPending || toggleFeatured.isPending || deleteJob.isPending}
+                        >
+                          <MoreHorizontal className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuItem
+                          onClick={() => handleRetractJob(job.id, job.is_published || false)}
+                          className="cursor-pointer"
+                        >
+                          {job.is_published ? (
+                            <>
+                              <EyeOff className="w-4 h-4 mr-2" />
+                              Retract Job
+                            </>
+                          ) : (
+                            <>
+                              <Eye className="w-4 h-4 mr-2" />
+                              Publish Job
+                            </>
+                          )}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleToggleFeatured(job.id, job.is_featured || false)}
+                          className="cursor-pointer"
+                        >
+                          {job.is_featured ? (
+                            <>
+                              <StarOff className="w-4 h-4 mr-2" />
+                              Remove Featured
+                            </>
+                          ) : (
+                            <>
+                              <Star className="w-4 h-4 mr-2" />
+                              Make Featured
+                            </>
+                          )}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => handleDeleteJob(job as Job)}
+                          className="cursor-pointer text-destructive focus:text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete Job
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </TableCell>
               </TableRow>
