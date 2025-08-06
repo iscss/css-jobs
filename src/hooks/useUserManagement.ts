@@ -59,3 +59,46 @@ export const useUpdateUserPermissions = () => {
     },
   });
 };
+
+export const useDeleteUser = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      if (!user) throw new Error('User must be authenticated');
+
+      // First delete from user_profiles table
+      const { error: profileError } = await supabase
+        .from('user_profiles')
+        .delete()
+        .eq('id', userId);
+
+      if (profileError) throw profileError;
+
+      // Then delete from auth.users using admin API
+      const { error: authError } = await supabase.auth.admin.deleteUser(userId);
+      
+      if (authError) throw authError;
+
+      return { userId };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-user-profiles'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-approvals'] });
+
+      toast({
+        title: "User Deleted",
+        description: "The user has been permanently deleted from the system.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error deleting user",
+        description: "There was an error deleting the user. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+};

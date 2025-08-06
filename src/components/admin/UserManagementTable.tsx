@@ -12,23 +12,82 @@ import {
   TableHeader,
   TableRow
 } from '@/components/ui/table';
-import { useAllUsers, useUpdateUserPermissions } from '@/hooks/useUserManagement';
-import { User, Shield, ShieldOff, UserX, Mail, Eye, CheckCircle, XCircle } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { useAllUsers, useUpdateUserPermissions, useDeleteUser } from '@/hooks/useUserManagement';
+import { User, Shield, ShieldOff, UserX, Mail, Eye, CheckCircle, XCircle, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import UserProfileModal from './UserProfileModal';
 import type { AdminUserProfile } from '@/hooks/useAdminUserProfiles';
 
 const UserManagementTable = () => {
   const { data: allUsers, isLoading } = useAllUsers();
   const updatePermissions = useUpdateUserPermissions();
+  const deleteUser = useDeleteUser();
+  const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const [selectedUser, setSelectedUser] = useState<AdminUserProfile | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<AdminUserProfile | null>(null);
+  const [adminDialogOpen, setAdminDialogOpen] = useState(false);
+  const [adminAction, setAdminAction] = useState<{ userId: string; isAdmin: boolean; userName: string } | null>(null);
 
-  const handleToggleAdmin = (userId: string, currentStatus: boolean) => {
+  const handleToggleAdmin = (userId: string, currentStatus: boolean, userName: string) => {
+    setAdminAction({ userId, isAdmin: !currentStatus, userName });
+    setAdminDialogOpen(true);
+  };
+
+  const confirmAdminToggle = () => {
+    if (!adminAction) return;
+    
     updatePermissions.mutate({
-      userId,
-      updates: { is_admin: !currentStatus }
+      userId: adminAction.userId,
+      updates: { is_admin: adminAction.isAdmin }
     });
+    setAdminDialogOpen(false);
+    setAdminAction(null);
+  };
+
+  const handleDeleteUser = (user: AdminUserProfile) => {
+    // Check if user is trying to delete themselves
+    if (user.id === currentUser?.id) {
+      toast({
+        title: "Cannot delete yourself",
+        description: "You cannot delete your own account.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check if user is trying to delete another admin
+    if (user.is_admin) {
+      toast({
+        title: "Cannot delete admin users",
+        description: "Admin users cannot be deleted. Remove admin privileges first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUserToDelete(user);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteUser = () => {
+    if (!userToDelete) return;
+    
+    deleteUser.mutate(userToDelete.id);
+    setDeleteDialogOpen(false);
+    setUserToDelete(null);
   };
 
   const handleTogglePoster = (userId: string, currentStatus: boolean) => {
@@ -163,7 +222,7 @@ const UserManagementTable = () => {
                       <Button
                         size="sm"
                         variant={user.is_admin ? "destructive" : "outline"}
-                        onClick={() => handleToggleAdmin(user.id, user.is_admin || false)}
+                        onClick={() => handleToggleAdmin(user.id, user.is_admin || false, user.full_name || 'Unknown')}
                         disabled={updatePermissions.isPending}
                         className="text-xs px-2 py-1"
                       >
@@ -198,6 +257,16 @@ const UserManagementTable = () => {
                           </>
                         )}
                       </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => handleDeleteUser(user)}
+                        disabled={deleteUser.isPending || user.id === currentUser?.id || user.is_admin}
+                        className="text-xs px-2 py-1"
+                      >
+                        <Trash2 className="w-3 h-3 mr-1" />
+                        Delete
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -212,6 +281,47 @@ const UserManagementTable = () => {
         isOpen={!!selectedUser}
         onClose={() => setSelectedUser(null)}
       />
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete User</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to permanently delete the user "{userToDelete?.full_name || 'Unknown'}"? 
+              This action cannot be undone and will remove all their data from the system.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteUser}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete User
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={adminDialogOpen} onOpenChange={setAdminDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {adminAction?.isAdmin ? 'Grant Admin Privileges' : 'Revoke Admin Privileges'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to {adminAction?.isAdmin ? 'grant admin privileges to' : 'revoke admin privileges from'} 
+              "{adminAction?.userName}"? This will change their access level in the system.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmAdminToggle}>
+              {adminAction?.isAdmin ? 'Grant Admin' : 'Revoke Admin'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };

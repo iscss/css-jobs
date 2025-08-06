@@ -12,8 +12,18 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
-import { useAllJobs, useRetractJob, useToggleFeatured } from '@/hooks/useJobManagement';
-import { Briefcase, Eye, EyeOff, Star, StarOff } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { useAllJobs, useRetractJob, useToggleFeatured, useDeleteJob } from '@/hooks/useJobManagement';
+import { Briefcase, Eye, EyeOff, Star, StarOff, Trash2 } from 'lucide-react';
 import JobDetailsModal from '@/components/jobs/JobDetailsModal';
 import type { Tables } from '@/integrations/supabase/types';
 
@@ -25,7 +35,10 @@ const JobManagementTable = () => {
   const { data: allJobs, isLoading } = useAllJobs();
   const retractJob = useRetractJob();
   const toggleFeatured = useToggleFeatured();
+  const deleteJob = useDeleteJob();
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [jobToDelete, setJobToDelete] = useState<Job | null>(null);
 
   const handleRetractJob = (jobId: string, currentStatus: boolean) => {
     retractJob.mutate({
@@ -39,6 +52,19 @@ const JobManagementTable = () => {
       jobId,
       isFeatured: !currentStatus
     });
+  };
+
+  const handleDeleteJob = (job: Job) => {
+    setJobToDelete(job);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteJob = () => {
+    if (!jobToDelete) return;
+    
+    deleteJob.mutate(jobToDelete.id);
+    setDeleteDialogOpen(false);
+    setJobToDelete(null);
   };
 
   const formatDate = (dateString: string | null) => {
@@ -169,6 +195,15 @@ const JobManagementTable = () => {
                         </>
                       )}
                     </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => handleDeleteJob(job as Job)}
+                      disabled={deleteJob.isPending}
+                    >
+                      <Trash2 className="w-4 h-4 mr-1" />
+                      Delete
+                    </Button>
                   </div>
                 </TableCell>
               </TableRow>
@@ -185,6 +220,27 @@ const JobManagementTable = () => {
         onClose={() => setSelectedJob(null)}
       />
     )}
+
+    <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete Job Post</AlertDialogTitle>
+          <AlertDialogDescription>
+            Are you sure you want to permanently delete the job post "{jobToDelete?.title}"? 
+            This action cannot be undone and will remove the job from the system entirely.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={confirmDeleteJob}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            Delete Job
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
     </>
   );
 };

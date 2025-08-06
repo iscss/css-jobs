@@ -128,3 +128,41 @@ export const useToggleFeatured = () => {
     },
   });
 };
+
+export const useDeleteJob = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (jobId: string) => {
+      if (!user) throw new Error('User must be authenticated');
+
+      const { error } = await supabase
+        .from('jobs')
+        .delete()
+        .eq('id', jobId);
+
+      if (error) throw error;
+      return { jobId };
+    },
+    onSuccess: (data) => {
+      // Invalidate all relevant queries to update UI immediately
+      queryClient.invalidateQueries({ queryKey: ['all-jobs-admin'] });
+      queryClient.invalidateQueries({ queryKey: ['jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['user-jobs', user?.id] });
+
+      toast({
+        title: "Job Deleted",
+        description: "The job post has been permanently deleted.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error deleting job",
+        description: "There was an error deleting the job post.",
+        variant: "destructive",
+      });
+    },
+  });
+};
