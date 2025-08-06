@@ -120,9 +120,9 @@ export const useCheckSavedJob = (jobId: string) => {
         .select('user_id')
         .eq('user_id', user.id)
         .eq('job_id', jobId)
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') throw error;
+      if (error) throw error;
       return !!data;
     },
     enabled: !!user && !!jobId,

@@ -60,6 +60,13 @@ const Index = () => {
           job.pi_name || '',
           job.job_type,
           job.funding_source || '',
+          job.application_url || '',
+          job.contact_email || '',
+          job.duration || '',
+          // Include remote status as searchable text
+          job.is_remote ? 'remote' : '',
+          // Include application deadline as searchable text
+          job.application_deadline || '',
           ...job.job_tags.map(tag => tag.tag)
         ];
 

@@ -10,7 +10,7 @@ import { useJobs } from "@/hooks/useJobs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Search, X, Filter } from "lucide-react";
+import { Search, X, Filter, Star, MapPin, Globe } from "lucide-react";
 import type { Tables } from '@/integrations/supabase/types';
 
 type Job = Tables<'jobs'> & {
@@ -25,9 +25,47 @@ const Jobs = () => {
   const [filters, setFilters] = useState({
     search: searchParams.get("search") || "",
     types: [] as string[],
-    topics: [] as string[],
-    remote: false
+    remote: false,
+    featured: false,
+    region: "all",
+    country: "all"
   });
+
+  // Location mapping logic
+  const getLocationMapping = () => {
+    return {
+      regions: {
+        "north-america": ["united states", "usa", "us", "canada", "mexico"],
+        "europe": ["united kingdom", "uk", "germany", "france", "netherlands", "switzerland", "sweden", "denmark", "norway", "finland", "italy", "spain", "austria", "belgium", "ireland", "portugal"],
+        "asia": ["japan", "singapore", "south korea", "china", "india", "hong kong", "taiwan", "thailand", "malaysia"],
+        "oceania": ["australia", "new zealand"],
+        "south-america": ["brazil", "argentina", "chile", "colombia"],
+        "africa": ["south africa", "egypt", "nigeria", "kenya"]
+      },
+      countries: {
+        "us": ["united states", "usa", "us"],
+        "ca": ["canada"],
+        "uk": ["united kingdom", "uk", "england", "scotland", "wales"],
+        "de": ["germany"],
+        "fr": ["france"],
+        "nl": ["netherlands"],
+        "ch": ["switzerland"],
+        "se": ["sweden"],
+        "dk": ["denmark"],
+        "no": ["norway"],
+        "fi": ["finland"],
+        "it": ["italy"],
+        "es": ["spain"],
+        "au": ["australia"],
+        "nz": ["new zealand"],
+        "jp": ["japan"],
+        "sg": ["singapore"],
+        "kr": ["south korea"],
+        "cn": ["china"],
+        "in": ["india"]
+      }
+    };
+  };
 
   // Update filters when URL changes
   useEffect(() => {
@@ -57,10 +95,17 @@ const Jobs = () => {
           job.pi_name || '',
           job.job_type,
           job.funding_source || '',
+          job.application_url || '',
+          job.contact_email || '',
+          job.duration || '',
+          // Include remote status as searchable text
+          job.is_remote ? 'remote' : '',
+          // Include application deadline as searchable text
+          job.application_deadline || '',
           ...job.job_tags.map(tag => tag.tag)
         ];
-        
-        return searchFields.some(field => 
+
+        return searchFields.some(field =>
           field.toLowerCase().includes(searchLower)
         );
       });
@@ -71,16 +116,34 @@ const Jobs = () => {
       filtered = filtered.filter(job => filters.types.includes(job.job_type));
     }
 
-    // Filter by topics
-    if (filters.topics && filters.topics.length > 0) {
-      filtered = filtered.filter(job => 
-        job.job_tags?.some((tag: any) => filters.topics.includes(tag.tag))
-      );
-    }
-
     // Filter by remote
     if (filters.remote) {
       filtered = filtered.filter(job => job.is_remote);
+    }
+
+    // Filter by featured
+    if (filters.featured) {
+      filtered = filtered.filter(job => job.is_featured);
+    }
+
+    // Filter by region
+    if (filters.region && filters.region !== "all") {
+      const locationMapping = getLocationMapping();
+      const regionKeywords = locationMapping.regions[filters.region] || [];
+      filtered = filtered.filter(job => {
+        const location = job.location.toLowerCase();
+        return regionKeywords.some(keyword => location.includes(keyword));
+      });
+    }
+
+    // Filter by country
+    if (filters.country && filters.country !== "all") {
+      const locationMapping = getLocationMapping();
+      const countryKeywords = locationMapping.countries[filters.country] || [];
+      filtered = filtered.filter(job => {
+        const location = job.location.toLowerCase();
+        return countryKeywords.some(keyword => location.includes(keyword));
+      });
     }
 
     setFilteredJobs(filtered);
@@ -102,10 +165,36 @@ const Jobs = () => {
     setFilters({
       search: "",
       types: [],
-      topics: [],
-      remote: false
+      remote: false,
+      featured: false,
+      region: "all",
+      country: "all"
     });
     setSearchParams({});
+  };
+
+  const getRegionLabel = (regionValue: string) => {
+    const regions = {
+      "north-america": "North America",
+      "europe": "Europe",
+      "asia": "Asia",
+      "oceania": "Oceania",
+      "south-america": "South America",
+      "africa": "Africa"
+    };
+    return regions[regionValue] || regionValue;
+  };
+
+  const getCountryLabel = (countryValue: string) => {
+    const countries = {
+      "us": "United States", "ca": "Canada", "uk": "United Kingdom",
+      "de": "Germany", "fr": "France", "nl": "Netherlands",
+      "ch": "Switzerland", "se": "Sweden", "dk": "Denmark",
+      "no": "Norway", "fi": "Finland", "it": "Italy", "es": "Spain",
+      "au": "Australia", "nz": "New Zealand", "jp": "Japan",
+      "sg": "Singapore", "kr": "South Korea", "cn": "China", "in": "India"
+    };
+    return countries[countryValue] || countryValue;
   };
 
   if (error) {
@@ -124,19 +213,19 @@ const Jobs = () => {
     );
   }
 
-  const hasActiveFilters = filters.search || filters.types.length > 0 || filters.topics.length > 0 || filters.remote;
+  const hasActiveFilters = filters.search || filters.types.length > 0 || filters.remote || filters.featured || (filters.region && filters.region !== "all") || (filters.country && filters.country !== "all");
 
   return (
     <>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-gray-50">
         <Header />
-        
+
         <div className="container mx-auto px-4 py-8">
           <div className="flex flex-col lg:flex-row gap-8">
             {/* Sidebar with filters */}
             <aside className="lg:w-80">
               <div className="sticky top-8">
-                <JobFilters onFiltersChange={handleFiltersChange} />
+                <JobFilters onFiltersChange={handleFiltersChange} currentFilters={filters} />
               </div>
             </aside>
 
@@ -164,7 +253,7 @@ const Jobs = () => {
                           <Filter className="w-4 h-4" />
                           <span>Active Filters:</span>
                         </div>
-                        
+
                         {filters.search && (
                           <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200 flex items-center gap-2 px-3 py-1">
                             <Search className="w-3 h-3" />
@@ -174,27 +263,47 @@ const Jobs = () => {
                             </button>
                           </Badge>
                         )}
-                        
+
+                        {filters.featured && (
+                          <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 flex items-center gap-1 cursor-pointer hover:bg-yellow-200" onClick={() => setFilters(prev => ({ ...prev, featured: false }))}>
+                            <Star className="w-3 h-3 fill-yellow-500" />
+                            Featured
+                            <X className="w-3 h-3 ml-1" />
+                          </Badge>
+                        )}
+
                         {filters.types.map(type => (
-                          <Badge key={type} variant="secondary" className="bg-purple-100 text-purple-800">
+                          <Badge key={type} variant="secondary" className="bg-purple-100 text-purple-800 flex items-center gap-1 cursor-pointer hover:bg-purple-200" onClick={() => setFilters(prev => ({ ...prev, types: prev.types.filter(t => t !== type) }))}>
                             Type: {type}
+                            <X className="w-3 h-3 ml-1" />
                           </Badge>
                         ))}
-                        
-                        {filters.topics.map(topic => (
-                          <Badge key={topic} variant="secondary" className="bg-green-100 text-green-800">
-                            Topic: {topic}
+
+                        {filters.region && filters.region !== "all" && (
+                          <Badge variant="secondary" className="bg-green-100 text-green-800 flex items-center gap-1 cursor-pointer hover:bg-green-200" onClick={() => setFilters(prev => ({ ...prev, region: "all" }))}>
+                            <Globe className="w-3 h-3" />
+                            {getRegionLabel(filters.region)}
+                            <X className="w-3 h-3 ml-1" />
                           </Badge>
-                        ))}
-                        
+                        )}
+
+                        {filters.country && filters.country !== "all" && (
+                          <Badge variant="secondary" className="bg-blue-100 text-blue-800 flex items-center gap-1 cursor-pointer hover:bg-blue-200" onClick={() => setFilters(prev => ({ ...prev, country: "all" }))}>
+                            <MapPin className="w-3 h-3" />
+                            {getCountryLabel(filters.country)}
+                            <X className="w-3 h-3 ml-1" />
+                          </Badge>
+                        )}
+
                         {filters.remote && (
-                          <Badge variant="secondary" className="bg-orange-100 text-orange-800">
+                          <Badge variant="secondary" className="bg-orange-100 text-orange-800 flex items-center gap-1 cursor-pointer hover:bg-orange-200" onClick={() => setFilters(prev => ({ ...prev, remote: false }))}>
                             Remote Only
+                            <X className="w-3 h-3 ml-1" />
                           </Badge>
                         )}
                       </div>
-                      
-                      <Button 
+
+                      <Button
                         onClick={clearAllFilters}
                         variant="outline"
                         size="sm"
@@ -249,7 +358,7 @@ const Jobs = () => {
                   <div className="text-gray-400 text-7xl mb-6">🔍</div>
                   <h3 className="text-2xl font-bold text-gray-700 mb-3">No matching positions found</h3>
                   <p className="text-gray-600 text-lg mb-6">
-                    {filters.search 
+                    {filters.search
                       ? `No results found for "${filters.search}". Try adjusting your search terms or filters.`
                       : "Try adjusting your search criteria or filters to discover more opportunities."
                     }
