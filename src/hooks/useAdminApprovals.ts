@@ -19,12 +19,12 @@ export const useAdminApprovals = () => {
 
       if (profilesError) throw profilesError;
 
-      // Filter for users with pending approval status AND verified email
+      // Filter for users with pending approval status who want posting privileges
+      // Don't require email verification - admins can decide whether to approve unverified users
       const pendingProfiles = (profiles || []).filter(
         (profile: AdminUserProfile) => 
           profile.approval_status === 'pending' && 
-          profile.email_confirmed_at && // Only show verified users
-          (profile.user_type === 'job_poster' || profile.user_type === 'both') // Only job posters
+          (profile.user_type === 'job_poster' || profile.user_type === 'both')
       );
 
       return pendingProfiles;
