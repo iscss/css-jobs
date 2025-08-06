@@ -28,7 +28,7 @@ const JobFilters = ({ onFiltersChange, currentFilters }: JobFiltersProps) => {
   const [selectedRegion, setSelectedRegion] = useState<string>("all");
   const [selectedCountry, setSelectedCountry] = useState<string>("all");
 
-  const jobTypes = ["PhD", "Postdoc", "Faculty", "RA", "Internship"];
+  const jobTypes = ["PhD", "Postdoc", "Faculty", "Research Assistant", "Internship"];
 
   const regions = [
     { value: "north-america", label: "North America" },

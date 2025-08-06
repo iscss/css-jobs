@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MapPin, Building2, Calendar, Eye, User, Clock, Globe, Bookmark, BookmarkCheck } from 'lucide-react';
+import { MapPin, Building2, Calendar, Eye, User, Clock, Globe, Bookmark, BookmarkCheck, Star } from 'lucide-react';
 import { useSaveJob, useUnsaveJob, useCheckSavedJob } from '@/hooks/useSavedJobs';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Tables } from '@/integrations/supabase/types';
@@ -64,8 +64,9 @@ const CompactJobCard = ({ job, onViewDetails }: CompactJobCardProps) => {
       {/* Featured badge */}
       {job.is_featured && (
         <div className="absolute -top-2 -right-2 z-10">
-          <div className="bg-gradient-to-r from-purple-500 to-violet-600 text-white px-3 py-1.5 rounded-full text-xs font-medium shadow-lg">
-            ⭐️ Featured
+          <div className="bg-gradient-to-r from-purple-500 to-violet-600 text-white px-3 py-1.5 rounded-full text-xs font-medium shadow-lg flex items-center gap-2">
+            <Star className="w-4 h-4 fill-amber-500 text-amber-500" />
+            Featured
           </div>
         </div>
       )}

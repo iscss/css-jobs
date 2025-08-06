@@ -5,9 +5,9 @@ import JobPostingForm from "@/components/jobs/JobPostingForm";
 
 const PostJob = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-white">
+    <div className="page-wrapper">
       <Header />
-      <main className="py-8">
+      <main className="main-content py-8">
         <JobPostingForm />
       </main>
       <Footer />

@@ -8,9 +8,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const Profile = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-white">
+    <div className="page-wrapper">
       <Header />
-      <main className="py-8">
+      <main className="main-content py-8">
         <div className="container mx-auto px-4">
           <Tabs defaultValue="dashboard" className="space-y-6">
             <TabsList className="grid w-full grid-cols-3">
@@ -18,15 +18,15 @@ const Profile = () => {
               <TabsTrigger value="profile">Profile Settings</TabsTrigger>
               <TabsTrigger value="my-jobs">My Job Posts</TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="dashboard">
               <UserDashboard />
             </TabsContent>
-            
+
             <TabsContent value="profile">
               <UserProfile />
             </TabsContent>
-            
+
             <TabsContent value="my-jobs">
               <MyJobPosts />
             </TabsContent>

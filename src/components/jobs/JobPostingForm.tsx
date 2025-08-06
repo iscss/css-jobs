@@ -13,7 +13,7 @@ import { useCreateJob } from '@/hooks/useJobs';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserProfile } from '@/hooks/useUserProfile';
-import { AlertCircle, CheckCircle2, Clock, MapPin, Globe } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Clock, MapPin, Globe, X } from 'lucide-react';
 
 interface JobFormData {
   title: string;
@@ -22,7 +22,7 @@ interface JobFormData {
   location: string;
   country: string;
   region: string;
-  job_type: 'PhD' | 'Postdoc' | 'Faculty' | 'RA' | 'Internship' | 'Other';
+  job_type: 'PhD' | 'Postdoc' | 'Faculty' | 'Research Assistant' | 'Internship' | 'Other';
   description: string;
   requirements: string;
   application_deadline: string;
@@ -42,8 +42,8 @@ const JobPostingForm = () => {
   const { data: userProfile, isLoading: profileLoading } = useUserProfile();
   const createJobMutation = useCreateJob();
   const [isRemote, setIsRemote] = useState(false);
-  const [selectedCountry, setSelectedCountry] = useState("");
-  const [selectedRegion, setSelectedRegion] = useState("");
+  const [selectedCountry, setSelectedCountry] = useState("none");
+  const [selectedRegion, setSelectedRegion] = useState("none");
 
   const regions = [
     { value: "north-america", label: "North America" },
@@ -55,8 +55,12 @@ const JobPostingForm = () => {
   ];
 
   const countries = [
+    // North America
     { value: "us", label: "United States", region: "north-america" },
     { value: "ca", label: "Canada", region: "north-america" },
+    { value: "mx", label: "Mexico", region: "north-america" },
+
+    // Europe
     { value: "uk", label: "United Kingdom", region: "europe" },
     { value: "de", label: "Germany", region: "europe" },
     { value: "fr", label: "France", region: "europe" },
@@ -68,13 +72,42 @@ const JobPostingForm = () => {
     { value: "fi", label: "Finland", region: "europe" },
     { value: "it", label: "Italy", region: "europe" },
     { value: "es", label: "Spain", region: "europe" },
-    { value: "au", label: "Australia", region: "oceania" },
-    { value: "nz", label: "New Zealand", region: "oceania" },
+    { value: "at", label: "Austria", region: "europe" },
+    { value: "be", label: "Belgium", region: "europe" },
+    { value: "ie", label: "Ireland", region: "europe" },
+    { value: "pt", label: "Portugal", region: "europe" },
+
+    // Asia
     { value: "jp", label: "Japan", region: "asia" },
     { value: "sg", label: "Singapore", region: "asia" },
     { value: "kr", label: "South Korea", region: "asia" },
     { value: "cn", label: "China", region: "asia" },
-    { value: "in", label: "India", region: "asia" }
+    { value: "in", label: "India", region: "asia" },
+    { value: "hk", label: "Hong Kong", region: "asia" },
+    { value: "tw", label: "Taiwan", region: "asia" },
+    { value: "th", label: "Thailand", region: "asia" },
+    { value: "my", label: "Malaysia", region: "asia" },
+
+    // Oceania
+    { value: "au", label: "Australia", region: "oceania" },
+    { value: "nz", label: "New Zealand", region: "oceania" },
+
+    // South America
+    { value: "br", label: "Brazil", region: "south-america" },
+    { value: "ar", label: "Argentina", region: "south-america" },
+    { value: "cl", label: "Chile", region: "south-america" },
+    { value: "co", label: "Colombia", region: "south-america" },
+    { value: "pe", label: "Peru", region: "south-america" },
+
+    // Africa
+    { value: "za", label: "South Africa", region: "africa" },
+    { value: "eg", label: "Egypt", region: "africa" },
+    { value: "ng", label: "Nigeria", region: "africa" },
+    { value: "ke", label: "Kenya", region: "africa" },
+    { value: "gh", label: "Ghana", region: "africa" },
+    { value: "ma", label: "Morocco", region: "africa" },
+    { value: "tn", label: "Tunisia", region: "africa" },
+    { value: "et", label: "Ethiopia", region: "africa" }
   ];
 
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<JobFormData>();
@@ -101,7 +134,7 @@ const JobPostingForm = () => {
     try {
       // Enhance location data with structured info
       let enhancedLocation = data.location;
-      if (selectedCountry && selectedRegion) {
+      if (selectedCountry && selectedCountry !== "none" && selectedRegion && selectedRegion !== "none") {
         const country = countries.find(c => c.value === selectedCountry);
         const region = regions.find(r => r.value === selectedRegion);
 
@@ -245,7 +278,7 @@ const JobPostingForm = () => {
                     <SelectItem value="PhD">PhD</SelectItem>
                     <SelectItem value="Postdoc">Postdoc</SelectItem>
                     <SelectItem value="Faculty">Faculty</SelectItem>
-                    <SelectItem value="RA">Research Assistant</SelectItem>
+                    <SelectItem value="Research Assistant">Research Assistant</SelectItem>
                     <SelectItem value="Internship">Internship</SelectItem>
                     <SelectItem value="Other">Other</SelectItem>
                   </SelectContent>
@@ -290,12 +323,18 @@ const JobPostingForm = () => {
                     <Label className="text-sm text-gray-600">Region (Optional)</Label>
                     <Select value={selectedRegion} onValueChange={(value) => {
                       setSelectedRegion(value);
-                      setSelectedCountry(""); // Clear country when region changes
+                      setSelectedCountry("none"); // Clear country when region changes
                     }}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select region" />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="none">
+                          <div className="flex items-center gap-2 text-gray-500">
+                            <X className="w-3 h-3" />
+                            No region selected
+                          </div>
+                        </SelectItem>
                         {regions.map((region) => (
                           <SelectItem key={region.value} value={region.value}>
                             <div className="flex items-center gap-2">
@@ -310,13 +349,28 @@ const JobPostingForm = () => {
 
                   <div className="space-y-2">
                     <Label className="text-sm text-gray-600">Country (Optional)</Label>
-                    <Select value={selectedCountry} onValueChange={setSelectedCountry}>
+                    <Select value={selectedCountry} onValueChange={(value) => {
+                      setSelectedCountry(value);
+                      // Auto-select region when country is selected
+                      if (value !== "none") {
+                        const country = countries.find(c => c.value === value);
+                        if (country && country.region !== selectedRegion) {
+                          setSelectedRegion(country.region);
+                        }
+                      }
+                    }}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select country" />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="none">
+                          <div className="flex items-center gap-2 text-gray-500">
+                            <X className="w-3 h-3" />
+                            No country selected
+                          </div>
+                        </SelectItem>
                         {countries
-                          .filter(country => !selectedRegion || country.region === selectedRegion)
+                          .filter(country => selectedRegion === "none" || country.region === selectedRegion)
                           .map((country) => (
                             <SelectItem key={country.value} value={country.value}>
                               {country.label}
