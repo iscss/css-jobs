@@ -35,10 +35,7 @@ export const useAdminUserProfiles = () => {
     queryFn: async (): Promise<AdminUserProfile[]> => {
       if (!user || !isAdmin) throw new Error('User must be authenticated admin');
 
-      const { data, error } = await supabase
-        .from('admin_user_profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const { data, error } = await supabase.rpc('get_admin_user_profiles');
 
       if (error) throw error;
 

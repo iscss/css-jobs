@@ -262,13 +262,6 @@ export type Database = {
             foreignKeyName: "jobs_posted_by_fkey"
             columns: ["posted_by"]
             isOneToOne: false
-            referencedRelation: "admin_user_profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "jobs_posted_by_fkey"
-            columns: ["posted_by"]
-            isOneToOne: false
             referencedRelation: "user_profiles"
             referencedColumns: ["id"]
           },
@@ -434,31 +427,7 @@ export type Database = {
       }
     }
     Views: {
-      admin_user_profiles: {
-        Row: {
-          approval_status: string | null
-          approved_at: string | null
-          approved_by: string | null
-          auth_created_at: string | null
-          auth_email: string | null
-          created_at: string | null
-          email: string | null
-          email_confirmed_at: string | null
-          full_name: string | null
-          google_scholar_url: string | null
-          id: string | null
-          institution: string | null
-          is_admin: boolean | null
-          is_approved_poster: boolean | null
-          last_sign_in_at: string | null
-          orcid_id: string | null
-          requested_at: string | null
-          updated_at: string | null
-          user_type: string | null
-          website_url: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       can_access_admin_user_profiles: {
@@ -472,6 +441,31 @@ export type Database = {
       create_job_alert_matches: {
         Args: { job_id_param: string }
         Returns: number
+      }
+      get_admin_user_profiles: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          full_name: string
+          email: string
+          institution: string
+          orcid_id: string
+          google_scholar_url: string
+          website_url: string
+          user_type: string
+          approval_status: string
+          is_admin: boolean
+          is_approved_poster: boolean
+          created_at: string
+          updated_at: string
+          requested_at: string
+          approved_at: string
+          approved_by: string
+          auth_email: string
+          email_confirmed_at: string
+          last_sign_in_at: string
+          auth_created_at: string
+        }[]
       }
       get_user_job_matches: {
         Args: { user_id_param: string; limit_param?: number }
