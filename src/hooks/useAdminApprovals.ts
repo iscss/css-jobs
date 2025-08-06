@@ -15,15 +15,16 @@ export const useAdminApprovals = () => {
     queryFn: async () => {
       if (!user || !isAdmin) throw new Error('User must be authenticated admin');
 
-      const { data: profiles, error: profilesError } = await supabase
-        .from('admin_user_profiles')
-        .select('*')
-        .eq('approval_status', 'pending')
-        .order('requested_at', { ascending: true });
+      const { data: profiles, error: profilesError } = await supabase.rpc('get_admin_user_profiles');
 
       if (profilesError) throw profilesError;
 
-      return profiles || [];
+      // Filter for pending approvals
+      const pendingProfiles = (profiles || []).filter(
+        (profile: AdminUserProfile) => profile.approval_status === 'pending'
+      );
+
+      return pendingProfiles;
     },
     enabled: !!user && !!isAdmin,
   });
