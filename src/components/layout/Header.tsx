@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Menu, X, Search, Briefcase, Plus, User, Shield } from 'lucide-react';
+import { Menu, X, Search, Briefcase, Plus, User, Shield, Home } from 'lucide-react';
 import AuthButton from './AuthButton';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAdminCheck } from '@/hooks/useAdminCheck';
@@ -63,6 +63,13 @@ const Header = () => {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
+            <Link to="/">
+              <Button variant="ghost" className={getActiveStyles('/')}>
+                <Home className="w-4 h-4" />
+                Home
+              </Button>
+            </Link>
+
             <Button
               variant="ghost"
               onClick={handleSearch}
@@ -129,6 +136,13 @@ const Header = () => {
         {isMenuOpen && (
           <div className="md:hidden border-t border-gray-200 py-4">
             <nav className="flex flex-col space-y-4">
+              <Link to="/">
+                <Button variant="ghost" className={`${getMobileActiveStyles('/')} w-full`}>
+                  <Home className="w-4 h-4" />
+                  Home
+                </Button>
+              </Link>
+
               <Button
                 variant="ghost"
                 onClick={handleSearch}
