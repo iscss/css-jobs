@@ -95,18 +95,20 @@ const PendingApprovalCard = ({ profile }: PendingApprovalCardProps) => {
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1 space-y-3">
               <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="font-semibold text-lg text-gray-900 flex items-center gap-2">
-                    <User className="w-5 h-5 text-gray-500" />
-                    {profile.full_name || 'No name provided'}
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-lg text-gray-900 flex items-center gap-2 flex-wrap">
+                    <User className="w-5 h-5 text-gray-500 shrink-0" />
+                    <span className="truncate" title={profile.full_name || 'No name provided'}>
+                      {profile.full_name || 'No name provided'}
+                    </span>
                     {profile.is_admin && (
-                      <Badge variant="destructive" className="ml-2">
+                      <Badge variant="destructive" className="shrink-0">
                         <Shield className="w-3 h-3 mr-1" />
                         Admin
                       </Badge>
                     )}
                   </h3>
-                  <div className="flex items-center gap-2 mt-1">
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
                     <Badge className={getUserTypeColor(profile.user_type || 'job_seeker')}>
                       {getUserTypeLabel(profile.user_type || 'job_seeker')}
                     </Badge>
@@ -119,15 +121,19 @@ const PendingApprovalCard = ({ profile }: PendingApprovalCardProps) => {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                <div className="flex items-center gap-2 text-gray-600">
-                  <Mail className="w-4 h-4" />
-                  <span>Email: {profile.email || 'Email not available'}</span>
+                <div className="flex items-center gap-2 text-gray-600 min-w-0">
+                  <Mail className="w-4 h-4 shrink-0" />
+                  <span className="truncate" title={profile.email || 'Email not available'}>
+                    Email: {profile.email || 'Email not available'}
+                  </span>
                 </div>
 
                 {profile.institution && (
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <Building2 className="w-4 h-4" />
-                    <span>{profile.institution}</span>
+                  <div className="flex items-center gap-2 text-gray-600 min-w-0">
+                    <Building2 className="w-4 h-4 shrink-0" />
+                    <span className="truncate" title={profile.institution}>
+                      {profile.institution}
+                    </span>
                   </div>
                 )}
 

@@ -80,6 +80,11 @@ const Auth = () => {
               ? "Welcome! Please check your email to verify your account, then you can browse and save job positions."
               : "Your account has been created. Please verify your email and wait for admin approval for job posting privileges.",
           });
+
+          // Redirect user after successful signup
+          setTimeout(() => {
+            navigate('/');
+          }, 2000);
         }
       } else {
         ({ error } = await signIn(email, password));

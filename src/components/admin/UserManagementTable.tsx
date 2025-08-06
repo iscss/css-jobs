@@ -89,12 +89,14 @@ const UserManagementTable = () => {
             <TableBody>
               {allUsers?.map((user) => (
                 <TableRow key={user.id}>
-                  <TableCell>
+                  <TableCell className="max-w-48">
                     <div>
-                      <div className="font-medium flex items-center gap-2">
-                        {user.full_name || 'No name'}
+                      <div className="font-medium flex items-center gap-2 flex-wrap">
+                        <span className="truncate max-w-32" title={user.full_name || 'No name'}>
+                          {user.full_name || 'No name'}
+                        </span>
                         {user.is_admin && (
-                          <Badge variant="destructive" className="text-xs">
+                          <Badge variant="destructive" className="text-xs shrink-0">
                             <Shield className="w-3 h-3 mr-1" />
                             Admin
                           </Badge>
@@ -103,43 +105,44 @@ const UserManagementTable = () => {
                       <div className="text-sm text-gray-500">{user.user_type}</div>
                     </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="max-w-48">
                     <div className="space-y-1">
                        <div className="flex items-center gap-2">
-                         <Mail className="w-4 h-4 text-gray-400" />
-                         <span className="text-sm">{user.email || user.auth_email || 'No email'}</span>
+                         <Mail className="w-4 h-4 text-gray-400 shrink-0" />
+                         <span className="text-sm truncate" title={user.email || user.auth_email || 'No email'}>
+                           {user.email || user.auth_email || 'No email'}
+                         </span>
                        </div>
                        <div className="flex items-center gap-1">
                          {user.email_confirmed_at ? (
                            <>
-                             <CheckCircle className="w-3 h-3 text-green-500" />
+                             <CheckCircle className="w-3 h-3 text-green-500 shrink-0" />
                              <span className="text-xs text-green-600">Verified</span>
                            </>
                          ) : (
                            <>
-                             <XCircle className="w-3 h-3 text-red-500" />
+                             <XCircle className="w-3 h-3 text-red-500 shrink-0" />
                              <span className="text-xs text-red-600">Unverified</span>
                            </>
                          )}
                        </div>
                     </div>
                   </TableCell>
-                  <TableCell>
-                    <span className="text-sm">{user.institution || 'Not specified'}</span>
+                  <TableCell className="max-w-40">
+                    <span className="text-sm truncate" title={user.institution || 'Not specified'}>
+                      {user.institution || 'Not specified'}
+                    </span>
                   </TableCell>
                   <TableCell>
-                    <div className="flex gap-2">
-                      {user.is_admin && (
-                        <Badge variant="destructive">Admin</Badge>
-                      )}
+                    <div className="flex gap-2 flex-wrap">
                       {user.is_approved_poster && (
-                        <Badge variant="default">Job Poster</Badge>
+                        <Badge variant="default" className="text-xs">Job Poster</Badge>
                       )}
                       {user.approval_status === 'pending' && (
-                        <Badge variant="outline">Pending</Badge>
+                        <Badge variant="outline" className="text-xs">Pending</Badge>
                       )}
                       {user.approval_status === 'rejected' && (
-                        <Badge variant="destructive">Rejected</Badge>
+                        <Badge variant="destructive" className="text-xs">Rejected</Badge>
                       )}
                     </div>
                   </TableCell>
@@ -147,14 +150,14 @@ const UserManagementTable = () => {
                     <span className="text-sm">{formatDate(user.created_at)}</span>
                   </TableCell>
                   <TableCell>
-                    <div className="flex gap-2">
+                    <div className="flex gap-1 flex-wrap">
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => setSelectedUser(user)}
-                        className="flex items-center gap-1"
+                        className="flex items-center gap-1 text-xs px-2 py-1"
                       >
-                        <Eye className="w-4 h-4" />
+                        <Eye className="w-3 h-3" />
                         View
                       </Button>
                       <Button
@@ -162,16 +165,17 @@ const UserManagementTable = () => {
                         variant={user.is_admin ? "destructive" : "outline"}
                         onClick={() => handleToggleAdmin(user.id, user.is_admin || false)}
                         disabled={updatePermissions.isPending}
+                        className="text-xs px-2 py-1"
                       >
                         {user.is_admin ? (
                           <>
-                            <ShieldOff className="w-4 h-4 mr-1" />
-                            Remove Admin
+                            <ShieldOff className="w-3 h-3 mr-1" />
+                            Remove
                           </>
                         ) : (
                           <>
-                            <Shield className="w-4 h-4 mr-1" />
-                            Make Admin
+                            <Shield className="w-3 h-3 mr-1" />
+                            Admin
                           </>
                         )}
                       </Button>
@@ -180,16 +184,17 @@ const UserManagementTable = () => {
                         variant={user.is_approved_poster ? "destructive" : "outline"}
                         onClick={() => handleTogglePoster(user.id, user.is_approved_poster || false)}
                         disabled={updatePermissions.isPending}
+                        className="text-xs px-2 py-1"
                       >
                         {user.is_approved_poster ? (
                           <>
-                            <UserX className="w-4 h-4 mr-1" />
-                            Revoke Poster
+                            <UserX className="w-3 h-3 mr-1" />
+                            Revoke
                           </>
                         ) : (
                           <>
-                            <User className="w-4 h-4 mr-1" />
-                            Make Poster
+                            <User className="w-3 h-3 mr-1" />
+                            Poster
                           </>
                         )}
                       </Button>
