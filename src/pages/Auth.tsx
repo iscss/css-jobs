@@ -8,6 +8,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { sanitizeInput, sanitizeEmail, sanitizeUrl } from '@/lib/sanitize';
 import { UserCheck, Briefcase, Users, Globe, GraduationCap } from 'lucide-react';
 import Header from '@/components/layout/Header';
 
@@ -54,16 +55,23 @@ const Auth = () => {
           return;
         }
 
+        // Sanitize all inputs before submission
+        const sanitizedEmail = sanitizeEmail(email);
+        const sanitizedFullName = sanitizeInput(fullName, 200);
+        const sanitizedGoogleScholar = googleScholarUrl ? sanitizeUrl(googleScholarUrl) : null;
+        const sanitizedWebsite = websiteUrl ? sanitizeUrl(websiteUrl) : null;
+
         // Pass all user data in signup metadata so the trigger can handle it properly
         ({ error } = await supabase.auth.signUp({
-          email,
+          email: sanitizedEmail,
           password,
           options: {
+            emailRedirectTo: `${window.location.origin}/`,
             data: {
-              full_name: fullName,
+              full_name: sanitizedFullName,
               user_type: userType,
-              google_scholar_url: googleScholarUrl || null,
-              website_url: websiteUrl || null
+              google_scholar_url: sanitizedGoogleScholar,
+              website_url: sanitizedWebsite
             }
           }
         }));

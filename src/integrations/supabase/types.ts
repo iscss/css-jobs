@@ -434,6 +434,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
+      can_view_sensitive_profile_data: {
+        Args: { profile_user_id: string }
+        Returns: boolean
+      }
       count_unread_job_matches: {
         Args: { user_id_param: string }
         Returns: number

@@ -13,6 +13,7 @@ import { useCreateJob } from '@/hooks/useJobs';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import { sanitizeInput, sanitizeHtml, sanitizeUrl, sanitizeEmail } from '@/lib/sanitize';
 import { AlertCircle, CheckCircle2, Clock, MapPin, Globe, X } from 'lucide-react';
 
 interface JobFormData {
@@ -144,13 +145,24 @@ const JobPostingForm = () => {
         }
       }
 
+      // Sanitize all inputs before submission
       const jobData = {
-        ...data,
-        location: enhancedLocation,
+        title: sanitizeInput(data.title, 200),
+        institution: sanitizeInput(data.institution, 200),
+        department: data.department ? sanitizeInput(data.department, 200) : undefined,
+        location: sanitizeInput(enhancedLocation, 200),
+        description: sanitizeHtml(data.description),
+        requirements: data.requirements ? sanitizeHtml(data.requirements) : undefined,
+        duration: data.duration ? sanitizeInput(data.duration, 100) : undefined,
+        application_url: data.application_url ? sanitizeUrl(data.application_url) : undefined,
+        contact_email: data.contact_email ? sanitizeEmail(data.contact_email) : undefined,
+        pi_name: data.pi_name ? sanitizeInput(data.pi_name, 200) : undefined,
+        funding_source: data.funding_source ? sanitizeInput(data.funding_source, 200) : undefined,
+        job_type: data.job_type,
         is_remote: isRemote,
         application_deadline: data.application_deadline || null,
         is_published: !isDraft,
-        tags: data.tags ? data.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : []
+        tags: data.tags ? data.tags.split(',').map(tag => sanitizeInput(tag.trim(), 50)).filter(tag => tag) : []
       };
 
       await createJobMutation.mutateAsync(jobData);
