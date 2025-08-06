@@ -24,6 +24,8 @@ type Job = Tables<'jobs'> & {
 
 const Index = () => {
   const { data: jobs, isLoading, error } = useJobs();
+  
+  console.log('Index component render:', { jobs: jobs?.length, isLoading, error });
   const { showPrompt, dismissPrompt } = useSignupPrompt();
   const [searchParams, setSearchParams] = useSearchParams();
   const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
