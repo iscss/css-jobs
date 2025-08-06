@@ -5,15 +5,17 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import HeroSection from "@/components/home/HeroSection";
 import ResearchAreasSection from "@/components/home/ResearchAreasSection";
+import SignupPromptModal from "@/components/layout/SignupPromptModal";
 
 import CompactJobCard from "@/components/jobs/CompactJobCard";
 import JobDetailsModal from "@/components/jobs/JobDetailsModal";
 import JobFilters from "@/components/jobs/JobFilters";
 import { useJobs } from "@/hooks/useJobs";
+import { useSignupPrompt } from "@/hooks/useSignupPrompt";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Search, X, Filter } from "lucide-react";
+import { Search, X, Filter, Briefcase } from "lucide-react";
 import type { Tables } from '@/integrations/supabase/types';
 
 type Job = Tables<'jobs'> & {
@@ -22,6 +24,7 @@ type Job = Tables<'jobs'> & {
 
 const Index = () => {
   const { data: jobs, isLoading, error } = useJobs();
+  const { showPrompt, dismissPrompt } = useSignupPrompt();
   const [searchParams, setSearchParams] = useSearchParams();
   const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
@@ -106,6 +109,36 @@ const Index = () => {
         <main className="main-content">
           <HeroSection />
 
+          {/* Job Posting Highlight Section */}
+          <section className="py-12 bg-gradient-to-r from-indigo-50 to-purple-50 border-y border-indigo-100">
+            <div className="container mx-auto px-4">
+              <div className="max-w-4xl mx-auto">
+                <div className="grid md:grid-cols-2 gap-8 items-center">
+                  <div className="space-y-4 text-center md:text-left">
+                    <div className="flex items-center justify-center md:justify-start gap-2 text-indigo-600">
+                      <Search className="w-5 h-5" />
+                      <span className="font-semibold">For Job Seekers</span>
+                    </div>
+                    <p className="text-gray-700">
+                      Discover positions from universities and research institutions worldwide.
+                      Save opportunities, set up alerts, and never miss your perfect match.
+                    </p>
+                  </div>
+                  <div className="space-y-4 text-center md:text-left">
+                    <div className="flex items-center justify-center md:justify-start gap-2 text-purple-600">
+                      <Briefcase className="w-5 h-5" />
+                      <span className="font-semibold">For Recruiters</span>
+                    </div>
+                    <p className="text-gray-700">
+                      Reach the global CSS community with your opportunities.
+                      Post positions and connect with top talent in computational social science.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
           {error && (
             <div className="container mx-auto px-4 py-8">
               <div className="bg-red-50 border border-red-200 rounded-lg p-4">
@@ -169,6 +202,12 @@ const Index = () => {
         job={selectedJob}
         isOpen={!!selectedJob}
         onClose={() => setSelectedJob(null)}
+      />
+
+      {/* Signup Prompt Modal */}
+      <SignupPromptModal
+        isOpen={showPrompt}
+        onClose={dismissPrompt}
       />
     </>
   );
