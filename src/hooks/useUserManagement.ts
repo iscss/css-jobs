@@ -4,32 +4,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useAdminCheck } from './useAdminCheck';
-import type { Tables, TablesUpdate } from '@/integrations/supabase/types';
+import { useAdminUserProfiles, type AdminUserProfile } from './useAdminUserProfiles';
+import type { TablesUpdate } from '@/integrations/supabase/types';
 
-type UserProfile = Tables<'user_profiles'>;
 type UserProfileUpdate = TablesUpdate<'user_profiles'>;
 
-export const useAllUsers = () => {
-  const { user } = useAuth();
-  const { data: isAdmin } = useAdminCheck();
-
-  return useQuery({
-    queryKey: ['all-users'],
-    queryFn: async () => {
-      if (!user || !isAdmin) throw new Error('User must be authenticated admin');
-
-      const { data: profiles, error: profilesError } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (profilesError) throw profilesError;
-
-      return profiles || [];
-    },
-    enabled: !!user && !!isAdmin,
-  });
-};
+// Use the admin user profiles hook instead
+export const useAllUsers = useAdminUserProfiles;
 
 export const useUpdateUserPermissions = () => {
   const queryClient = useQueryClient();
@@ -57,7 +38,7 @@ export const useUpdateUserPermissions = () => {
       return data;
     },
     onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['all-users'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-user-profiles'] });
       queryClient.invalidateQueries({ queryKey: ['admin-approvals'] });
 
       const action = variables.updates.is_admin !== undefined

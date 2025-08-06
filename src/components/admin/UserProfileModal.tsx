@@ -16,18 +16,10 @@ import {
     GraduationCap,
     ExternalLink
 } from 'lucide-react';
-import type { Tables } from '@/integrations/supabase/types';
-
-type UserProfile = Tables<'user_profiles'> & {
-    email_verified?: boolean;
-    auth_users?: {
-        email: string;
-        email_confirmed_at: string | null;
-    } | null;
-};
+import type { AdminUserProfile } from '@/hooks/useAdminUserProfiles';
 
 interface UserProfileModalProps {
-    user: UserProfile | null;
+    user: AdminUserProfile | null;
     isOpen: boolean;
     onClose: () => void;
 }
@@ -93,7 +85,7 @@ const UserProfileModal = ({ user, isOpen, onClose }: UserProfileModalProps) => {
     };
 
     const getEmailVerificationBadge = () => {
-        const isVerified = user.auth_users?.email_confirmed_at || user.email_verified;
+        const isVerified = user.email_confirmed_at;
 
         if (isVerified) {
             return (
@@ -158,7 +150,7 @@ const UserProfileModal = ({ user, isOpen, onClose }: UserProfileModalProps) => {
                                 <div className="flex items-center gap-2">
                                     <Mail className="w-4 h-4 text-gray-500" />
                                     <span className="font-medium">Email:</span>
-                                    <span>{user.email || 'Not provided'}</span>
+                                    <span>{user.email || user.auth_email || 'Not provided'}</span>
                                 </div>
                                 {getEmailVerificationBadge()}
                             </div>
@@ -248,11 +240,19 @@ const UserProfileModal = ({ user, isOpen, onClose }: UserProfileModalProps) => {
                                 <span>{formatDate(user.updated_at)}</span>
                             </div>
 
-                            {user.auth_users?.email_confirmed_at && (
+                            {user.email_confirmed_at && (
                                 <div className="flex items-center gap-2">
                                     <Mail className="w-4 h-4 text-gray-500" />
                                     <span className="font-medium">Email Verified:</span>
-                                    <span>{formatDate(user.auth_users.email_confirmed_at)}</span>
+                                    <span>{formatDate(user.email_confirmed_at)}</span>
+                                </div>
+                            )}
+
+                            {user.last_sign_in_at && (
+                                <div className="flex items-center gap-2">
+                                    <Calendar className="w-4 h-4 text-gray-500" />
+                                    <span className="font-medium">Last Sign In:</span>
+                                    <span>{formatDate(user.last_sign_in_at)}</span>
                                 </div>
                             )}
                         </div>

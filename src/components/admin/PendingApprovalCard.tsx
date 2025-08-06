@@ -4,20 +4,13 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useUpdateApprovalStatus } from '@/hooks/useAdminApprovals';
-import { Check, X, User, Building2, Calendar, Mail, Info, Eye, Shield } from 'lucide-react';
+import { Check, X, User, Building2, Calendar, Mail, Info, Eye, Shield, CheckCircle, XCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import UserProfileModal from './UserProfileModal';
-import type { Tables } from '@/integrations/supabase/types';
-
-type UserProfile = Tables<'user_profiles'> & {
-  auth_users?: {
-    email: string;
-    email_confirmed_at: string | null;
-  } | null;
-};
+import type { AdminUserProfile } from '@/hooks/useAdminUserProfiles';
 
 interface PendingApprovalCardProps {
-  profile: UserProfile;
+  profile: AdminUserProfile;
 }
 
 const PendingApprovalCard = ({ profile }: PendingApprovalCardProps) => {
@@ -52,16 +45,22 @@ const PendingApprovalCard = ({ profile }: PendingApprovalCardProps) => {
     }
   };
 
-  // Simple email verification check (can be enhanced when auth data is available)
   const getEmailVerificationBadge = () => {
-    // For now, we'll show a neutral badge since we can't access auth.users directly
-    // This can be enhanced when proper auth integration is available
-    return (
-      <Badge variant="outline" className="text-xs">
-        <Mail className="w-3 h-3 mr-1" />
-        Check Email Status
-      </Badge>
-    );
+    if (profile.email_confirmed_at) {
+      return (
+        <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+          <CheckCircle className="w-3 h-3 mr-1" />
+          Email Verified
+        </Badge>
+      );
+    } else {
+      return (
+        <Badge variant="outline" className="text-xs bg-red-50 text-red-700 border-red-200">
+          <XCircle className="w-3 h-3 mr-1" />
+          Email Unverified
+        </Badge>
+      );
+    }
   };
 
   const handleApprove = () => {

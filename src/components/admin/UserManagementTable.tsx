@@ -16,15 +16,13 @@ import { useAllUsers, useUpdateUserPermissions } from '@/hooks/useUserManagement
 import { User, Shield, ShieldOff, UserX, Mail, Eye, CheckCircle, XCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import UserProfileModal from './UserProfileModal';
-import type { Tables } from '@/integrations/supabase/types';
-
-type UserProfile = Tables<'user_profiles'>;
+import type { AdminUserProfile } from '@/hooks/useAdminUserProfiles';
 
 const UserManagementTable = () => {
   const { data: allUsers, isLoading } = useAllUsers();
   const updatePermissions = useUpdateUserPermissions();
   const { toast } = useToast();
-  const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
+  const [selectedUser, setSelectedUser] = useState<AdminUserProfile | null>(null);
 
   const handleToggleAdmin = (userId: string, currentStatus: boolean) => {
     updatePermissions.mutate({
@@ -49,17 +47,6 @@ const UserManagementTable = () => {
     });
   };
 
-  // Simple email verification indicator (placeholder)
-  const getEmailVerificationIndicator = () => {
-    // For now, we'll show a neutral indicator since we can't access auth.users directly
-    // This can be enhanced when proper auth integration is available
-    return (
-      <div className="flex items-center gap-1">
-        <div className="w-2 h-2 bg-gray-400 rounded-full" title="Email verification status unknown" />
-        <span className="text-xs text-gray-500">Unknown</span>
-      </div>
-    );
-  };
 
   if (isLoading) {
     return (
@@ -118,11 +105,23 @@ const UserManagementTable = () => {
                   </TableCell>
                   <TableCell>
                     <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <Mail className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm">{user.email || 'No email'}</span>
-                      </div>
-                      {getEmailVerificationIndicator()}
+                       <div className="flex items-center gap-2">
+                         <Mail className="w-4 h-4 text-gray-400" />
+                         <span className="text-sm">{user.email || user.auth_email || 'No email'}</span>
+                       </div>
+                       <div className="flex items-center gap-1">
+                         {user.email_confirmed_at ? (
+                           <>
+                             <CheckCircle className="w-3 h-3 text-green-500" />
+                             <span className="text-xs text-green-600">Verified</span>
+                           </>
+                         ) : (
+                           <>
+                             <XCircle className="w-3 h-3 text-red-500" />
+                             <span className="text-xs text-red-600">Unverified</span>
+                           </>
+                         )}
+                       </div>
                     </div>
                   </TableCell>
                   <TableCell>

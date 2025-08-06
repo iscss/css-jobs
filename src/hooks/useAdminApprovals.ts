@@ -4,9 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useAdminCheck } from './useAdminCheck';
-import type { Tables } from '@/integrations/supabase/types';
-
-type UserProfile = Tables<'user_profiles'>;
+import type { AdminUserProfile } from './useAdminUserProfiles';
 
 export const useAdminApprovals = () => {
   const { user } = useAuth();
@@ -18,7 +16,7 @@ export const useAdminApprovals = () => {
       if (!user || !isAdmin) throw new Error('User must be authenticated admin');
 
       const { data: profiles, error: profilesError } = await supabase
-        .from('user_profiles')
+        .from('admin_user_profiles')
         .select('*')
         .eq('approval_status', 'pending')
         .order('requested_at', { ascending: true });
@@ -71,7 +69,7 @@ export const useUpdateApprovalStatus = () => {
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['admin-approvals'] });
-      queryClient.invalidateQueries({ queryKey: ['all-users'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-user-profiles'] });
       toast({
         title: `User ${variables.status === 'approved' ? 'Approved' : 'Rejected'}`,
         description: `The user has been successfully ${variables.status}.`,
