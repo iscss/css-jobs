@@ -43,11 +43,11 @@ export const useRetractJob = () => {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async ({ 
-      jobId, 
-      isPublished 
-    }: { 
-      jobId: string; 
+    mutationFn: async ({
+      jobId,
+      isPublished
+    }: {
+      jobId: string;
       isPublished: boolean;
     }) => {
       if (!user) throw new Error('User must be authenticated');
@@ -63,9 +63,11 @@ export const useRetractJob = () => {
       return data;
     },
     onSuccess: (data, variables) => {
+      // Invalidate all relevant queries to update UI immediately
       queryClient.invalidateQueries({ queryKey: ['all-jobs-admin'] });
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
-      
+      queryClient.invalidateQueries({ queryKey: ['user-jobs', user?.id] });
+
       toast({
         title: `Job ${variables.isPublished ? 'Published' : 'Retracted'}`,
         description: `The job post has been successfully ${variables.isPublished ? 'published' : 'retracted'}.`,
@@ -87,11 +89,11 @@ export const useToggleFeatured = () => {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async ({ 
-      jobId, 
-      isFeatured 
-    }: { 
-      jobId: string; 
+    mutationFn: async ({
+      jobId,
+      isFeatured
+    }: {
+      jobId: string;
       isFeatured: boolean;
     }) => {
       if (!user) throw new Error('User must be authenticated');
@@ -107,9 +109,11 @@ export const useToggleFeatured = () => {
       return data;
     },
     onSuccess: (data, variables) => {
+      // Invalidate all relevant queries to update UI immediately
       queryClient.invalidateQueries({ queryKey: ['all-jobs-admin'] });
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
-      
+      queryClient.invalidateQueries({ queryKey: ['user-jobs', user?.id] });
+
       toast({
         title: `Job ${variables.isFeatured ? 'Featured' : 'Unfeatured'}`,
         description: `The job post has been ${variables.isFeatured ? 'marked as featured' : 'removed from featured'}.`,

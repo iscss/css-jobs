@@ -24,7 +24,7 @@ export const useAdminApprovals = () => {
         .order('requested_at', { ascending: true });
 
       if (profilesError) throw profilesError;
-      
+
       return profiles || [];
     },
     enabled: !!user && !!isAdmin,
@@ -37,12 +37,12 @@ export const useUpdateApprovalStatus = () => {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async ({ 
-      userId, 
-      status, 
-      userType 
-    }: { 
-      userId: string; 
+    mutationFn: async ({
+      userId,
+      status,
+      userType
+    }: {
+      userId: string;
       status: 'approved' | 'rejected';
       userType: string;
     }) => {
@@ -71,6 +71,7 @@ export const useUpdateApprovalStatus = () => {
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['admin-approvals'] });
+      queryClient.invalidateQueries({ queryKey: ['all-users'] });
       toast({
         title: `User ${variables.status === 'approved' ? 'Approved' : 'Rejected'}`,
         description: `The user has been successfully ${variables.status}.`,

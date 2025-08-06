@@ -8,13 +8,16 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { UserCheck, Briefcase, Users } from 'lucide-react';
+import { UserCheck, Briefcase, Users, Globe, GraduationCap } from 'lucide-react';
+import Header from '@/components/layout/Header';
 
 const Auth = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
+  const [googleScholarUrl, setGoogleScholarUrl] = useState('');
+  const [websiteUrl, setWebsiteUrl] = useState('');
   const [userType, setUserType] = useState('job_seeker');
   const [loading, setLoading] = useState(false);
   const { signUp, signIn, user } = useAuth();
@@ -53,14 +56,16 @@ const Auth = () => {
 
         ({ error } = await signUp(email, password, fullName));
         if (!error) {
-          // Update user profile with selected role
+          // Update user profile with selected role and additional info
           setTimeout(async () => {
             const { error: profileError } = await supabase
               .from('user_profiles')
               .update({
                 user_type: userType,
                 approval_status: userType === 'job_seeker' ? 'approved' : 'pending',
-                requested_at: userType !== 'job_seeker' ? new Date().toISOString() : null
+                requested_at: userType !== 'job_seeker' ? new Date().toISOString() : null,
+                google_scholar_url: googleScholarUrl || null,
+                website_url: websiteUrl || null
               })
               .eq('id', (await supabase.auth.getUser()).data.user?.id);
 
@@ -121,6 +126,7 @@ const Auth = () => {
 
   return (
     <div className="page-wrapper">
+      <Header />
       <div className="main-content flex items-center justify-center px-4">
         <Card className="w-full max-w-md">
           <CardHeader className="space-y-1">
@@ -147,6 +153,34 @@ const Auth = () => {
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                       required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="googleScholarUrl" className="flex items-center gap-2">
+                      <GraduationCap className="w-4 h-4" />
+                      Google Scholar Profile (Optional)
+                    </Label>
+                    <Input
+                      id="googleScholarUrl"
+                      type="url"
+                      placeholder="https://scholar.google.com/citations?user=..."
+                      value={googleScholarUrl}
+                      onChange={(e) => setGoogleScholarUrl(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="websiteUrl" className="flex items-center gap-2">
+                      <Globe className="w-4 h-4" />
+                      Personal Website (Optional)
+                    </Label>
+                    <Input
+                      id="websiteUrl"
+                      type="url"
+                      placeholder="https://yourwebsite.com"
+                      value={websiteUrl}
+                      onChange={(e) => setWebsiteUrl(e.target.value)}
                     />
                   </div>
 

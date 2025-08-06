@@ -24,7 +24,7 @@ export const useAllUsers = () => {
         .order('created_at', { ascending: false });
 
       if (profilesError) throw profilesError;
-      
+
       return profiles || [];
     },
     enabled: !!user && !!isAdmin,
@@ -37,11 +37,11 @@ export const useUpdateUserPermissions = () => {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async ({ 
-      userId, 
-      updates 
-    }: { 
-      userId: string; 
+    mutationFn: async ({
+      userId,
+      updates
+    }: {
+      userId: string;
       updates: UserProfileUpdate;
     }) => {
       if (!user) throw new Error('User must be authenticated');
@@ -59,11 +59,11 @@ export const useUpdateUserPermissions = () => {
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['all-users'] });
       queryClient.invalidateQueries({ queryKey: ['admin-approvals'] });
-      
-      const action = variables.updates.is_admin !== undefined 
+
+      const action = variables.updates.is_admin !== undefined
         ? (variables.updates.is_admin ? 'granted admin' : 'revoked admin')
         : (variables.updates.is_approved_poster ? 'granted poster' : 'revoked poster');
-      
+
       toast({
         title: "Permissions Updated",
         description: `Successfully ${action} permissions for the user.`,
