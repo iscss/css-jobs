@@ -133,10 +133,12 @@ export const useDeleteJob = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { data: isAdmin } = useAdminCheck();
 
   return useMutation({
     mutationFn: async (jobId: string) => {
       if (!user) throw new Error('User must be authenticated');
+      if (!isAdmin) throw new Error('Admin privileges required');
 
       const { error } = await supabase
         .from('jobs')

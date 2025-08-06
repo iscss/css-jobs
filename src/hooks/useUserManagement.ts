@@ -69,18 +69,13 @@ export const useDeleteUser = () => {
     mutationFn: async (userId: string) => {
       if (!user) throw new Error('User must be authenticated');
 
-      // First delete from user_profiles table
-      const { error: profileError } = await supabase
-        .from('user_profiles')
-        .delete()
-        .eq('id', userId);
+      // Use edge function for secure deletion with proper admin privileges
+      const { data, error } = await supabase.functions.invoke('delete-user', {
+        body: { userId }
+      });
 
-      if (profileError) throw profileError;
-
-      // Then delete from auth.users using admin API
-      const { error: authError } = await supabase.auth.admin.deleteUser(userId);
-      
-      if (authError) throw authError;
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
       return { userId };
     },
