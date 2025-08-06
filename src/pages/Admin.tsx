@@ -6,6 +6,7 @@ import Footer from "@/components/layout/Footer";
 import PendingApprovalCard from "@/components/admin/PendingApprovalCard";
 import UserManagementTable from "@/components/admin/UserManagementTable";
 import JobManagementTable from "@/components/admin/JobManagementTable";
+import AdminStats from "@/components/admin/AdminStats";
 import { useAdminApprovals } from "@/hooks/useAdminApprovals";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { useAuth } from "@/contexts/AuthContext";
@@ -33,14 +34,16 @@ const Admin = () => {
 
   if (authLoading || adminLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-white">
+      <div className="page-wrapper">
         <Header />
-        <div className="container mx-auto px-4 py-8">
-          <div className="animate-pulse space-y-4">
-            <Skeleton className="h-8 w-48" />
-            <Skeleton className="h-32 w-full" />
+        <main className="main-content">
+          <div className="container mx-auto px-4 py-8">
+            <div className="animate-pulse space-y-4">
+              <Skeleton className="h-8 w-48" />
+              <Skeleton className="h-32 w-full" />
+            </div>
           </div>
-        </div>
+        </main>
         <Footer />
       </div>
     );
@@ -51,109 +54,80 @@ const Admin = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-white">
+    <div className="page-wrapper">
       <Header />
-      
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
-            <div className="flex items-center gap-3 mb-4">
-              <Shield className="w-8 h-8 text-indigo-600" />
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                Admin Dashboard
-              </h1>
-            </div>
-            <p className="text-gray-600 text-lg">
-              Manage user approvals, permissions, and job posts
-            </p>
-          </div>
-        </div>
 
-        <div className="grid gap-6 md:grid-cols-3 mb-8">
-          <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-            <div className="flex items-center gap-3">
-              <Clock className="w-6 h-6 text-orange-500" />
-              <div>
-                <p className="text-sm text-gray-600">Pending Approvals</p>
-                <p className="text-2xl font-bold text-orange-600">
-                  {approvalsLoading ? '...' : pendingApprovals?.length || 0}
-                </p>
+      <main className="main-content">
+        <div className="container mx-auto px-4 py-8">
+          <div className="mb-8">
+            <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
+              <div className="flex items-center gap-3 mb-4">
+                <Shield className="w-8 h-8 text-indigo-600" />
+                <h1 className="text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                  Admin Dashboard
+                </h1>
               </div>
+              <p className="text-gray-600 text-lg">
+                Manage user approvals, permissions, and job posts
+              </p>
             </div>
           </div>
-          
-          <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-            <div className="flex items-center gap-3">
-              <Users className="w-6 h-6 text-blue-500" />
-              <div>
-                <p className="text-sm text-gray-600">User Management</p>
-                <p className="text-2xl font-bold text-blue-600">Active</p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-            <div className="flex items-center gap-3">
-              <Briefcase className="w-6 h-6 text-green-500" />
-              <div>
-                <p className="text-sm text-gray-600">Job Management</p>
-                <p className="text-2xl font-bold text-green-600">Active</p>
-              </div>
-            </div>
-          </div>
-        </div>
 
-        <Tabs defaultValue="approvals" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="approvals">Pending Approvals</TabsTrigger>
-            <TabsTrigger value="users">User Management</TabsTrigger>
-            <TabsTrigger value="jobs">Job Management</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="approvals">
-            <div className="bg-white rounded-2xl shadow-lg border border-gray-100">
-              <div className="p-6 border-b border-gray-100">
-                <h2 className="text-2xl font-bold text-gray-900">Pending Approval Requests</h2>
-                <p className="text-gray-600 mt-1">Review and approve user account upgrade requests</p>
-              </div>
-              
-              <div className="p-6">
+          <AdminStats />
+
+          <Tabs defaultValue="approvals" className="space-y-4">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="approvals">Pending Approvals</TabsTrigger>
+              <TabsTrigger value="users">User Management</TabsTrigger>
+              <TabsTrigger value="jobs">Job Management</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="approvals">
+              <div className="space-y-4">
                 {approvalsLoading ? (
                   <div className="space-y-4">
                     {[...Array(3)].map((_, i) => (
-                      <div key={i} className="border rounded-lg p-4">
-                        <Skeleton className="h-6 w-1/3 mb-2" />
-                        <Skeleton className="h-4 w-1/2 mb-2" />
-                        <Skeleton className="h-4 w-2/3" />
+                      <div key={i} className="bg-white rounded-lg p-6 shadow-sm border">
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-2">
+                            <Skeleton className="h-5 w-32" />
+                            <Skeleton className="h-4 w-48" />
+                          </div>
+                          <div className="flex gap-2">
+                            <Skeleton className="h-8 w-20" />
+                            <Skeleton className="h-8 w-20" />
+                          </div>
+                        </div>
                       </div>
                     ))}
                   </div>
                 ) : pendingApprovals && pendingApprovals.length > 0 ? (
-                  <div className="space-y-4">
-                    {pendingApprovals.map((profile) => (
-                      <PendingApprovalCard key={profile.id} profile={profile} />
-                    ))}
-                  </div>
+                  pendingApprovals.map((profile) => (
+                    <PendingApprovalCard
+                      key={profile.id}
+                      profile={profile}
+                    />
+                  ))
                 ) : (
-                  <div className="text-center py-12">
-                    <div className="text-gray-400 text-6xl mb-4">✓</div>
-                    <h3 className="text-xl font-semibold text-gray-700 mb-2">All caught up!</h3>
-                    <p className="text-gray-600">No pending approval requests at the moment.</p>
+                  <div className="text-center py-8 bg-white rounded-lg border">
+                    <Clock className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                    <h3 className="text-lg font-semibold text-gray-700 mb-2">No pending approvals</h3>
+                    <p className="text-gray-600">All user requests have been processed.</p>
                   </div>
                 )}
               </div>
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="users">
-            <UserManagementTable />
-          </TabsContent>
-          
-          <TabsContent value="jobs">
-            <JobManagementTable />
-          </TabsContent>
-        </Tabs>
-      </div>
+            </TabsContent>
+
+            <TabsContent value="users">
+              <UserManagementTable />
+            </TabsContent>
+
+            <TabsContent value="jobs">
+              <JobManagementTable />
+            </TabsContent>
+          </Tabs>
+        </div>
+      </main>
 
       <Footer />
     </div>

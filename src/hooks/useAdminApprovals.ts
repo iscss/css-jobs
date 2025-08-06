@@ -4,9 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useAdminCheck } from './useAdminCheck';
-import type { Tables } from '@/integrations/supabase/types';
-
-type UserProfile = Tables<'user_profiles'>;
+import type { AdminUserProfile } from './useAdminUserProfiles';
 
 export const useAdminApprovals = () => {
   const { user } = useAuth();
@@ -17,38 +15,19 @@ export const useAdminApprovals = () => {
     queryFn: async () => {
       if (!user || !isAdmin) throw new Error('User must be authenticated admin');
 
-      // First get pending user profiles
-      const { data: profiles, error: profilesError } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('approval_status', 'pending')
-        .order('requested_at', { ascending: true });
+      const { data: profiles, error: profilesError } = await supabase.rpc('get_admin_user_profiles');
 
       if (profilesError) throw profilesError;
-      if (!profiles || profiles.length === 0) return [];
 
-      // Get user emails from auth.users using admin access
-      const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
-      
-      if (authError) {
-        console.error('Error fetching auth users:', authError);
-        // Return profiles without emails if we can't fetch them
-        return profiles.map(profile => ({
-          ...profile,
-          auth_users: null
-        }));
-      }
+      // Filter for users with pending approval status who want posting privileges
+      // Don't require email verification - admins can decide whether to approve unverified users
+      const pendingProfiles = (profiles || []).filter(
+        (profile: AdminUserProfile) => 
+          profile.approval_status === 'pending' && 
+          (profile.user_type === 'job_poster' || profile.user_type === 'both')
+      );
 
-      // Match profiles with their emails
-      const profilesWithEmails = profiles.map(profile => {
-        const authUser = authData.users.find((u: any) => u.id === profile.id);
-        return {
-          ...profile,
-          auth_users: authUser ? { email: authUser.email || 'No email' } : null
-        };
-      });
-
-      return profilesWithEmails;
+      return pendingProfiles;
     },
     enabled: !!user && !!isAdmin,
   });
@@ -60,12 +39,12 @@ export const useUpdateApprovalStatus = () => {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async ({ 
-      userId, 
-      status, 
-      userType 
-    }: { 
-      userId: string; 
+    mutationFn: async ({
+      userId,
+      status,
+      userType
+    }: {
+      userId: string;
       status: 'approved' | 'rejected';
       userType: string;
     }) => {
@@ -94,6 +73,7 @@ export const useUpdateApprovalStatus = () => {
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['admin-approvals'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-user-profiles'] });
       toast({
         title: `User ${variables.status === 'approved' ? 'Approved' : 'Rejected'}`,
         description: `The user has been successfully ${variables.status}.`,

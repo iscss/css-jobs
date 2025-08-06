@@ -21,6 +21,11 @@ export const useAllJobs = () => {
           job_tags (
             id,
             tag
+          ),
+          user_profiles!jobs_posted_by_fkey (
+            id,
+            full_name,
+            email
           )
         `)
         .order('created_at', { ascending: false });
@@ -38,11 +43,11 @@ export const useRetractJob = () => {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async ({ 
-      jobId, 
-      isPublished 
-    }: { 
-      jobId: string; 
+    mutationFn: async ({
+      jobId,
+      isPublished
+    }: {
+      jobId: string;
       isPublished: boolean;
     }) => {
       if (!user) throw new Error('User must be authenticated');
@@ -58,9 +63,11 @@ export const useRetractJob = () => {
       return data;
     },
     onSuccess: (data, variables) => {
+      // Invalidate all relevant queries to update UI immediately
       queryClient.invalidateQueries({ queryKey: ['all-jobs-admin'] });
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
-      
+      queryClient.invalidateQueries({ queryKey: ['user-jobs', user?.id] });
+
       toast({
         title: `Job ${variables.isPublished ? 'Published' : 'Retracted'}`,
         description: `The job post has been successfully ${variables.isPublished ? 'published' : 'retracted'}.`,
@@ -82,11 +89,11 @@ export const useToggleFeatured = () => {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async ({ 
-      jobId, 
-      isFeatured 
-    }: { 
-      jobId: string; 
+    mutationFn: async ({
+      jobId,
+      isFeatured
+    }: {
+      jobId: string;
       isFeatured: boolean;
     }) => {
       if (!user) throw new Error('User must be authenticated');
@@ -102,9 +109,11 @@ export const useToggleFeatured = () => {
       return data;
     },
     onSuccess: (data, variables) => {
+      // Invalidate all relevant queries to update UI immediately
       queryClient.invalidateQueries({ queryKey: ['all-jobs-admin'] });
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
-      
+      queryClient.invalidateQueries({ queryKey: ['user-jobs', user?.id] });
+
       toast({
         title: `Job ${variables.isFeatured ? 'Featured' : 'Unfeatured'}`,
         description: `The job post has been ${variables.isFeatured ? 'marked as featured' : 'removed from featured'}.`,
@@ -114,6 +123,46 @@ export const useToggleFeatured = () => {
       toast({
         title: "Error updating featured status",
         description: "There was an error updating the job's featured status.",
+        variant: "destructive",
+      });
+    },
+  });
+};
+
+export const useDeleteJob = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const { data: isAdmin } = useAdminCheck();
+
+  return useMutation({
+    mutationFn: async (jobId: string) => {
+      if (!user) throw new Error('User must be authenticated');
+      if (!isAdmin) throw new Error('Admin privileges required');
+
+      const { error } = await supabase
+        .from('jobs')
+        .delete()
+        .eq('id', jobId);
+
+      if (error) throw error;
+      return { jobId };
+    },
+    onSuccess: (data) => {
+      // Invalidate all relevant queries to update UI immediately
+      queryClient.invalidateQueries({ queryKey: ['all-jobs-admin'] });
+      queryClient.invalidateQueries({ queryKey: ['jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['user-jobs', user?.id] });
+
+      toast({
+        title: "Job Deleted",
+        description: "The job post has been permanently deleted.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error deleting job",
+        description: "There was an error deleting the job post.",
         variant: "destructive",
       });
     },

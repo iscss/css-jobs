@@ -4,7 +4,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { MapPin, Building2, Calendar, ExternalLink, Mail, User, DollarSign, Clock } from 'lucide-react';
+import { MapPin, Building2, Calendar, ExternalLink, Mail, User, DollarSign, Clock, Bookmark, BookmarkCheck } from 'lucide-react';
+import { useSaveJob, useUnsaveJob, useCheckSavedJob } from '@/hooks/useSavedJobs';
+import { useAuth } from '@/contexts/AuthContext';
 import type { Tables } from '@/integrations/supabase/types';
 
 type Job = Tables<'jobs'> & {
@@ -18,6 +20,11 @@ interface JobDetailsModalProps {
 }
 
 const JobDetailsModal = ({ job, isOpen, onClose }: JobDetailsModalProps) => {
+  const { user } = useAuth();
+  const { data: isSaved } = useCheckSavedJob(job?.id || '');
+  const saveJob = useSaveJob();
+  const unsaveJob = useUnsaveJob();
+
   if (!job) return null;
 
   const formatDate = (dateString: string | null) => {
@@ -27,6 +34,16 @@ const JobDetailsModal = ({ job, isOpen, onClose }: JobDetailsModalProps) => {
       month: 'long',
       day: 'numeric'
     });
+  };
+
+  const handleSaveToggle = () => {
+    if (!user) return;
+    
+    if (isSaved) {
+      unsaveJob.mutate(job.id);
+    } else {
+      saveJob.mutate(job.id);
+    }
   };
 
   return (
@@ -158,10 +175,10 @@ const JobDetailsModal = ({ job, isOpen, onClose }: JobDetailsModalProps) => {
             </div>
           </div>
 
-          {/* Apply Button */}
-          {job.application_url && (
-            <div className="pt-4">
-              <Button asChild className="w-full sm:w-auto">
+          {/* Action Buttons */}
+          <div className="pt-4 flex flex-wrap gap-3">
+            {job.application_url && (
+              <Button asChild>
                 <a 
                   href={job.application_url} 
                   target="_blank" 
@@ -172,8 +189,20 @@ const JobDetailsModal = ({ job, isOpen, onClose }: JobDetailsModalProps) => {
                   Apply for this Position
                 </a>
               </Button>
-            </div>
-          )}
+            )}
+            
+            {user && (
+              <Button
+                variant="outline"
+                onClick={handleSaveToggle}
+                disabled={saveJob.isPending || unsaveJob.isPending}
+                className="flex items-center gap-2"
+              >
+                {isSaved ? <BookmarkCheck className="w-4 h-4" /> : <Bookmark className="w-4 h-4" />}
+                {isSaved ? 'Saved' : 'Save Job'}
+              </Button>
+            )}
+          </div>
         </div>
       </DialogContent>
     </Dialog>

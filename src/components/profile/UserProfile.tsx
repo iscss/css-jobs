@@ -8,23 +8,24 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useAuth } from '@/contexts/AuthContext';
-import { useUserProfile } from '@/hooks/useUserProfile';
+import { useUserProfile, useUpdateUserProfile } from '@/hooks/useUserProfile';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import { UserCheck, Briefcase, Users, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { UserCheck, Briefcase, Users, Clock, CheckCircle, XCircle, Globe, GraduationCap } from 'lucide-react';
 
 interface ProfileFormData {
   full_name: string;
   institution: string;
   orcid_id: string;
+  google_scholar_url: string;
+  website_url: string;
   user_type: string;
 }
 
 const UserProfile = () => {
   const { user } = useAuth();
   const { data: profile, isLoading } = useUserProfile();
+  const updateProfile = useUpdateUserProfile();
   const { toast } = useToast();
-  const [isUpdating, setIsUpdating] = useState(false);
 
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<ProfileFormData>();
   const watchedUserType = watch('user_type');
@@ -34,6 +35,8 @@ const UserProfile = () => {
       setValue('full_name', profile.full_name || '');
       setValue('institution', profile.institution || '');
       setValue('orcid_id', profile.orcid_id || '');
+      setValue('google_scholar_url', profile.google_scholar_url || '');
+      setValue('website_url', profile.website_url || '');
       setValue('user_type', profile.user_type || 'job_seeker');
     }
   }, [profile, setValue]);
@@ -41,13 +44,13 @@ const UserProfile = () => {
   const onSubmit = async (data: ProfileFormData) => {
     if (!user) return;
 
-    setIsUpdating(true);
     try {
       const updateData: any = {
-        id: user.id,
         full_name: data.full_name,
         institution: data.institution,
         orcid_id: data.orcid_id,
+        google_scholar_url: data.google_scholar_url,
+        website_url: data.website_url,
         updated_at: new Date().toISOString()
       };
 
@@ -63,11 +66,7 @@ const UserProfile = () => {
         updateData.is_approved_poster = false;
       }
 
-      const { error } = await supabase
-        .from('user_profiles')
-        .upsert(updateData);
-
-      if (error) throw error;
+      await updateProfile.mutateAsync(updateData);
 
       toast({
         title: "Profile updated successfully!",
@@ -81,8 +80,6 @@ const UserProfile = () => {
         description: "There was an error updating your profile. Please try again.",
         variant: "destructive",
       });
-    } finally {
-      setIsUpdating(false);
     }
   };
 
@@ -172,10 +169,42 @@ const UserProfile = () => {
               </p>
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="google_scholar_url" className="flex items-center gap-2">
+                <GraduationCap className="w-4 h-4" />
+                Google Scholar Profile
+              </Label>
+              <Input
+                id="google_scholar_url"
+                {...register('google_scholar_url')}
+                placeholder="https://scholar.google.com/citations?user=..."
+                type="url"
+              />
+              <p className="text-sm text-gray-600">
+                Link to your Google Scholar profile to showcase your publications.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="website_url" className="flex items-center gap-2">
+                <Globe className="w-4 h-4" />
+                Personal Website
+              </Label>
+              <Input
+                id="website_url"
+                {...register('website_url')}
+                placeholder="https://yourwebsite.com"
+                type="url"
+              />
+              <p className="text-sm text-gray-600">
+                Your personal or academic website.
+              </p>
+            </div>
+
             <div className="space-y-3">
               <Label>Account Type</Label>
-              <RadioGroup 
-                value={watchedUserType || 'job_seeker'} 
+              <RadioGroup
+                value={watchedUserType || 'job_seeker'}
                 onValueChange={(value) => setValue('user_type', value)}
               >
                 <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 transition-colors">
@@ -236,10 +265,10 @@ const UserProfile = () => {
 
             <Button
               type="submit"
-              disabled={isUpdating}
+              disabled={updateProfile.isPending}
               className="w-full"
             >
-              {isUpdating ? 'Updating...' : 'Update Profile'}
+              {updateProfile.isPending ? 'Updating...' : 'Update Profile'}
             </Button>
           </form>
         </CardContent>

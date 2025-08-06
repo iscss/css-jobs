@@ -13,14 +13,16 @@ import { useCreateJob } from '@/hooks/useJobs';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserProfile } from '@/hooks/useUserProfile';
-import { AlertCircle, CheckCircle2, Clock } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Clock, MapPin, Globe, X } from 'lucide-react';
 
 interface JobFormData {
   title: string;
   institution: string;
   department: string;
   location: string;
-  job_type: 'PhD' | 'Postdoc' | 'Faculty' | 'RA' | 'Internship' | 'Other';
+  country: string;
+  region: string;
+  job_type: 'PhD' | 'Postdoc' | 'Faculty' | 'Research Assistant' | 'Internship' | 'Other';
   description: string;
   requirements: string;
   application_deadline: string;
@@ -40,10 +42,77 @@ const JobPostingForm = () => {
   const { data: userProfile, isLoading: profileLoading } = useUserProfile();
   const createJobMutation = useCreateJob();
   const [isRemote, setIsRemote] = useState(false);
+  const [selectedCountry, setSelectedCountry] = useState("none");
+  const [selectedRegion, setSelectedRegion] = useState("none");
+
+  const regions = [
+    { value: "north-america", label: "North America" },
+    { value: "europe", label: "Europe" },
+    { value: "asia", label: "Asia" },
+    { value: "oceania", label: "Oceania" },
+    { value: "south-america", label: "South America" },
+    { value: "africa", label: "Africa" }
+  ];
+
+  const countries = [
+    // North America
+    { value: "us", label: "United States", region: "north-america" },
+    { value: "ca", label: "Canada", region: "north-america" },
+    { value: "mx", label: "Mexico", region: "north-america" },
+
+    // Europe
+    { value: "uk", label: "United Kingdom", region: "europe" },
+    { value: "de", label: "Germany", region: "europe" },
+    { value: "fr", label: "France", region: "europe" },
+    { value: "nl", label: "Netherlands", region: "europe" },
+    { value: "ch", label: "Switzerland", region: "europe" },
+    { value: "se", label: "Sweden", region: "europe" },
+    { value: "dk", label: "Denmark", region: "europe" },
+    { value: "no", label: "Norway", region: "europe" },
+    { value: "fi", label: "Finland", region: "europe" },
+    { value: "it", label: "Italy", region: "europe" },
+    { value: "es", label: "Spain", region: "europe" },
+    { value: "at", label: "Austria", region: "europe" },
+    { value: "be", label: "Belgium", region: "europe" },
+    { value: "ie", label: "Ireland", region: "europe" },
+    { value: "pt", label: "Portugal", region: "europe" },
+
+    // Asia
+    { value: "jp", label: "Japan", region: "asia" },
+    { value: "sg", label: "Singapore", region: "asia" },
+    { value: "kr", label: "South Korea", region: "asia" },
+    { value: "cn", label: "China", region: "asia" },
+    { value: "in", label: "India", region: "asia" },
+    { value: "hk", label: "Hong Kong", region: "asia" },
+    { value: "tw", label: "Taiwan", region: "asia" },
+    { value: "th", label: "Thailand", region: "asia" },
+    { value: "my", label: "Malaysia", region: "asia" },
+
+    // Oceania
+    { value: "au", label: "Australia", region: "oceania" },
+    { value: "nz", label: "New Zealand", region: "oceania" },
+
+    // South America
+    { value: "br", label: "Brazil", region: "south-america" },
+    { value: "ar", label: "Argentina", region: "south-america" },
+    { value: "cl", label: "Chile", region: "south-america" },
+    { value: "co", label: "Colombia", region: "south-america" },
+    { value: "pe", label: "Peru", region: "south-america" },
+
+    // Africa
+    { value: "za", label: "South Africa", region: "africa" },
+    { value: "eg", label: "Egypt", region: "africa" },
+    { value: "ng", label: "Nigeria", region: "africa" },
+    { value: "ke", label: "Kenya", region: "africa" },
+    { value: "gh", label: "Ghana", region: "africa" },
+    { value: "ma", label: "Morocco", region: "africa" },
+    { value: "tn", label: "Tunisia", region: "africa" },
+    { value: "et", label: "Ethiopia", region: "africa" }
+  ];
 
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<JobFormData>();
 
-  const onSubmit = async (data: JobFormData) => {
+  const onSubmit = async (data: JobFormData, isDraft = false) => {
     if (!user) {
       toast({
         title: "Authentication required",
@@ -63,22 +132,37 @@ const JobPostingForm = () => {
     }
 
     try {
+      // Enhance location data with structured info
+      let enhancedLocation = data.location;
+      if (selectedCountry && selectedCountry !== "none" && selectedRegion && selectedRegion !== "none") {
+        const country = countries.find(c => c.value === selectedCountry);
+        const region = regions.find(r => r.value === selectedRegion);
+
+        // If location doesn't already contain country info, append it
+        if (country && !enhancedLocation.toLowerCase().includes(country.label.toLowerCase())) {
+          enhancedLocation = `${enhancedLocation}, ${country.label}`;
+        }
+      }
+
       const jobData = {
         ...data,
+        location: enhancedLocation,
         is_remote: isRemote,
         application_deadline: data.application_deadline || null,
-        is_published: true,
+        is_published: !isDraft,
         tags: data.tags ? data.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : []
       };
 
       await createJobMutation.mutateAsync(jobData);
-      
+
       toast({
-        title: "Job posted successfully!",
-        description: "Your job posting has been created and is now live.",
+        title: isDraft ? "Draft saved successfully!" : "Job posted successfully!",
+        description: isDraft
+          ? "Your job draft has been saved. You can publish it later from your profile."
+          : "Your job posting has been created and is now live.",
       });
-      
-      navigate('/jobs');
+
+      navigate(isDraft ? '/profile' : '/jobs');
     } catch (error) {
       toast({
         title: "Error posting job",
@@ -171,8 +255,8 @@ const JobPostingForm = () => {
         </CardHeader>
         <CardContent className="space-y-6">
           {getApprovalStatusAlert()}
-          
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+
+          <form className="space-y-6">
             <div className="grid md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="title">Job Title *</Label>
@@ -194,7 +278,7 @@ const JobPostingForm = () => {
                     <SelectItem value="PhD">PhD</SelectItem>
                     <SelectItem value="Postdoc">Postdoc</SelectItem>
                     <SelectItem value="Faculty">Faculty</SelectItem>
-                    <SelectItem value="RA">Research Assistant</SelectItem>
+                    <SelectItem value="Research Assistant">Research Assistant</SelectItem>
                     <SelectItem value="Internship">Internship</SelectItem>
                     <SelectItem value="Other">Other</SelectItem>
                   </SelectContent>
@@ -220,14 +304,87 @@ const JobPostingForm = () => {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="location">Location *</Label>
-                <Input
-                  id="location"
-                  {...register('location', { required: 'Location is required' })}
-                  placeholder="e.g., Stanford, CA, USA"
-                />
-                {errors.location && <p className="text-sm text-red-600">{errors.location.message}</p>}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4" />
+                    Location *
+                  </Label>
+                  <Input
+                    id="location"
+                    {...register('location', { required: 'Location is required' })}
+                    placeholder="e.g., Stanford, CA (City, State/Province)"
+                  />
+                  {errors.location && <p className="text-sm text-red-600">{errors.location.message}</p>}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm text-gray-600">Region (Optional)</Label>
+                    <Select value={selectedRegion} onValueChange={(value) => {
+                      setSelectedRegion(value);
+                      setSelectedCountry("none"); // Clear country when region changes
+                    }}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select region" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">
+                          <div className="flex items-center gap-2 text-gray-500">
+                            <X className="w-3 h-3" />
+                            No region selected
+                          </div>
+                        </SelectItem>
+                        {regions.map((region) => (
+                          <SelectItem key={region.value} value={region.value}>
+                            <div className="flex items-center gap-2">
+                              <Globe className="w-3 h-3" />
+                              {region.label}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm text-gray-600">Country (Optional)</Label>
+                    <Select value={selectedCountry} onValueChange={(value) => {
+                      setSelectedCountry(value);
+                      // Auto-select region when country is selected
+                      if (value !== "none") {
+                        const country = countries.find(c => c.value === value);
+                        if (country && country.region !== selectedRegion) {
+                          setSelectedRegion(country.region);
+                        }
+                      }
+                    }}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select country" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">
+                          <div className="flex items-center gap-2 text-gray-500">
+                            <X className="w-3 h-3" />
+                            No country selected
+                          </div>
+                        </SelectItem>
+                        {countries
+                          .filter(country => selectedRegion === "none" || country.region === selectedRegion)
+                          .map((country) => (
+                            <SelectItem key={country.value} value={country.value}>
+                              {country.label}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="text-xs text-gray-500 bg-gray-50 p-3 rounded-lg">
+                  <strong>Note:</strong> The structured region/country helps improve search and filtering.
+                  If you don't select these, users can still find your position through the location text.
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -319,13 +476,22 @@ const JobPostingForm = () => {
               </div>
             </div>
 
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="is_remote"
-                checked={isRemote}
-                onCheckedChange={(checked) => setIsRemote(checked === true)}
-              />
-              <Label htmlFor="is_remote">This is a remote position</Label>
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
+              <div className="flex items-center space-x-3">
+                <Checkbox
+                  id="is_remote"
+                  checked={isRemote}
+                  onCheckedChange={(checked) => setIsRemote(checked === true)}
+                />
+                <div>
+                  <Label htmlFor="is_remote" className="font-medium text-blue-900 cursor-pointer">
+                    This is a remote position
+                  </Label>
+                  <p className="text-xs text-blue-700 mt-1">
+                    Check this if the position can be performed remotely or is location-independent
+                  </p>
+                </div>
+              </div>
             </div>
 
             <div className="flex gap-4">
@@ -337,10 +503,19 @@ const JobPostingForm = () => {
                 Cancel
               </Button>
               <Button
-                type="submit"
+                type="button"
+                variant="secondary"
+                onClick={handleSubmit((data) => onSubmit(data, true))}
                 disabled={createJobMutation.isPending || !userProfile?.is_approved_poster}
               >
-                {createJobMutation.isPending ? 'Posting...' : 'Post Job'}
+                {createJobMutation.isPending ? 'Saving...' : 'Save as Draft'}
+              </Button>
+              <Button
+                type="button"
+                onClick={handleSubmit((data) => onSubmit(data, false))}
+                disabled={createJobMutation.isPending || !userProfile?.is_approved_poster}
+              >
+                {createJobMutation.isPending ? 'Publishing...' : 'Publish Job'}
               </Button>
             </div>
           </form>

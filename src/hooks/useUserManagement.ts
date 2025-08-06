@@ -4,55 +4,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useAdminCheck } from './useAdminCheck';
-import type { Tables, TablesUpdate } from '@/integrations/supabase/types';
+import { useAdminUserProfiles, type AdminUserProfile } from './useAdminUserProfiles';
+import type { TablesUpdate } from '@/integrations/supabase/types';
 
-type UserProfile = Tables<'user_profiles'>;
 type UserProfileUpdate = TablesUpdate<'user_profiles'>;
 
-export const useAllUsers = () => {
-  const { user } = useAuth();
-  const { data: isAdmin } = useAdminCheck();
-
-  return useQuery({
-    queryKey: ['all-users'],
-    queryFn: async () => {
-      if (!user || !isAdmin) throw new Error('User must be authenticated admin');
-
-      // First get all user profiles
-      const { data: profiles, error: profilesError } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (profilesError) throw profilesError;
-      if (!profiles || profiles.length === 0) return [];
-
-      // Get user emails from auth.users using admin access
-      const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
-      
-      if (authError) {
-        console.error('Error fetching auth users:', authError);
-        // Return profiles without emails if we can't fetch them
-        return profiles.map(profile => ({
-          ...profile,
-          auth_users: null
-        }));
-      }
-
-      // Match profiles with their emails
-      const profilesWithEmails = profiles.map(profile => {
-        const authUser = authData.users.find((u: any) => u.id === profile.id);
-        return {
-          ...profile,
-          auth_users: authUser ? { email: authUser.email || 'No email' } : null
-        };
-      });
-
-      return profilesWithEmails;
-    },
-    enabled: !!user && !!isAdmin,
-  });
-};
+// Use the admin user profiles hook instead
+export const useAllUsers = useAdminUserProfiles;
 
 export const useUpdateUserPermissions = () => {
   const queryClient = useQueryClient();
@@ -60,11 +18,11 @@ export const useUpdateUserPermissions = () => {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async ({ 
-      userId, 
-      updates 
-    }: { 
-      userId: string; 
+    mutationFn: async ({
+      userId,
+      updates
+    }: {
+      userId: string;
       updates: UserProfileUpdate;
     }) => {
       if (!user) throw new Error('User must be authenticated');
@@ -80,13 +38,13 @@ export const useUpdateUserPermissions = () => {
       return data;
     },
     onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['all-users'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-user-profiles'] });
       queryClient.invalidateQueries({ queryKey: ['admin-approvals'] });
-      
-      const action = variables.updates.is_admin !== undefined 
+
+      const action = variables.updates.is_admin !== undefined
         ? (variables.updates.is_admin ? 'granted admin' : 'revoked admin')
         : (variables.updates.is_approved_poster ? 'granted poster' : 'revoked poster');
-      
+
       toast({
         title: "Permissions Updated",
         description: `Successfully ${action} permissions for the user.`,
@@ -96,6 +54,44 @@ export const useUpdateUserPermissions = () => {
       toast({
         title: "Error updating permissions",
         description: "There was an error updating the user's permissions.",
+        variant: "destructive",
+      });
+    },
+  });
+};
+
+export const useDeleteUser = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      if (!user) throw new Error('User must be authenticated');
+
+      // Use edge function for secure deletion with proper admin privileges
+      const { data, error } = await supabase.functions.invoke('delete-user', {
+        body: { userId }
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      return { userId };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-user-profiles'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-approvals'] });
+
+      toast({
+        title: "User Deleted",
+        description: "The user has been permanently deleted from the system.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error deleting user",
+        description: "There was an error deleting the user. Please try again.",
         variant: "destructive",
       });
     },

@@ -47,8 +47,9 @@ const HeroSection = () => {
 
           {/* Subtitle */}
           <p className="text-xl md:text-2xl text-slate-600 mb-12 max-w-4xl mx-auto leading-relaxed">
-            Discover exceptional opportunities in Computational Social Science, from PhD positions to faculty roles. 
-            Join a global community of researchers pushing the boundaries of interdisciplinary science.
+            Discover exceptional opportunities in Computational Social Science, from PhD positions to faculty roles.
+            <span className="font-semibold text-slate-700"> Find your next position</span> or
+            <span className="font-semibold text-slate-700"> share job opportunities</span> with our global research community.
           </p>
 
           {/* Enhanced Search Section */}
@@ -67,9 +68,9 @@ const HeroSection = () => {
                     />
                   </div>
                   <div className="pr-3">
-                    <Button 
-                      type="submit" 
-                      size="lg" 
+                    <Button
+                      type="submit"
+                      size="lg"
                       className="px-8 py-6 text-lg font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all duration-200 rounded-2xl whitespace-nowrap"
                     >
                       <Search className="w-5 h-5 mr-2" />
@@ -79,7 +80,7 @@ const HeroSection = () => {
                 </div>
               </div>
             </form>
-            
+
             {/* Popular searches */}
             <div className="space-y-4">
               <p className="text-sm font-medium text-gray-600">Popular searches:</p>
@@ -108,23 +109,23 @@ const HeroSection = () => {
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
-            <Button 
+            <Button
               onClick={() => navigate('/jobs')}
-              size="lg" 
+              size="lg"
               className="px-8 py-4 text-lg font-semibold bg-gradient-to-r from-slate-800 to-slate-900 hover:from-slate-900 hover:to-black shadow-xl hover:shadow-2xl transition-all duration-200 flex items-center gap-2"
             >
               <Briefcase className="w-5 h-5" />
-              Browse All Positions
+              Find Positions
               <ArrowRight className="w-4 h-4" />
             </Button>
-            <Button 
+            <Button
               onClick={() => navigate('/auth')}
-              variant="outline" 
-              size="lg" 
-              className="px-8 py-4 text-lg font-semibold border-2 border-slate-800 text-slate-800 hover:bg-slate-800 hover:text-white shadow-xl hover:shadow-2xl transition-all duration-200"
+              size="lg"
+              className="px-8 py-4 text-lg font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-xl hover:shadow-2xl transition-all duration-200 flex items-center gap-2"
             >
-              <Users className="w-5 h-5 mr-2" />
-              Post a Position
+              <Users className="w-5 h-5" />
+              Post Opportunities
+              <ArrowRight className="w-4 h-4" />
             </Button>
           </div>
 
