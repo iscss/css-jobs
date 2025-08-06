@@ -5,6 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
   Table,
   TableBody,
   TableCell,
@@ -23,7 +30,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useAllUsers, useUpdateUserPermissions, useDeleteUser } from '@/hooks/useUserManagement';
-import { User, Shield, ShieldOff, UserX, Mail, Eye, CheckCircle, XCircle, Trash2 } from 'lucide-react';
+import { User, Shield, ShieldOff, UserX, Mail, Eye, CheckCircle, XCircle, Trash2, MoreHorizontal, Building2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import UserProfileModal from './UserProfileModal';
@@ -127,146 +134,166 @@ const UserManagementTable = () => {
   return (
     <>
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <User className="w-5 h-5" />
+        <CardHeader className="pb-6">
+          <CardTitle className="flex items-center gap-3 text-xl">
+            <User className="w-6 h-6" />
             All Users ({allUsers?.length || 0})
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>User</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Institution</TableHead>
-                <TableHead>Permissions</TableHead>
-                <TableHead>Joined</TableHead>
-                <TableHead>Actions</TableHead>
+              <TableRow className="border-b">
+                <TableHead className="pl-6 py-4 font-semibold">User</TableHead>
+                <TableHead className="py-4 font-semibold">Contact</TableHead>
+                <TableHead className="py-4 font-semibold">Institution</TableHead>
+                <TableHead className="py-4 font-semibold">Status</TableHead>
+                <TableHead className="py-4 font-semibold">Joined</TableHead>
+                <TableHead className="pr-6 py-4 font-semibold text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {allUsers?.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell className="max-w-48">
-                    <div>
-                      <div className="font-medium flex items-center gap-2 flex-wrap">
-                        <span className="truncate max-w-32" title={user.full_name || 'No name'}>
-                          {user.full_name || 'No name'}
+                <TableRow key={user.id} className="hover:bg-muted/50 transition-colors">
+                  <TableCell className="pl-6 py-6">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                          <User className="w-5 h-5 text-primary" />
+                        </div>
+                        <div>
+                          <div className="font-medium text-base" title={user.full_name || 'No name'}>
+                            {user.full_name || 'No name'}
+                          </div>
+                          <div className="text-sm text-muted-foreground capitalize">
+                            {user.user_type?.replace('_', ' ')}
+                          </div>
+                        </div>
+                      </div>
+                      {user.is_admin && (
+                        <Badge variant="destructive" className="ml-13">
+                          <Shield className="w-3 h-3 mr-1" />
+                          Admin
+                        </Badge>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="py-6">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Mail className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm" title={user.email || user.auth_email || 'No email'}>
+                          {user.email || user.auth_email || 'No email'}
                         </span>
-                        {user.is_admin && (
-                          <Badge variant="destructive" className="text-xs shrink-0">
-                            <Shield className="w-3 h-3 mr-1" />
-                            Admin
-                          </Badge>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {user.email_confirmed_at ? (
+                          <>
+                            <CheckCircle className="w-4 h-4 text-green-500" />
+                            <span className="text-xs text-green-600 font-medium">Verified</span>
+                          </>
+                        ) : (
+                          <>
+                            <XCircle className="w-4 h-4 text-red-500" />
+                            <span className="text-xs text-red-600 font-medium">Unverified</span>
+                          </>
                         )}
                       </div>
-                      <div className="text-sm text-gray-500">{user.user_type}</div>
                     </div>
                   </TableCell>
-                  <TableCell className="max-w-48">
-                    <div className="space-y-1">
-                       <div className="flex items-center gap-2">
-                         <Mail className="w-4 h-4 text-gray-400 shrink-0" />
-                         <span className="text-sm truncate" title={user.email || user.auth_email || 'No email'}>
-                           {user.email || user.auth_email || 'No email'}
-                         </span>
-                       </div>
-                       <div className="flex items-center gap-1">
-                         {user.email_confirmed_at ? (
-                           <>
-                             <CheckCircle className="w-3 h-3 text-green-500 shrink-0" />
-                             <span className="text-xs text-green-600">Verified</span>
-                           </>
-                         ) : (
-                           <>
-                             <XCircle className="w-3 h-3 text-red-500 shrink-0" />
-                             <span className="text-xs text-red-600">Unverified</span>
-                           </>
-                         )}
-                       </div>
+                  <TableCell className="py-6">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-sm" title={user.institution || 'Not specified'}>
+                        {user.institution || 'Not specified'}
+                      </span>
                     </div>
                   </TableCell>
-                  <TableCell className="max-w-40">
-                    <span className="text-sm truncate" title={user.institution || 'Not specified'}>
-                      {user.institution || 'Not specified'}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2 flex-wrap">
+                  <TableCell className="py-6">
+                    <div className="flex flex-col gap-2">
                       {user.is_approved_poster && (
-                        <Badge variant="default" className="text-xs">Job Poster</Badge>
+                        <Badge variant="default" className="w-fit">Job Poster</Badge>
                       )}
                       {user.approval_status === 'pending' && (
-                        <Badge variant="outline" className="text-xs">Pending</Badge>
+                        <Badge variant="outline" className="w-fit">Pending Approval</Badge>
                       )}
                       {user.approval_status === 'rejected' && (
-                        <Badge variant="destructive" className="text-xs">Rejected</Badge>
+                        <Badge variant="destructive" className="w-fit">Rejected</Badge>
+                      )}
+                      {user.approval_status === 'approved' && !user.is_approved_poster && (
+                        <Badge variant="secondary" className="w-fit">Job Seeker</Badge>
                       )}
                     </div>
                   </TableCell>
-                  <TableCell>
-                    <span className="text-sm">{formatDate(user.created_at)}</span>
+                  <TableCell className="py-6">
+                    <span className="text-sm text-muted-foreground">{formatDate(user.created_at)}</span>
                   </TableCell>
-                  <TableCell>
-                    <div className="flex gap-1 flex-wrap">
+                  <TableCell className="pr-6 py-6">
+                    <div className="flex items-center justify-end gap-2">
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => setSelectedUser(user)}
-                        className="flex items-center gap-1 text-xs px-2 py-1"
+                        className="h-8 px-3"
                       >
-                        <Eye className="w-3 h-3" />
+                        <Eye className="w-4 h-4 mr-1" />
                         View
                       </Button>
-                      <Button
-                        size="sm"
-                        variant={user.is_admin ? "destructive" : "outline"}
-                        onClick={() => handleToggleAdmin(user.id, user.is_admin || false, user.full_name || 'Unknown')}
-                        disabled={updatePermissions.isPending}
-                        className="text-xs px-2 py-1"
-                      >
-                        {user.is_admin ? (
-                          <>
-                            <ShieldOff className="w-3 h-3 mr-1" />
-                            Remove
-                          </>
-                        ) : (
-                          <>
-                            <Shield className="w-3 h-3 mr-1" />
-                            Admin
-                          </>
-                        )}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant={user.is_approved_poster ? "destructive" : "outline"}
-                        onClick={() => handleTogglePoster(user.id, user.is_approved_poster || false)}
-                        disabled={updatePermissions.isPending}
-                        className="text-xs px-2 py-1"
-                      >
-                        {user.is_approved_poster ? (
-                          <>
-                            <UserX className="w-3 h-3 mr-1" />
-                            Revoke
-                          </>
-                        ) : (
-                          <>
-                            <User className="w-3 h-3 mr-1" />
-                            Poster
-                          </>
-                        )}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => handleDeleteUser(user)}
-                        disabled={deleteUser.isPending || user.id === currentUser?.id || user.is_admin}
-                        className="text-xs px-2 py-1"
-                      >
-                        <Trash2 className="w-3 h-3 mr-1" />
-                        Delete
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 w-8 p-0"
+                            disabled={updatePermissions.isPending || deleteUser.isPending}
+                          >
+                            <MoreHorizontal className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
+                          <DropdownMenuItem
+                            onClick={() => handleToggleAdmin(user.id, user.is_admin || false, user.full_name || 'Unknown')}
+                            className="cursor-pointer"
+                          >
+                            {user.is_admin ? (
+                              <>
+                                <ShieldOff className="w-4 h-4 mr-2" />
+                                Remove Admin
+                              </>
+                            ) : (
+                              <>
+                                <Shield className="w-4 h-4 mr-2" />
+                                Grant Admin
+                              </>
+                            )}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleTogglePoster(user.id, user.is_approved_poster || false)}
+                            className="cursor-pointer"
+                          >
+                            {user.is_approved_poster ? (
+                              <>
+                                <UserX className="w-4 h-4 mr-2" />
+                                Revoke Poster
+                              </>
+                            ) : (
+                              <>
+                                <User className="w-4 h-4 mr-2" />
+                                Grant Poster
+                              </>
+                            )}
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => handleDeleteUser(user)}
+                            disabled={user.id === currentUser?.id || user.is_admin}
+                            className="cursor-pointer text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Delete User
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </TableCell>
                 </TableRow>
