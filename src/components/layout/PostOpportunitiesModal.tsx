@@ -35,8 +35,7 @@ const PostOpportunitiesModal = ({ isOpen, onClose }: PostOpportunitiesModalProps
             <ul className="text-sm text-blue-800 space-y-1">
               <li>• Post research positions and opportunities</li>
               <li>• Manage your job postings</li>
-              <li>• Access to applicant management tools</li>
-              <li>• Reach our global research community</li>
+              <li>• Access to applicant management tools (coming soon)</li>
             </ul>
           </div>
           <div className="flex gap-3">
