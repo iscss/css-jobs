@@ -3,14 +3,43 @@ import { Button } from "@/components/ui/button";
 import { Search, Briefcase, Users, TrendingUp, Sparkles, ArrowRight } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { useUserProfile } from "@/hooks/useUserProfile";
+import PostOpportunitiesModal from "@/components/layout/PostOpportunitiesModal";
 
 const HeroSection = () => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [showPostModal, setShowPostModal] = useState(false);
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { data: userProfile } = useUserProfile();
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     navigate(`/jobs?search=${encodeURIComponent(searchTerm)}`);
+  };
+
+  const handlePostOpportunities = () => {
+    if (!user || !userProfile) {
+      // Scenario 1: Not logged in or no profile - show modal
+      setShowPostModal(true);
+      return;
+    }
+
+    if (userProfile.user_type === 'job_seeker') {
+      // Scenario 2: Job seeker - redirect to profile settings
+      navigate('/profile?tab=profile');
+      return;
+    }
+
+    if (userProfile.user_type === 'job_poster' && userProfile.is_approved_poster) {
+      // Scenario 3: Approved job poster - go to post job page
+      navigate('/post-job');
+      return;
+    }
+
+    // Job poster but not approved - go to profile to see status
+    navigate('/profile?tab=profile');
   };
 
   const popularSearches = [
@@ -119,7 +148,7 @@ const HeroSection = () => {
               <ArrowRight className="w-4 h-4" />
             </Button>
             <Button
-              onClick={() => navigate('/auth')}
+              onClick={handlePostOpportunities}
               size="lg"
               className="px-8 py-4 text-lg font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-xl hover:shadow-2xl transition-all duration-200 flex items-center gap-2"
             >
@@ -150,6 +179,11 @@ const HeroSection = () => {
           </div>
         </div>
       </div>
+      
+      <PostOpportunitiesModal 
+        isOpen={showPostModal} 
+        onClose={() => setShowPostModal(false)} 
+      />
     </section>
   );
 };

@@ -24,7 +24,7 @@ export const useAdminApprovals = () => {
       const pendingProfiles = (profiles || []).filter(
         (profile: AdminUserProfile) => 
           profile.approval_status === 'pending' && 
-          (profile.user_type === 'job_poster' || profile.user_type === 'both')
+          profile.user_type === 'job_poster'
       );
 
       return pendingProfiles;
