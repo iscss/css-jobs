@@ -216,16 +216,6 @@ const Auth = () => {
                           </div>
                         </Label>
                       </div>
-                      <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 transition-colors">
-                        <RadioGroupItem value="both" id="both" />
-                        <Label htmlFor="both" className="flex items-center gap-2 cursor-pointer flex-1">
-                          <Users className="w-4 h-4 text-purple-600" />
-                          <div>
-                            <div className="font-medium">Both</div>
-                            <div className="text-sm text-gray-500">Look for and post jobs (requires approval)</div>
-                          </div>
-                        </Label>
-                      </div>
                     </RadioGroup>
                   </div>
                 </>

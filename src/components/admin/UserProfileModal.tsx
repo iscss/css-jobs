@@ -41,7 +41,6 @@ const UserProfileModal = ({ user, isOpen, onClose }: UserProfileModalProps) => {
     const getUserTypeColor = (type: string) => {
         switch (type) {
             case 'job_poster': return 'bg-green-100 text-green-800';
-            case 'both': return 'bg-purple-100 text-purple-800';
             case 'job_seeker': return 'bg-blue-100 text-blue-800';
             default: return 'bg-gray-100 text-gray-800';
         }
@@ -50,7 +49,6 @@ const UserProfileModal = ({ user, isOpen, onClose }: UserProfileModalProps) => {
     const getUserTypeLabel = (type: string) => {
         switch (type) {
             case 'job_poster': return 'Job Poster';
-            case 'both': return 'Job Seeker & Poster';
             case 'job_seeker': return 'Job Seeker';
             default: return type;
         }
