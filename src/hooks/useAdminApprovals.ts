@@ -56,8 +56,8 @@ export const useUpdateApprovalStatus = () => {
         approved_by: user.id,
       };
 
-      // If approving a job poster or both, set is_approved_poster to true
-      if (status === 'approved' && (userType === 'job_poster' || userType === 'both')) {
+      // If approving a job poster, set is_approved_poster to true
+      if (status === 'approved' && userType === 'job_poster') {
         updateData.is_approved_poster = true;
       }
 
