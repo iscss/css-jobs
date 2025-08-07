@@ -11,7 +11,7 @@ const AdminStats = () => {
 
   const jobSeekers = users?.filter(user => user.user_type === 'job_seeker') || [];
   const jobPosters = users?.filter(user => user.user_type === 'job_poster') || [];
-  const bothType = users?.filter(user => user.user_type === 'both') || [];
+  
   const approvedPosters = users?.filter(user => user.is_approved_poster) || [];
   const adminUsers = users?.filter(user => user.is_admin) || [];
   const publishedJobs = jobs?.filter(job => job.is_published) || [];
@@ -39,13 +39,6 @@ const AdminStats = () => {
       icon: UserCheck,
       color: "text-purple-500",
       bgColor: "bg-purple-50",
-    },
-    {
-      title: "Both Types",
-      value: usersLoading ? "..." : bothType.length,
-      icon: CheckCircle,
-      color: "text-indigo-500",
-      bgColor: "bg-indigo-50",
     },
     {
       title: "Pending Approvals",
