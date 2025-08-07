@@ -5,19 +5,19 @@ const ResearchAreasSection = () => {
   const sponsors = [
     {
       name: "ISCSS",
-      image: "/sponsors/ISCSS Logo.png",
+      image: "/sponsors/ISCSS%20Logo.png",
       url: "https://iscss.org/",
       description: "The International Society for Computational Social Science"
     },
     {
       name: "IC2S2",
-      image: "/sponsors/IC2S2 Logo White.png",
+      image: "/sponsors/IC2S2%20Logo%20White.png",
       url: "https://ic2s2.org/",
       description: "The International Conference on Computational Social Science"
     },
     {
       name: "ICWSM",
-      image: "/sponsors/ICWSM 2025.png",
+      image: "/sponsors/ICWSM%202025.png",
       url: "https://icwsm.org/",
       description: "International AAAI Conference on Web and Social Media"
     }
