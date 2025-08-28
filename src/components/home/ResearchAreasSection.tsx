@@ -28,10 +28,10 @@ const ResearchAreasSection = () => {
       <div className="container mx-auto px-4">
         <div className="text-center mb-16">
           <h2 className="text-4xl md:text-5xl font-bold text-slate-800 mb-6">
-            Our <span className="text-gradient-primary">Sponsors</span>
+            Made by and for the <span className="text-gradient-primary">community</span>
           </h2>
           <p className="text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed">
-            Collaborating with leading institutions, organizations, and conferences to advance computational social science.
+            Supported by
           </p>
         </div>
 
