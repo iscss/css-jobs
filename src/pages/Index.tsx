@@ -117,7 +117,7 @@ const Index = () => {
                   <div className="space-y-4 text-center md:text-left">
                     <div className="flex items-center justify-center md:justify-start gap-2 text-indigo-600">
                       <Search className="w-5 h-5" />
-                      <span className="font-semibold">For Job Seekers</span>
+                      <span className="font-semibold">Looking for a job?</span>
                     </div>
                     <p className="text-gray-700">
                       Discover positions from universities and research institutions worldwide.
@@ -127,7 +127,7 @@ const Index = () => {
                   <div className="space-y-4 text-center md:text-left">
                     <div className="flex items-center justify-center md:justify-start gap-2 text-purple-600">
                       <Briefcase className="w-5 h-5" />
-                      <span className="font-semibold">For Recruiters</span>
+                      <span className="font-semibold">Looking to hire?</span>
                     </div>
                     <p className="text-gray-700">
                       Reach the global CSS community with your opportunities.
