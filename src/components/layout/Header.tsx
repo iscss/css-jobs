@@ -2,11 +2,12 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Menu, X, Search, Briefcase, Plus, User, Shield, Home } from 'lucide-react';
+import { Menu, X, Search, Briefcase, Plus, User, Shield, Home, Info } from 'lucide-react';
 import AuthButton from './AuthButton';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAdminCheck } from '@/hooks/useAdminCheck';
 import { useAdminApprovals } from '@/hooks/useAdminApprovals';
+import { useUserProfile } from '@/hooks/useUserProfile';
 import { Badge } from '@/components/ui/badge';
 
 const Header = () => {
@@ -16,12 +17,16 @@ const Header = () => {
   const { user } = useAuth();
   const { data: isAdmin } = useAdminCheck();
   const { data: pendingApprovals } = useAdminApprovals();
+  const { data: userProfile } = useUserProfile();
 
   const handleSearch = () => {
     navigate('/jobs');
   };
 
   const pendingCount = pendingApprovals?.length || 0;
+
+  // Check if user can post jobs (not a job-seeker)
+  const canPostJobs = user && userProfile?.user_type !== 'job_seeker';
 
   // Helper function to determine if a path is active
   const isActivePath = (path: string) => {
@@ -81,12 +86,14 @@ const Header = () => {
 
             {user && (
               <>
-                <Link to="/post-job">
-                  <Button variant="ghost" className={getActiveStyles('/post-job')}>
-                    <Plus className="w-4 h-4" />
-                    Post Job
-                  </Button>
-                </Link>
+                {canPostJobs && (
+                  <Link to="/post-job">
+                    <Button variant="ghost" className={getActiveStyles('/post-job')}>
+                      <Plus className="w-4 h-4" />
+                      Post Job
+                    </Button>
+                  </Link>
+                )}
 
                 <Link to="/profile">
                   <Button variant="ghost" className={getActiveStyles('/profile')}>
@@ -113,6 +120,13 @@ const Header = () => {
                 )}
               </>
             )}
+
+            <Link to="/about">
+              <Button variant="ghost" className={getActiveStyles('/about')}>
+                <Info className="w-4 h-4" />
+                About
+              </Button>
+            </Link>
           </nav>
 
           {/* Auth Button */}
@@ -154,12 +168,14 @@ const Header = () => {
 
               {user && (
                 <>
-                  <Link to="/post-job">
-                    <Button variant="ghost" className={`${getMobileActiveStyles('/post-job')} w-full`}>
-                      <Plus className="w-4 h-4" />
-                      Post Job
-                    </Button>
-                  </Link>
+                  {canPostJobs && (
+                    <Link to="/post-job">
+                      <Button variant="ghost" className={`${getMobileActiveStyles('/post-job')} w-full`}>
+                        <Plus className="w-4 h-4" />
+                        Post Job
+                      </Button>
+                    </Link>
+                  )}
 
                   <Link to="/profile">
                     <Button variant="ghost" className={`${getMobileActiveStyles('/profile')} w-full`}>
@@ -186,6 +202,13 @@ const Header = () => {
                   )}
                 </>
               )}
+
+              <Link to="/about">
+                <Button variant="ghost" className={`${getMobileActiveStyles('/about')} w-full`}>
+                  <Info className="w-4 h-4" />
+                  About
+                </Button>
+              </Link>
 
               <div className="pt-4 border-t border-gray-200">
                 <AuthButton />

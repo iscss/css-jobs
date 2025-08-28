@@ -1,5 +1,6 @@
 
 import { Sparkles } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const Footer = () => {
   return (
@@ -18,16 +19,10 @@ const Footer = () => {
           </div>
 
           {/* Essential Links */}
-          <div className="flex items-center space-x-8">
-            <a href="#" className="text-slate-600 hover:text-slate-800 transition-colors text-sm font-medium">
+          <div className="flex items-center">
+            <Link to="/about" className="text-slate-600 hover:text-slate-800 transition-colors text-sm font-medium">
               About
-            </a>
-            <a href="#" className="text-slate-600 hover:text-slate-800 transition-colors text-sm font-medium">
-              Contact
-            </a>
-            <a href="#" className="text-slate-600 hover:text-slate-800 transition-colors text-sm font-medium">
-              Privacy
-            </a>
+            </Link>
           </div>
 
           {/* Copyright */}

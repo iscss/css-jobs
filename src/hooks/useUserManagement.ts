@@ -40,10 +40,15 @@ export const useUpdateUserPermissions = () => {
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['admin-user-profiles'] });
       queryClient.invalidateQueries({ queryKey: ['admin-approvals'] });
+      // Also invalidate user profile cache so changes reflect immediately
+      queryClient.invalidateQueries({ queryKey: ['user-profile'] });
+      queryClient.invalidateQueries({ queryKey: ['user-profile', variables.userId] });
 
       const action = variables.updates.is_admin !== undefined
         ? (variables.updates.is_admin ? 'granted admin' : 'revoked admin')
-        : (variables.updates.is_approved_poster ? 'granted poster' : 'revoked poster');
+        : variables.updates.is_approved_poster !== undefined
+        ? (variables.updates.is_approved_poster ? 'granted job poster' : 'changed to job seeker')
+        : 'updated';
 
       toast({
         title: "Permissions Updated",

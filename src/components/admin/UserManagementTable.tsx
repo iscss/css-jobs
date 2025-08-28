@@ -98,9 +98,13 @@ const UserManagementTable = () => {
   };
 
   const handleTogglePoster = (userId: string, currentStatus: boolean) => {
+    const newPosterStatus = !currentStatus;
     updatePermissions.mutate({
       userId,
-      updates: { is_approved_poster: !currentStatus }
+      updates: { 
+        is_approved_poster: newPosterStatus,
+        user_type: newPosterStatus ? 'job_poster' : 'job_seeker'
+      }
     });
   };
 
