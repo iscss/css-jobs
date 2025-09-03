@@ -113,7 +113,7 @@ const JobPostingForm = () => {
 
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<JobFormData>();
 
-  const onSubmit = async (data: JobFormData, isDraft = false) => {
+  const onSubmit = async (data: JobFormData, isDraft = false, submitForApproval = false) => {
     if (!user) {
       toast({
         title: "Authentication required",
@@ -145,6 +145,28 @@ const JobPostingForm = () => {
         }
       }
 
+      // Determine job status based on submission type and user permissions
+      let jobStatus: 'draft' | 'pending' | 'approved' = 'draft';
+      let isPublished = false;
+
+      if (isDraft) {
+        jobStatus = 'draft';
+        isPublished = false;
+      } else if (submitForApproval) {
+        jobStatus = 'pending';
+        isPublished = false;
+      } else {
+        // Direct publish - only allowed for experienced users
+        if (userProfile?.can_publish_directly) {
+          jobStatus = 'approved';
+          isPublished = true;
+        } else {
+          // Force to pending approval for new users
+          jobStatus = 'pending';
+          isPublished = false;
+        }
+      }
+
       // Sanitize all inputs before submission
       const jobData = {
         title: sanitizeInput(data.title, 200),
@@ -161,20 +183,33 @@ const JobPostingForm = () => {
         job_type: data.job_type,
         is_remote: isRemote,
         application_deadline: data.application_deadline || null,
-        is_published: !isDraft,
+        is_published: isPublished,
+        approval_status: jobStatus,
+        submitted_for_approval_at: submitForApproval || (!isDraft && !userProfile?.can_publish_directly) ? new Date().toISOString() : null,
         tags: data.tags ? data.tags.split(',').map(tag => sanitizeInput(tag.trim(), 50)).filter(tag => tag) : []
       };
 
       await createJobMutation.mutateAsync(jobData);
 
-      toast({
-        title: isDraft ? "Draft saved successfully!" : "Job posted successfully!",
-        description: isDraft
-          ? "Your job draft has been saved. You can publish it later from your profile."
-          : "Your job posting has been created and is now live.",
-      });
+      // Show appropriate success message based on job status
+      if (isDraft) {
+        toast({
+          title: "Draft saved successfully!",
+          description: "Your job draft has been saved. You can submit it for approval or publish it later from your profile.",
+        });
+      } else if (jobStatus === 'pending') {
+        toast({
+          title: "Job submitted for approval!",
+          description: "Your job posting has been submitted and is waiting for admin approval before going live.",
+        });
+      } else if (jobStatus === 'approved') {
+        toast({
+          title: "Job posted successfully!",
+          description: "Your job posting has been published and is now live on the job board.",
+        });
+      }
 
-      navigate(isDraft ? '/profile' : '/jobs');
+      navigate('/profile');
     } catch (error) {
       toast({
         title: "Error posting job",
@@ -215,16 +250,29 @@ const JobPostingForm = () => {
 
     const status = userProfile.approval_status;
     const isApprovedPoster = userProfile.is_approved_poster;
+    const canPublishDirectly = userProfile.can_publish_directly;
+    const approvedJobsCount = userProfile.approved_jobs_count || 0;
 
     if (isApprovedPoster) {
-      return (
-        <Alert className="border-green-200 bg-green-50">
-          <CheckCircle2 className="h-4 w-4 text-green-600" />
-          <AlertDescription className="text-green-800">
-            You are approved to post jobs. You can create job postings below.
-          </AlertDescription>
-        </Alert>
-      );
+      if (canPublishDirectly) {
+        return (
+          <Alert className="border-green-200 bg-green-50">
+            <CheckCircle2 className="h-4 w-4 text-green-600" />
+            <AlertDescription className="text-green-800">
+              ✨ <strong>Experienced Poster:</strong> You can publish jobs directly to the job board! You have {approvedJobsCount} approved job{approvedJobsCount !== 1 ? 's' : ''}.
+            </AlertDescription>
+          </Alert>
+        );
+      } else {
+        return (
+          <Alert className="border-blue-200 bg-blue-50">
+            <Clock className="h-4 w-4 text-blue-600" />
+            <AlertDescription className="text-blue-800">
+              <strong>New Poster:</strong> Your jobs will be reviewed before publication. After 3 approved jobs, you can publish directly. Current: {approvedJobsCount}/3 approved job{approvedJobsCount !== 1 ? 's' : ''}.
+            </AlertDescription>
+          </Alert>
+        );
+      }
     }
 
     if (status === 'pending') {
@@ -506,7 +554,7 @@ const JobPostingForm = () => {
               </div>
             </div>
 
-            <div className="flex gap-4">
+            <div className="flex flex-wrap gap-4">
               <Button
                 type="button"
                 variant="outline"
@@ -514,6 +562,7 @@ const JobPostingForm = () => {
               >
                 Cancel
               </Button>
+              
               <Button
                 type="button"
                 variant="secondary"
@@ -522,13 +571,26 @@ const JobPostingForm = () => {
               >
                 {createJobMutation.isPending ? 'Saving...' : 'Save as Draft'}
               </Button>
-              <Button
-                type="button"
-                onClick={handleSubmit((data) => onSubmit(data, false))}
-                disabled={createJobMutation.isPending || !userProfile?.is_approved_poster}
-              >
-                {createJobMutation.isPending ? 'Publishing...' : 'Publish Job'}
-              </Button>
+              
+              {userProfile?.can_publish_directly ? (
+                // Experienced users can publish directly
+                <Button
+                  type="button"
+                  onClick={handleSubmit((data) => onSubmit(data, false))}
+                  disabled={createJobMutation.isPending || !userProfile?.is_approved_poster}
+                >
+                  {createJobMutation.isPending ? 'Publishing...' : 'Publish Job'}
+                </Button>
+              ) : (
+                // New users must submit for approval
+                <Button
+                  type="button"
+                  onClick={handleSubmit((data) => onSubmit(data, false, true))}
+                  disabled={createJobMutation.isPending || !userProfile?.is_approved_poster}
+                >
+                  {createJobMutation.isPending ? 'Submitting...' : 'Submit for Approval'}
+                </Button>
+              )}
             </div>
           </form>
         </CardContent>

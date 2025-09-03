@@ -65,6 +65,8 @@ export const useCreateJob = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['all-jobs-admin'] });
+      queryClient.invalidateQueries({ queryKey: ['user-jobs'] });
     },
   });
 };

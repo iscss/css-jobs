@@ -246,9 +246,17 @@ const UserProfile = () => {
                   </p>
                 )}
                 {profile?.user_type !== 'job_seeker' && profile?.approval_status === 'approved' && (
-                  <p className="text-green-700 mt-2">
-                    You have been approved to post job positions. You can now create and manage job postings.
-                  </p>
+                  <div className="space-y-2 mt-2">
+                    {(profile as any).can_publish_directly ? (
+                      <p className="text-green-700">
+                        ✓ Account approved for job posting with direct publishing privileges ({(profile as any).approved_jobs_count || 0} approved jobs)
+                      </p>
+                    ) : (
+                      <p className="text-orange-700">
+                        Account approved for job posting - jobs require admin approval before publishing ({(profile as any).approved_jobs_count || 0}/3 approved jobs needed for direct publishing)
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
             </div>

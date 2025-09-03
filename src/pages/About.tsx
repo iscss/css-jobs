@@ -18,12 +18,12 @@ const About = () => {
       photo: "/team/ceren.jpg",
       icon: <Lightbulb className="w-6 h-6" />,
     },
-    {
-      name: "Ingmar Weber",
-      role: "Advisor",
-      photo: "/team/ingmar.jpg",
-      icon: <Users className="w-6 h-6" />
-    }
+    // {
+    //   name: "Ingmar Weber",
+    //   role: "Advisor",
+    //   photo: "/team/ingmar.jpg",
+    //   icon: <Users className="w-6 h-6" />
+    // }
   ];
 
   return (
@@ -98,7 +98,7 @@ const About = () => {
                 </p>
               </div>
 
-              <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+              <div className="grid md:grid-cols-2 gap-8 max-w-2xl mx-auto">
                 {teamMembers.map((member, index) => (
                   <Card
                     key={index}

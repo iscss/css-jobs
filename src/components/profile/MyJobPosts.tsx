@@ -13,9 +13,13 @@ import {
 } from '@/components/ui/table';
 import { useUserJobs } from '@/hooks/useJobs';
 import { useRetractJob } from '@/hooks/useJobManagement';
-import { Briefcase, Edit, Eye, EyeOff, Trash2 } from 'lucide-react';
+import { Briefcase, Edit, Eye, EyeOff, Trash2, Clock, Send } from 'lucide-react';
 import JobDetailsModal from '@/components/jobs/JobDetailsModal';
 import EditJobModal from '@/components/jobs/EditJobModal';
+import { useUserProfile } from '@/hooks/useUserProfile';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { useQueryClient } from '@tanstack/react-query';
 import type { Tables } from '@/integrations/supabase/types';
 
 type Job = Tables<'jobs'> & {
@@ -24,7 +28,10 @@ type Job = Tables<'jobs'> & {
 
 const MyJobPosts = () => {
   const { data: userJobs, isLoading } = useUserJobs();
+  const { data: userProfile } = useUserProfile();
   const retractJob = useRetractJob();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [editingJob, setEditingJob] = useState<Job | null>(null);
 
@@ -33,6 +40,58 @@ const MyJobPosts = () => {
       jobId,
       isPublished: !currentStatus
     });
+  };
+
+  const handlePublishOrSubmit = async (job: Job) => {
+    const canPublishDirectly = userProfile?.can_publish_directly || userProfile?.is_admin;
+    
+    try {
+      if (canPublishDirectly) {
+        // Direct publish for experienced users
+        const { error } = await supabase
+          .from('jobs')
+          .update({ 
+            is_published: true,
+            approval_status: 'approved',
+            approved_at: new Date().toISOString()
+          })
+          .eq('id', job.id);
+          
+        if (error) throw error;
+        
+        toast({
+          title: "Job Published",
+          description: "Your job has been published successfully.",
+        });
+      } else {
+        // Submit for approval for new users
+        const { error } = await supabase
+          .from('jobs')
+          .update({ 
+            approval_status: 'pending',
+            submitted_for_approval_at: new Date().toISOString()
+          })
+          .eq('id', job.id);
+          
+        if (error) throw error;
+        
+        toast({
+          title: "Job Submitted",
+          description: "Your job has been submitted for admin approval.",
+        });
+      }
+      
+      // Refresh the user jobs list using React Query
+      queryClient.invalidateQueries({ queryKey: ['user-jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['jobs'] });
+    } catch (error) {
+      console.error('Error updating job:', error);
+      toast({
+        title: "Error updating job",
+        description: "There was an error updating the job. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const formatDate = (dateString: string | null) => {
@@ -103,9 +162,23 @@ const MyJobPosts = () => {
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
-                        <Badge variant={job.is_published ? "default" : "secondary"}>
-                          {job.is_published ? "Published" : "Draft"}
-                        </Badge>
+                        {(() => {
+                          const approvalStatus = (job as any).approval_status || 'draft';
+                          if (approvalStatus === 'pending') {
+                            return (
+                              <Badge variant="outline" className="border-yellow-300 text-yellow-700 bg-yellow-50">
+                                <Clock className="w-3 h-3 mr-1" />
+                                Pending Approval
+                              </Badge>
+                            );
+                          } else if (approvalStatus === 'approved' && job.is_published) {
+                            return <Badge variant="default">Published</Badge>;
+                          } else if (approvalStatus === 'rejected') {
+                            return <Badge variant="destructive">Rejected</Badge>;
+                          } else {
+                            return <Badge variant="secondary">Draft</Badge>;
+                          }
+                        })()}
                         {job.is_featured && (
                           <Badge variant="destructive">Featured</Badge>
                         )}
@@ -135,24 +208,63 @@ const MyJobPosts = () => {
                           <Edit className="w-4 h-4 mr-1" />
                           Edit
                         </Button>
-                        <Button
-                          size="sm"
-                          variant={job.is_published ? "destructive" : "outline"}
-                          onClick={() => handleRetractJob(job.id, job.is_published || false)}
-                          disabled={retractJob.isPending}
-                        >
-                          {job.is_published ? (
-                            <>
-                              <EyeOff className="w-4 h-4 mr-1" />
-                              Retract
-                            </>
-                          ) : (
-                            <>
-                              <Eye className="w-4 h-4 mr-1" />
-                              Publish
-                            </>
-                          )}
-                        </Button>
+                        {(() => {
+                          const approvalStatus = (job as any).approval_status || 'draft';
+                          const canPublishDirectly = userProfile?.can_publish_directly || userProfile?.is_admin;
+                          
+                          if (job.is_published) {
+                            // Published job - show retract option
+                            return (
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => handleRetractJob(job.id, true)}
+                                disabled={retractJob.isPending}
+                              >
+                                <EyeOff className="w-4 h-4 mr-1" />
+                                Retract
+                              </Button>
+                            );
+                          } else if (approvalStatus === 'pending') {
+                            // Pending approval - no action available
+                            return (
+                              <Button size="sm" variant="outline" disabled>
+                                <Clock className="w-4 h-4 mr-1" />
+                                Pending Review
+                              </Button>
+                            );
+                          } else if (approvalStatus === 'rejected') {
+                            // Rejected - allow editing only
+                            return null;
+                          } else {
+                            // Draft - show appropriate action based on user permissions
+                            if (canPublishDirectly) {
+                              return (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handlePublishOrSubmit(job as Job)}
+                                  disabled={retractJob.isPending}
+                                >
+                                  <Eye className="w-4 h-4 mr-1" />
+                                  Publish
+                                </Button>
+                              );
+                            } else {
+                              return (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handlePublishOrSubmit(job as Job)}
+                                  disabled={retractJob.isPending}
+                                >
+                                  <Send className="w-4 h-4 mr-1" />
+                                  Submit for Approval
+                                </Button>
+                              );
+                            }
+                          }
+                        })()}
                       </div>
                     </TableCell>
                   </TableRow>

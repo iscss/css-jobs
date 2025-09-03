@@ -13,6 +13,7 @@ import Admin from "./pages/Admin";
 import About from "./pages/About";
 import NotFound from "./pages/NotFound";
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import EmailVerificationHandler from './components/auth/EmailVerificationHandler';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -36,6 +37,7 @@ const AppRoutes = () => {
 
   return (
     <BrowserRouter>
+      <EmailVerificationHandler />
       <Routes>
         <Route path="/" element={<Index />} />
         <Route path="/jobs" element={<Jobs />} />
