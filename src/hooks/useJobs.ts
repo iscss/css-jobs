@@ -21,6 +21,7 @@ export const useJobs = () => {
           )
         `)
         .eq('is_published', true)
+        .eq('job_status', 'active')  // Only show active jobs to public
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -67,6 +68,8 @@ export const useCreateJob = () => {
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
       queryClient.invalidateQueries({ queryKey: ['all-jobs-admin'] });
       queryClient.invalidateQueries({ queryKey: ['user-jobs'] });
+      // Also invalidate admin view of user jobs for all users
+      queryClient.invalidateQueries({ queryKey: ['user-jobs-admin'] });
     },
   });
 };
@@ -95,5 +98,34 @@ export const useUserJobs = () => {
       return data;
     },
     enabled: !!user,
+  });
+};
+
+export const useUserJobsAdmin = (userId: string) => {
+  const { user } = useAuth();
+
+  return useQuery({
+    queryKey: ['user-jobs-admin', userId],
+    queryFn: async () => {
+      if (!user) throw new Error('User must be authenticated');
+
+      const { data, error } = await supabase
+        .from('jobs')
+        .select(`
+          id,
+          title,
+          approval_status,
+          is_published,
+          created_at,
+          job_type,
+          job_status
+        `)
+        .eq('posted_by', userId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user && !!userId,
   });
 };

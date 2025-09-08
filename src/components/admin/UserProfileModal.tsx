@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
     User,
     Mail,
@@ -14,8 +15,12 @@ import {
     Clock,
     Globe,
     GraduationCap,
-    ExternalLink
+    ExternalLink,
+    Briefcase,
+    Eye,
+    Pause
 } from 'lucide-react';
+import { useUserJobsAdmin } from '@/hooks/useJobs';
 import type { AdminUserProfile } from '@/hooks/useAdminUserProfiles';
 
 interface UserProfileModalProps {
@@ -25,6 +30,8 @@ interface UserProfileModalProps {
 }
 
 const UserProfileModal = ({ user, isOpen, onClose }: UserProfileModalProps) => {
+    const { data: userJobs, isLoading: jobsLoading } = useUserJobsAdmin(user?.id || '');
+
     if (!user) return null;
 
     const formatDate = (dateString: string | null) => {
@@ -254,6 +261,108 @@ const UserProfileModal = ({ user, isOpen, onClose }: UserProfileModalProps) => {
                                 </div>
                             )}
                         </div>
+                    </div>
+
+                    <Separator />
+
+                    {/* Job Posts Information */}
+                    <div className="space-y-4">
+                        <h3 className="font-semibold text-lg flex items-center gap-2">
+                            <Briefcase className="w-5 h-5" />
+                            Job Posts ({jobsLoading ? '...' : userJobs?.length || 0})
+                        </h3>
+                        
+                        {jobsLoading ? (
+                            <div className="space-y-2">
+                                {[...Array(3)].map((_, i) => (
+                                    <Skeleton key={i} className="h-16 w-full" />
+                                ))}
+                            </div>
+                        ) : userJobs && userJobs.length > 0 ? (
+                            <div className="space-y-3">
+                                {userJobs.map((job) => (
+                                    <div key={job.id} className="border rounded-lg p-3 bg-gray-50">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="min-w-0 flex-1">
+                                                <h4 className="font-medium truncate">{job.title}</h4>
+                                                <div className="flex items-center gap-2 mt-1 text-sm text-gray-600">
+                                                    <Calendar className="w-3 h-3" />
+                                                    <span>{formatDate(job.created_at)}</span>
+                                                    <span className="text-gray-400">•</span>
+                                                    <span className="capitalize">{job.job_type}</span>
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-col gap-1 shrink-0">
+                                                {/* Approval Status Badge */}
+                                                {job.approval_status === 'approved' && job.is_published && (
+                                                    <Badge className="bg-green-100 text-green-800 text-xs">
+                                                        Published
+                                                    </Badge>
+                                                )}
+                                                {job.approval_status === 'pending' && (
+                                                    <Badge className="bg-yellow-100 text-yellow-800 text-xs">
+                                                        Pending
+                                                    </Badge>
+                                                )}
+                                                {job.approval_status === 'rejected' && (
+                                                    <Badge className="bg-red-100 text-red-800 text-xs">
+                                                        Rejected
+                                                    </Badge>
+                                                )}
+                                                {job.approval_status === 'draft' && (
+                                                    <Badge variant="outline" className="text-xs">
+                                                        Draft
+                                                    </Badge>
+                                                )}
+                                                
+                                                {/* Job Status Badge - show for all jobs based on approval status */}
+                                                {(() => {
+                                                    // If job is published, show actual job status
+                                                    if (job.approval_status === 'approved' && job.is_published) {
+                                                        const jobStatus = (job as any).job_status || 'active';
+                                                        if (jobStatus === 'filled') {
+                                                            return (
+                                                                <Badge className="bg-green-100 text-green-800 text-xs border border-green-300">
+                                                                    <CheckCircle className="w-2 h-2 mr-1" />
+                                                                    Filled
+                                                                </Badge>
+                                                            );
+                                                        } else if (jobStatus === 'inactive') {
+                                                            return (
+                                                                <Badge className="bg-gray-100 text-gray-800 text-xs border border-gray-300">
+                                                                    <Pause className="w-2 h-2 mr-1" />
+                                                                    Inactive
+                                                                </Badge>
+                                                            );
+                                                        } else {
+                                                            return (
+                                                                <Badge className="bg-blue-100 text-blue-800 text-xs border border-blue-300">
+                                                                    <Eye className="w-2 h-2 mr-1" />
+                                                                    Active
+                                                                </Badge>
+                                                            );
+                                                        }
+                                                    } else {
+                                                        // For draft, pending, or rejected jobs, they are inactive
+                                                        return (
+                                                            <Badge className="bg-gray-100 text-gray-800 text-xs border border-gray-300">
+                                                                <Pause className="w-2 h-2 mr-1" />
+                                                                Inactive
+                                                            </Badge>
+                                                        );
+                                                    }
+                                                })()}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center py-4 text-gray-500">
+                                <Briefcase className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                                <p>No job posts found</p>
+                            </div>
+                        )}
                     </div>
                 </div>
 

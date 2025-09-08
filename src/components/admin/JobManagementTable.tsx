@@ -30,7 +30,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useAllJobs, useRetractJob, useToggleFeatured, useDeleteJob } from '@/hooks/useJobManagement';
-import { Briefcase, Eye, EyeOff, Star, StarOff, Trash2, MoreHorizontal, User, Building2, Calendar, MapPin, CheckCircle, XCircle, Mail, Send } from 'lucide-react';
+import { Briefcase, Eye, EyeOff, Star, StarOff, Trash2, MoreHorizontal, User, Building2, Calendar, MapPin, CheckCircle, XCircle, Mail, Send, Pause, RefreshCw } from 'lucide-react';
 import JobDetailsModal from '@/components/jobs/JobDetailsModal';
 import type { Tables } from '@/integrations/supabase/types';
 import { supabase } from '@/integrations/supabase/client';
@@ -57,10 +57,11 @@ const JobManagementTable = () => {
   const [approvalAction, setApprovalAction] = useState<{ jobId: string; action: 'approve' | 'reject'; jobTitle: string } | null>(null);
   const [notificationSending, setNotificationSending] = useState<string | null>(null);
 
-  const handleRetractJob = (jobId: string, currentStatus: boolean) => {
+  const handleRetractJob = (jobId: string, currentStatus: boolean, postedBy: string) => {
     retractJob.mutate({
       jobId,
-      isPublished: !currentStatus
+      isPublished: !currentStatus,
+      postedBy
     });
   };
 
@@ -70,6 +71,7 @@ const JobManagementTable = () => {
       isFeatured: !currentStatus
     });
   };
+
 
   const handleDeleteJob = (job: Job) => {
     setJobToDelete(job);
@@ -93,9 +95,18 @@ const JobManagementTable = () => {
 
       if (error) throw error;
 
+      // Get the job data to find the posted_by user ID
+      const jobToApprove = allJobs?.find(job => job.id === approvalAction.jobId);
+      
       // Invalidate queries to refresh data
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
-      queryClient.invalidateQueries({ queryKey: ['admin-jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['all-jobs-admin'] });
+      queryClient.invalidateQueries({ queryKey: ['pending-jobs-admin'] });
+      // Invalidate the job poster's personal cache so their view updates immediately
+      if (jobToApprove?.posted_by) {
+        queryClient.invalidateQueries({ queryKey: ['user-jobs', jobToApprove.posted_by] });
+        queryClient.invalidateQueries({ queryKey: ['user-profile', jobToApprove.posted_by] });
+      }
 
       toast({
         title: "Job Approved",
@@ -179,6 +190,12 @@ const JobManagementTable = () => {
       // Refresh data
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
       queryClient.invalidateQueries({ queryKey: ['all-jobs-admin'] });
+      queryClient.invalidateQueries({ queryKey: ['pending-jobs-admin'] });
+      // Also invalidate the specific job poster's cache
+      if (jobData?.posted_by) {
+        queryClient.invalidateQueries({ queryKey: ['user-jobs', jobData.posted_by] });
+        queryClient.invalidateQueries({ queryKey: ['user-profile', jobData.posted_by] });
+      }
     } catch (error) {
       console.error('Error sending notification:', error);
       toast({
@@ -321,6 +338,34 @@ const JobManagementTable = () => {
                           );
                         }
                       })()}
+                      
+                      {/* Job Status Badge */}
+                      {job.is_published && (() => {
+                        const jobStatus = (job as any).job_status || 'active';
+                        if (jobStatus === 'filled') {
+                          return (
+                            <Badge variant="outline" className="w-fit border-green-300 text-green-700 bg-green-50">
+                              <CheckCircle className="w-3 h-3 mr-1" />
+                              Filled
+                            </Badge>
+                          );
+                        } else if (jobStatus === 'inactive') {
+                          return (
+                            <Badge variant="outline" className="w-fit border-gray-300 text-gray-700 bg-gray-50">
+                              <Pause className="w-3 h-3 mr-1" />
+                              Inactive
+                            </Badge>
+                          );
+                        } else {
+                          return (
+                            <Badge variant="outline" className="w-fit border-blue-300 text-blue-700 bg-blue-50">
+                              <Eye className="w-3 h-3 mr-1" />
+                              Active
+                            </Badge>
+                          );
+                        }
+                      })()}
+                      
                       {job.is_featured && (
                         <Badge variant="destructive" className="w-fit">
                           <Star className="w-3 h-3 mr-1" />
@@ -398,7 +443,7 @@ const JobManagementTable = () => {
                             )}
                             
                             <DropdownMenuItem
-                              onClick={() => handleRetractJob(job.id, job.is_published || false)}
+                              onClick={() => handleRetractJob(job.id, job.is_published || false, job.posted_by)}
                               className="cursor-pointer"
                             >
                               {job.is_published ? (

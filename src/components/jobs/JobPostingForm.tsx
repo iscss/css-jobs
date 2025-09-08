@@ -167,6 +167,12 @@ const JobPostingForm = () => {
         }
       }
 
+      // Determine job_status based on approval status
+      let jobStatusValue = 'inactive'; // Default for draft and pending jobs
+      if (isPublished && jobStatus === 'approved') {
+        jobStatusValue = 'active'; // Only active when published and approved
+      }
+
       // Sanitize all inputs before submission
       const jobData = {
         title: sanitizeInput(data.title, 200),
@@ -185,6 +191,7 @@ const JobPostingForm = () => {
         application_deadline: data.application_deadline || null,
         is_published: isPublished,
         approval_status: jobStatus,
+        job_status: jobStatusValue,
         submitted_for_approval_at: submitForApproval || (!isDraft && !userProfile?.can_publish_directly) ? new Date().toISOString() : null,
         tags: data.tags ? data.tags.split(',').map(tag => sanitizeInput(tag.trim(), 50)).filter(tag => tag) : []
       };
