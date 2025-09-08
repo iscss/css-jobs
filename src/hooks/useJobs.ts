@@ -21,6 +21,7 @@ export const useJobs = () => {
           )
         `)
         .eq('is_published', true)
+        .eq('approval_status', 'approved')  // Required for public access by RLS policy
         .eq('job_status', 'active')  // Only show active jobs to public
         .order('created_at', { ascending: false });
 
