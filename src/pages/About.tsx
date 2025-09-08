@@ -2,21 +2,40 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
-import { Heart, Mail, Github, Globe, Users, Lightbulb, Sparkles } from "lucide-react";
+import { Heart, Mail, Github, Globe, Users, Lightbulb, Sparkles, GraduationCap } from "lucide-react";
+
+type TeamMember = {
+  name: string;
+  role: string;
+  photo: string;
+  icon: JSX.Element;
+  affiliation?: string;
+  title?: string;
+  website?: string;
+  scholar?: string;
+};
 
 const About = () => {
-  const teamMembers = [
+  const teamMembers: TeamMember[] = [
     {
       name: "Anders Giovanni Møller",
       role: "Tech",
       photo: "/team/anders.jpg",
-      icon: <Globe className="w-6 h-6" />
+      icon: <Globe className="w-6 h-6" />,
+      affiliation: "IT University of Copenhagen",
+      title: "PhD",
+      website: "https://www.andersgiovanni.com",
+      scholar: "https://scholar.google.com/citations?user=S2duMNoAAAAJ&hl=da"
     },
     {
       name: "Ceren Budak",
       role: "Advisor",
       photo: "/team/ceren.jpg",
       icon: <Lightbulb className="w-6 h-6" />,
+      affiliation: "University of Michigan",
+      title: "Associate Professor",
+      website: "http://cbudak.com/index.html",
+      scholar: "https://scholar.google.com/citations?user=wIhJS60AAAAJ&hl=en"
     },
     // {
     //   name: "Ingmar Weber",
@@ -98,49 +117,74 @@ const About = () => {
                 </p>
               </div>
 
-              <div className="grid md:grid-cols-2 gap-8 max-w-2xl mx-auto">
+              <div className="grid md:grid-cols-2 gap-12 max-w-6xl mx-auto">
                 {teamMembers.map((member, index) => (
-                  <Card
-                    key={index}
-                    className={`modern-card border-0 overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-xl ${member.highlight
-                      ? 'bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200'
-                      : 'bg-white'
-                      }`}
-                  >
-                    <CardContent className="p-0">
-                      <div className="aspect-square overflow-hidden">
-                        <img
-                          src={member.photo}
-                          alt={member.name}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            // Fallback to icon if image fails to load
-                            const target = e.target as HTMLImageElement;
-                            target.style.display = 'none';
-                            const fallback = target.nextElementSibling as HTMLElement;
-                            if (fallback) fallback.style.display = 'flex';
-                          }}
-                        />
-                        <div
-                          className={`w-full h-full items-center justify-center ${member.highlight
-                            ? 'bg-gradient-to-br from-purple-100 to-pink-100 text-purple-600'
-                            : 'bg-gradient-to-br from-indigo-100 to-purple-100 text-indigo-600'
-                            } hidden`}
-                        >
-                          {member.icon}
+                  <div key={index} className="group">
+                    <Card className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition-all duration-300 h-full md:min-h-[220px]">
+                      <div className="flex flex-col md:flex-row items-stretch">
+                        <div className="relative h-48 md:h-auto md:w-[220px] md:min-w-[220px] md:border-r md:border-slate-100">
+                          <img
+                            src={member.photo}
+                            alt={member.name}
+                            className="absolute inset-0 w-full h-full object-cover"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                              const fallback = target.nextElementSibling as HTMLElement;
+                              if (fallback) fallback.style.display = 'flex';
+                            }}
+                          />
+                          <div className="hidden absolute inset-0 items-center justify-center bg-gradient-to-br from-indigo-100 to-purple-100 text-indigo-600 text-xl">
+                            {member.icon}
+                          </div>
                         </div>
+                        <CardContent className="p-6 md:flex-1 flex flex-col justify-center gap-2">
+                          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-xs font-semibold rounded-full shadow-sm w-fit">
+                            {member.icon}
+                            {member.role.toUpperCase()}
+                          </div>
+                          <h3 className="text-2xl font-bold text-slate-900">{member.name}</h3>
+                          {member.title && (
+                            <span className="inline-flex items-center gap-2 px-3 py-1 bg-slate-100 text-slate-700 text-sm font-semibold rounded-full w-fit">
+                              <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
+                              {member.title}
+                            </span>
+                          )}
+                          {member.affiliation && (
+                            <p className="text-slate-500 text-sm font-medium">{member.affiliation}</p>
+                          )}
+                          <div className="flex flex-wrap gap-3 pt-2">
+                            {member.website && (
+                              <a
+                                href={member.website}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="w-32 group/btn relative overflow-hidden bg-gradient-to-r from-indigo-500 to-indigo-600 text-white px-4 py-2 rounded-lg font-semibold text-sm text-center transition-all duration-300 hover:from-indigo-600 hover:to-indigo-700 hover:shadow-lg"
+                              >
+                                <div className="flex items-center justify-center gap-2">
+                                  <Globe className="w-4 h-4" />
+                                  <span>Website</span>
+                                </div>
+                              </a>
+                            )}
+                            {member.scholar && (
+                              <a
+                                href={member.scholar}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="w-32 group/btn relative overflow-hidden bg-gradient-to-r from-purple-500 to-purple-600 text-white px-4 py-2 rounded-lg font-semibold text-sm text-center transition-all duration-300 hover:from-purple-600 hover:to-purple-700 hover:shadow-lg"
+                              >
+                                <div className="flex items-center justify-center gap-2">
+                                  <GraduationCap className="w-4 h-4" />
+                                  <span>Scholar</span>
+                                </div>
+                              </a>
+                            )}
+                          </div>
+                        </CardContent>
                       </div>
-                      <div className="p-8 text-center">
-                        <h3 className="text-xl font-bold text-slate-800 mb-2">
-                          {member.name}
-                        </h3>
-                        <p className={`text-md font-semibold mb-4 ${member.highlight ? 'text-purple-600' : 'text-indigo-600'
-                          }`}>
-                          {member.role}
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
+                    </Card>
+                  </div>
                 ))}
               </div>
             </div>
