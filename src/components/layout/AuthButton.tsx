@@ -22,7 +22,10 @@ const AuthButton = () => {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => signOut()}
+          onClick={async () => {
+            await signOut();
+            navigate('/');
+          }}
           className="flex items-center gap-2"
         >
           <LogOut className="w-4 h-4" />
