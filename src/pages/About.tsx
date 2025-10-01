@@ -21,7 +21,7 @@ const About = () => {
       name: "Anders Giovanni Møller",
       role: "Tech",
       photo: "/team/anders.jpg",
-      icon: <Globe className="w-6 h-6" />,
+      icon: <Globe className="w-4 h-4" />,
       affiliation: "IT University of Copenhagen",
       title: "PhD",
       website: "https://www.andersgiovanni.com",
@@ -31,7 +31,7 @@ const About = () => {
       name: "Ceren Budak",
       role: "Advisor",
       photo: "/team/ceren.jpg",
-      icon: <Lightbulb className="w-6 h-6" />,
+      icon: <Lightbulb className="w-4 h-4" />,
       affiliation: "University of Michigan",
       title: "Associate Professor",
       website: "http://cbudak.com/index.html",
@@ -41,7 +41,7 @@ const About = () => {
     //   name: "Ingmar Weber",
     //   role: "Advisor",
     //   photo: "/team/ingmar.jpg",
-    //   icon: <Users className="w-6 h-6" />
+    //   icon: <Users className="w-4 h-4" />
     // }
   ];
 
