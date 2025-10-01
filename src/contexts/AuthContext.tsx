@@ -50,7 +50,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signUp = async (email: string, password: string, fullName?: string) => {
     const redirectUrl = `${window.location.origin}/`;
-    
+
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -71,7 +71,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      // Use local scope to only sign out the current session
+      // This prevents 403 errors that can occur with global scope
+      await supabase.auth.signOut({ scope: 'local' });
+    } catch (error) {
+      console.error('Error during signOut:', error);
+      // If signOut fails, we can still clear the local session state
+      setUser(null);
+      setSession(null);
+    }
   };
 
   const value: AuthContextType = {

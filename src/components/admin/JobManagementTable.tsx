@@ -29,7 +29,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { useAllJobs, useRetractJob, useToggleFeatured, useDeleteJob } from '@/hooks/useJobManagement';
+import { useAllJobs, useRetractJob, useToggleFeatured, useDeleteJob, useUpdateJobStatus } from '@/hooks/useJobManagement';
 import { Briefcase, Eye, EyeOff, Star, StarOff, Trash2, MoreHorizontal, User, Building2, Calendar, MapPin, CheckCircle, XCircle, Mail, Send, Pause, RefreshCw } from 'lucide-react';
 import JobDetailsModal from '@/components/jobs/JobDetailsModal';
 import type { Tables } from '@/integrations/supabase/types';
@@ -47,6 +47,7 @@ const JobManagementTable = () => {
   const retractJob = useRetractJob();
   const toggleFeatured = useToggleFeatured();
   const deleteJob = useDeleteJob();
+  const updateJobStatus = useUpdateJobStatus();
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -72,6 +73,13 @@ const JobManagementTable = () => {
     });
   };
 
+  const handleUpdateJobStatus = (jobId: string, status: 'active' | 'filled' | 'inactive', postedBy: string) => {
+    updateJobStatus.mutate({
+      jobId,
+      jobStatus: status,
+      postedBy
+    });
+  };
 
   const handleDeleteJob = (job: Job) => {
     setJobToDelete(job);
@@ -474,6 +482,50 @@ const JobManagementTable = () => {
                                 </>
                               )}
                             </DropdownMenuItem>
+
+                            {/* Job Status Controls for Published Jobs */}
+                            {job.is_published && (job as any).approval_status === 'approved' && (
+                              <>
+                                <DropdownMenuSeparator />
+                                {(() => {
+                                  const jobStatus = (job as any).job_status || 'active';
+                                  if (jobStatus === 'active') {
+                                    return (
+                                      <>
+                                        <DropdownMenuItem
+                                          onClick={() => handleUpdateJobStatus(job.id, 'filled', job.posted_by)}
+                                          disabled={updateJobStatus.isPending}
+                                          className="cursor-pointer text-green-600 focus:text-green-600"
+                                        >
+                                          <CheckCircle className="w-4 h-4 mr-2" />
+                                          Mark as Filled
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                          onClick={() => handleUpdateJobStatus(job.id, 'inactive', job.posted_by)}
+                                          disabled={updateJobStatus.isPending}
+                                          className="cursor-pointer text-gray-600 focus:text-gray-600"
+                                        >
+                                          <Pause className="w-4 h-4 mr-2" />
+                                          Set Inactive
+                                        </DropdownMenuItem>
+                                      </>
+                                    );
+                                  } else {
+                                    return (
+                                      <DropdownMenuItem
+                                        onClick={() => handleUpdateJobStatus(job.id, 'active', job.posted_by)}
+                                        disabled={updateJobStatus.isPending}
+                                        className="cursor-pointer text-blue-600 focus:text-blue-600"
+                                      >
+                                        <Eye className="w-4 h-4 mr-2" />
+                                        Reactivate Job
+                                      </DropdownMenuItem>
+                                    );
+                                  }
+                                })()}
+                              </>
+                            )}
+
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               onClick={() => handleDeleteJob(job as Job)}

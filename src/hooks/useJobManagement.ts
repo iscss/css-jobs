@@ -227,28 +227,35 @@ export const useUpdateJobStatus = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { data: isAdmin } = useAdminCheck();
 
   return useMutation({
     mutationFn: async ({
       jobId,
-      jobStatus
+      jobStatus,
+      postedBy
     }: {
       jobId: string;
       jobStatus: 'active' | 'filled' | 'inactive';
+      postedBy?: string;
     }) => {
       if (!user) throw new Error('User must be authenticated');
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('jobs')
         .update({
           job_status: jobStatus,
           status_updated_at: new Date().toISOString(),
           status_updated_by: user.id
         })
-        .eq('id', jobId)
-        .eq('posted_by', user.id) // Ensure user can only update their own jobs
-        .select()
-        .single();
+        .eq('id', jobId);
+
+      // Only restrict to own jobs if not admin
+      if (!isAdmin) {
+        query = query.eq('posted_by', user.id);
+      }
+
+      const { data, error } = await query.select().single();
 
       if (error) throw error;
       return data;
@@ -258,6 +265,11 @@ export const useUpdateJobStatus = () => {
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
       queryClient.invalidateQueries({ queryKey: ['all-jobs-admin'] });
       queryClient.invalidateQueries({ queryKey: ['user-jobs', user?.id] });
+
+      // If admin updating another user's job, invalidate their cache too
+      if (variables.postedBy && variables.postedBy !== user?.id) {
+        queryClient.invalidateQueries({ queryKey: ['user-jobs', variables.postedBy] });
+      }
 
       const statusLabels = {
         active: 'Active',
