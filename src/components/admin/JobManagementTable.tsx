@@ -93,19 +93,43 @@ const JobManagementTable = () => {
 
   const confirmJobApproval = async () => {
     if (!approvalAction) return;
-    
-    try {
-      // Call our database function to approve job and update user counter
-      const { error } = await supabase.rpc('approve_job_and_update_counter', {
-        job_id: approvalAction.jobId,
-        admin_id: user?.id
-      });
 
-      if (error) throw error;
+    try {
+      if (approvalAction.action === 'approve') {
+        // Call our database function to approve job and update user counter
+        const { error } = await supabase.rpc('approve_job_and_update_counter', {
+          job_id: approvalAction.jobId,
+          admin_id: user?.id
+        });
+
+        if (error) throw error;
+
+        toast({
+          title: "Job Approved",
+          description: "The job has been approved and published successfully.",
+        });
+      } else {
+        // Reject the job
+        const { error } = await supabase
+          .from('jobs')
+          .update({
+            approval_status: 'rejected',
+            approved_at: new Date().toISOString(),
+            approved_by_admin: user?.id
+          })
+          .eq('id', approvalAction.jobId);
+
+        if (error) throw error;
+
+        toast({
+          title: "Job Rejected",
+          description: "The job has been rejected and the user has been notified.",
+        });
+      }
 
       // Get the job data to find the posted_by user ID
       const jobToApprove = allJobs?.find(job => job.id === approvalAction.jobId);
-      
+
       // Invalidate queries to refresh data
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
       queryClient.invalidateQueries({ queryKey: ['all-jobs-admin'] });
@@ -115,16 +139,11 @@ const JobManagementTable = () => {
         queryClient.invalidateQueries({ queryKey: ['user-jobs', jobToApprove.posted_by] });
         queryClient.invalidateQueries({ queryKey: ['user-profile', jobToApprove.posted_by] });
       }
-
-      toast({
-        title: "Job Approved",
-        description: "The job has been approved and published successfully.",
-      });
     } catch (error) {
-      console.error('Error approving job:', error);
+      console.error('Error processing job approval:', error);
       toast({
-        title: "Error approving job",
-        description: "There was an error approving the job. Please try again.",
+        title: `Error ${approvalAction.action === 'approve' ? 'approving' : 'rejecting'} job`,
+        description: `There was an error ${approvalAction.action === 'approve' ? 'approving' : 'rejecting'} the job. Please try again.`,
         variant: "destructive",
       });
     } finally {

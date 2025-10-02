@@ -88,13 +88,19 @@ export const useRetractJob = () => {
       if (!user) throw new Error('User must be authenticated');
 
       const updateData: any = { is_published: isPublished };
-      
+
       // If retracting (setting to unpublished), change status back to draft
       if (!isPublished) {
         updateData.approval_status = 'draft';
         updateData.approved_at = null;
         updateData.approved_by_admin = null;
         updateData.job_status = 'inactive'; // Set job status to inactive when not published
+      } else {
+        // If publishing, set approval status to approved and job status to active
+        updateData.approval_status = 'approved';
+        updateData.approved_at = new Date().toISOString();
+        updateData.approved_by_admin = user.id;
+        updateData.job_status = 'active'; // Set job status to active when publishing
       }
 
       const { data, error } = await supabase

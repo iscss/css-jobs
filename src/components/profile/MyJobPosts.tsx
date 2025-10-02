@@ -343,7 +343,7 @@ const MyJobPosts = () => {
                               const approvalStatus = (job as any).approval_status || 'draft';
                               const jobStatus = (job as any).job_status || 'active';
                               const canPublishDirectly = userProfile?.can_publish_directly || userProfile?.is_admin;
-                              
+
                               if (job.is_published && approvalStatus === 'approved') {
                                 // Published job - show job status controls
                                 return (
@@ -405,8 +405,8 @@ const MyJobPosts = () => {
                                     </DropdownMenuItem>
                                   </>
                                 );
-                              } else if (approvalStatus !== 'rejected') {
-                                // Draft - show appropriate action based on user permissions
+                              } else if (approvalStatus === 'draft' || approvalStatus === 'rejected') {
+                                // Draft or Rejected - show appropriate action based on user permissions
                                 return (
                                   <>
                                     <DropdownMenuSeparator />
@@ -417,7 +417,7 @@ const MyJobPosts = () => {
                                         className="cursor-pointer text-blue-600 focus:text-blue-600"
                                       >
                                         <Eye className="w-4 h-4 mr-2" />
-                                        Publish Job
+                                        {approvalStatus === 'rejected' ? 'Resubmit Job' : 'Publish Job'}
                                       </DropdownMenuItem>
                                     ) : (
                                       <DropdownMenuItem
@@ -426,7 +426,7 @@ const MyJobPosts = () => {
                                         className="cursor-pointer text-blue-600 focus:text-blue-600"
                                       >
                                         <Send className="w-4 h-4 mr-2" />
-                                        Submit for Approval
+                                        {approvalStatus === 'rejected' ? 'Resubmit for Approval' : 'Submit for Approval'}
                                       </DropdownMenuItem>
                                     )}
                                   </>
