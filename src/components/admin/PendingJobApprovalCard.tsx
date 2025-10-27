@@ -167,7 +167,7 @@ const PendingJobApprovalCard = ({ job }: PendingJobApprovalCardProps) => {
                     </div>
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <Calendar className="w-4 h-4" />
-                      <span>Submitted {formatTimeAgo((job as any).submitted_for_approval_at)}</span>
+                      <span>Submitted {formatTimeAgo((job as Record<string, unknown>).submitted_for_approval_at as string | null)}</span>
                     </div>
                   </div>
                 </div>

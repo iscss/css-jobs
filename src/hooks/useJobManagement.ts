@@ -87,7 +87,7 @@ export const useRetractJob = () => {
     }) => {
       if (!user) throw new Error('User must be authenticated');
 
-      const updateData: any = { is_published: isPublished };
+      const updateData: Record<string, unknown> = { is_published: isPublished };
 
       // If retracting (setting to unpublished), change status back to draft
       if (!isPublished) {

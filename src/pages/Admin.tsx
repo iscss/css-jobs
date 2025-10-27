@@ -211,7 +211,7 @@ const Admin = () => {
                       pendingJobs.map((job) => (
                         <PendingJobApprovalCard
                           key={job.id}
-                          job={job as any}
+                          job={job}
                         />
                       ))
                     ) : (

@@ -183,8 +183,8 @@ const JobManagementTable = () => {
       if (error) throw error;
 
       // Queue the actual email notification
-      const posterEmail = (jobData as any).user_profiles?.email;
-      const posterName = (jobData as any).user_profiles?.full_name;
+      const posterEmail = (jobData as Record<string, unknown>).user_profiles?.email;
+      const posterName = (jobData as Record<string, unknown>).user_profiles?.full_name;
       
       if (posterEmail) {
         const { error: emailError } = await supabase
@@ -323,10 +323,10 @@ const JobManagementTable = () => {
                     </div>
                     <div>
                       <div className="font-medium text-sm">
-                        {(job as any).user_profiles?.full_name || 'Unknown User'}
+                        {(job as Record<string, unknown>).user_profiles?.full_name || 'Unknown User'}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        {(job as any).user_profiles?.email || 'No email'}
+                        {(job as Record<string, unknown>).user_profiles?.email || 'No email'}
                       </div>
                     </div>
                   </div>
@@ -338,7 +338,7 @@ const JobManagementTable = () => {
                     </Badge>
                     <div className="flex flex-col gap-1">
                       {(() => {
-                        const approvalStatus = (job as any).approval_status || 'draft';
+                        const approvalStatus = (job as Record<string, unknown>).approval_status || 'draft';
                         if (approvalStatus === 'pending') {
                           return (
                             <Badge variant="outline" className="w-fit border-yellow-300 text-yellow-700 bg-yellow-50">
@@ -368,7 +368,7 @@ const JobManagementTable = () => {
                       
                       {/* Job Status Badge */}
                       {job.is_published && (() => {
-                        const jobStatus = (job as any).job_status || 'active';
+                        const jobStatus = (job as Record<string, unknown>).job_status || 'active';
                         if (jobStatus === 'filled') {
                           return (
                             <Badge variant="outline" className="w-fit border-green-300 text-green-700 bg-green-50">
@@ -432,7 +432,7 @@ const JobManagementTable = () => {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-48">
                         {/* For pending jobs: Only show Approve & Reject */}
-                        {(job as any).approval_status === 'pending' && (
+                        {(job as Record<string, unknown>).approval_status === 'pending' && (
                           <>
                             <DropdownMenuItem
                               onClick={() => handleJobApproval(job.id, 'approve', job.title)}
@@ -452,10 +452,10 @@ const JobManagementTable = () => {
                         )}
                         
                         {/* For published/draft jobs: Show standard options */}
-                        {(job as any).approval_status !== 'pending' && (
+                        {(job as Record<string, unknown>).approval_status !== 'pending' && (
                           <>
                             {/* Send notification for approved jobs that haven't been notified */}
-                            {(job as any).approval_status === 'approved' && job.is_published && !(job as any).notification_sent_at && (
+                            {(job as Record<string, unknown>).approval_status === 'approved' && job.is_published && !(job as Record<string, unknown>).notification_sent_at && (
                               <>
                                 <DropdownMenuItem
                                   onClick={() => handleSendNotification(job.id, job.title)}
@@ -503,11 +503,11 @@ const JobManagementTable = () => {
                             </DropdownMenuItem>
 
                             {/* Job Status Controls for Published Jobs */}
-                            {job.is_published && (job as any).approval_status === 'approved' && (
+                            {job.is_published && (job as Record<string, unknown>).approval_status === 'approved' && (
                               <>
                                 <DropdownMenuSeparator />
                                 {(() => {
-                                  const jobStatus = (job as any).job_status || 'active';
+                                  const jobStatus = (job as Record<string, unknown>).job_status || 'active';
                                   if (jobStatus === 'active') {
                                     return (
                                       <>

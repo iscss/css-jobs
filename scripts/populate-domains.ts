@@ -88,7 +88,7 @@ async function populateDomains() {
 
     console.log(`\n✅ Successfully loaded ${insertedCount} university domains into database`);
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ Error populating domains:', error);
     process.exit(1);
   }

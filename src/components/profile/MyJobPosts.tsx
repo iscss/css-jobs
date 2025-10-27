@@ -258,7 +258,7 @@ const MyJobPosts = () => {
                     <TableCell>
                       <div className="flex gap-2">
                         {(() => {
-                          const approvalStatus = (job as any).approval_status || 'draft';
+                          const approvalStatus = (job as Record<string, unknown>).approval_status || 'draft';
                           if (approvalStatus === 'pending') {
                             return (
                               <Badge variant="outline" className="border-yellow-300 text-yellow-700 bg-yellow-50">
@@ -281,7 +281,7 @@ const MyJobPosts = () => {
                     </TableCell>
                     <TableCell>
                       {(() => {
-                        const jobStatus = (job as any).job_status || 'active';
+                        const jobStatus = (job as Record<string, unknown>).job_status || 'active';
                         if (jobStatus === 'filled') {
                           return (
                             <Badge variant="outline" className="border-green-300 text-green-700 bg-green-50">
@@ -340,8 +340,8 @@ const MyJobPosts = () => {
                             </DropdownMenuItem>
                             
                             {(() => {
-                              const approvalStatus = (job as any).approval_status || 'draft';
-                              const jobStatus = (job as any).job_status || 'active';
+                              const approvalStatus = (job as Record<string, unknown>).approval_status || 'draft';
+                              const jobStatus = (job as Record<string, unknown>).job_status || 'active';
                               const canPublishDirectly = userProfile?.can_publish_directly || userProfile?.is_admin;
 
                               if (job.is_published && approvalStatus === 'approved') {

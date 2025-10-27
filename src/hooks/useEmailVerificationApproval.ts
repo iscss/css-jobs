@@ -116,7 +116,7 @@ export const triggerAutoApproval = async (userEmail: string, userId: string) => 
       university: universityInfo.name,
       country: universityInfo.country 
     };
-  } catch (error: any) {
-    return { success: false, reason: error.message };
+  } catch (error: unknown) {
+    return { success: false, reason: error instanceof Error ? error.message : 'Unknown error' };
   }
 };

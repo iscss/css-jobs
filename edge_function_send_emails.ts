@@ -16,7 +16,7 @@ interface EmailQueueItem {
     alert_id?: string;
     retry_count: number;
     max_retries: number;
-    metadata: Record<string, any>;
+    metadata: Record<string, unknown>;
 }
 
 interface ResendResponse {

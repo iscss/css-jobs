@@ -144,9 +144,9 @@ export class DomainLoader {
       console.log(`Successfully loaded ${insertedCount} university domains into database`);
       
       return { success: true, count: insertedCount };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error populating domains:', error);
-      return { success: false, count: 0, error: error.message };
+      return { success: false, count: 0, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
 

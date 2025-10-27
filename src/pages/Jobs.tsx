@@ -171,7 +171,7 @@ const Jobs = () => {
     setFilteredJobs(filtered);
   }, [jobs, filters]);
 
-  const handleFiltersChange = (newFilters: any) => {
+  const handleFiltersChange = (newFilters: Partial<typeof filters>) => {
     setFilters(prev => ({ ...prev, ...newFilters }));
   };
 

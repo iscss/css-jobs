@@ -319,7 +319,7 @@ const UserProfileModal = ({ user, isOpen, onClose }: UserProfileModalProps) => {
                                                 {(() => {
                                                     // If job is published, show actual job status
                                                     if (job.approval_status === 'approved' && job.is_published) {
-                                                        const jobStatus = (job as any).job_status || 'active';
+                                                        const jobStatus = (job as Record<string, unknown>).job_status || 'active';
                                                         if (jobStatus === 'filled') {
                                                             return (
                                                                 <Badge className="bg-green-100 text-green-800 text-xs border border-green-300">

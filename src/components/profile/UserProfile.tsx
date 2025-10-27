@@ -45,7 +45,7 @@ const UserProfile = () => {
     if (!user) return;
 
     try {
-      const updateData: any = {
+      const updateData: Record<string, unknown> = {
         full_name: data.full_name,
         institution: data.institution,
         orcid_id: data.orcid_id,
@@ -247,13 +247,13 @@ const UserProfile = () => {
                 )}
                 {profile?.user_type !== 'job_seeker' && profile?.approval_status === 'approved' && (
                   <div className="space-y-2 mt-2">
-                    {(profile as any).can_publish_directly ? (
+                    {(profile as Record<string, unknown>).can_publish_directly ? (
                       <p className="text-green-700">
-                        ✓ Account approved for job posting with direct publishing privileges ({(profile as any).approved_jobs_count || 0} approved jobs)
+                        ✓ Account approved for job posting with direct publishing privileges ({(profile as Record<string, unknown>).approved_jobs_count || 0} approved jobs)
                       </p>
                     ) : (
                       <p className="text-orange-700">
-                        Account approved for job posting - jobs require admin approval before publishing ({(profile as any).approved_jobs_count || 0}/3 approved jobs needed for direct publishing)
+                        Account approved for job posting - jobs require admin approval before publishing ({(profile as Record<string, unknown>).approved_jobs_count || 0}/3 approved jobs needed for direct publishing)
                       </p>
                     )}
                   </div>

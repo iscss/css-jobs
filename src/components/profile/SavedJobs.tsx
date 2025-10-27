@@ -11,12 +11,12 @@ import JobDetailsModal from "@/components/jobs/JobDetailsModal";
 const SavedJobs = () => {
   const { data: savedJobs, isLoading: savedJobsLoading } = useSavedJobs();
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedJob, setSelectedJob] = useState(null);
+  const [selectedJob, setSelectedJob] = useState<unknown>(null);
 
   const getFilteredSavedJobs = () => {
     if (!savedJobs) return [];
 
-    return savedJobs.filter((savedJob: any) => {
+    return savedJobs.filter((savedJob: Record<string, unknown>) => {
       if (!searchTerm) return true;
 
       const job = savedJob.jobs;
@@ -64,7 +64,7 @@ const SavedJobs = () => {
             </div>
           ) : getFilteredSavedJobs().length > 0 ? (
             <div className="space-y-4">
-              {getFilteredSavedJobs().map((savedJob: any) => (
+              {getFilteredSavedJobs().map((savedJob: Record<string, unknown>) => (
                 <CompactJobCard
                   key={`saved-${savedJob.id}`}
                   job={savedJob.jobs}

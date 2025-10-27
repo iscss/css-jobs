@@ -337,7 +337,7 @@ const JobPostingForm = () => {
 
               <div className="space-y-2">
                 <Label htmlFor="job_type">Job Type *</Label>
-                <Select onValueChange={(value) => setValue('job_type', value as any)}>
+                <Select onValueChange={(value) => setValue('job_type', value as JobFormData['job_type'])}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select job type" />
                   </SelectTrigger>

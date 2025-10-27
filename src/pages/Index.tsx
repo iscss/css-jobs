@@ -86,7 +86,7 @@ const Index = () => {
       // Filter by topics
       if (filters.topics && filters.topics.length > 0) {
         filtered = filtered.filter(job =>
-          job.job_tags?.some((tag: any) => filters.topics.includes(tag.tag))
+          job.job_tags?.some((tag: { tag: string }) => filters.topics.includes(tag.tag))
         );
       }
 
