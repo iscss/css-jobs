@@ -7,6 +7,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Jobs from "./pages/Jobs";
 import Auth from "./pages/Auth";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import PostJob from "./pages/PostJob";
 import Profile from "./pages/Profile";
 import Admin from "./pages/Admin";
@@ -43,6 +45,8 @@ const AppRoutes = () => {
         <Route path="/" element={<Index />} />
         <Route path="/jobs" element={<Jobs />} />
         <Route path="/auth" element={<Auth />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/post-job" element={<PostJob />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/admin" element={<Admin />} />

@@ -11,6 +11,8 @@ interface AuthContextType {
   signUp: (email: string, password: string, fullName?: string) => Promise<{ error: unknown }>;
   signIn: (email: string, password: string) => Promise<{ error: unknown }>;
   signOut: () => Promise<void>;
+  requestPasswordReset: (email: string) => Promise<{ error: unknown }>;
+  resetPassword: (newPassword: string) => Promise<{ error: unknown }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -118,13 +120,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const requestPasswordReset = async (email: string) => {
+    // Rate limiting check
+    const rateLimitCheck = authRateLimiter.check(email.toLowerCase());
+    if (!rateLimitCheck.isAllowed) {
+      return {
+        error: {
+          message: rateLimitCheck.message || 'Too many password reset attempts',
+          status: 429,
+        }
+      };
+    }
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+
+    // Don't reset rate limit on success for security (don't reveal if email exists)
+    return { error };
+  };
+
+  const resetPassword = async (newPassword: string) => {
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword
+    });
+
+    return { error };
+  };
+
   const value: AuthContextType = {
     user,
     session,
     loading,
     signUp,
     signIn,
-    signOut
+    signOut,
+    requestPasswordReset,
+    resetPassword
   };
 
   return (
