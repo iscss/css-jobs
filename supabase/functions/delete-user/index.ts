@@ -1,14 +1,38 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.2'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+// Allowed origins for CORS
+const ALLOWED_ORIGINS = [
+  'https://css-jobs.andersgiovanni.com',
+  'http://localhost:8080',
+  'http://localhost:5173',
+];
 
 Deno.serve(async (req) => {
+  // Validate origin
+  const origin = req.headers.get('origin');
+  const isAllowedOrigin = ALLOWED_ORIGINS.includes(origin || '');
+
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': isAllowedOrigin ? origin! : ALLOWED_ORIGINS[0],
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Max-Age': '86400',
+  };
+
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders, status: 204 });
+  }
+
+  // Block requests from disallowed origins
+  if (!isAllowedOrigin) {
+    return new Response(
+      JSON.stringify({ error: 'Origin not allowed' }),
+      {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      }
+    );
   }
 
   try {
