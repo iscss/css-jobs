@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { authRateLimiter, signupRateLimiter } from '@/lib/rate-limit';
+import { authRateLimiter, signupRateLimiter, passwordResetRateLimiter } from '@/lib/rate-limit';
 
 interface AuthContextType {
   user: User | null;
@@ -122,7 +122,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const requestPasswordReset = async (email: string) => {
     // Rate limiting check
-    const rateLimitCheck = authRateLimiter.check(email.toLowerCase());
+    const rateLimitCheck = passwordResetRateLimiter.check(email.toLowerCase());
     if (!rateLimitCheck.isAllowed) {
       return {
         error: {
