@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { authRateLimiter, signupRateLimiter } from '@/lib/rate-limit';
 
 interface AuthContextType {
   user: User | null;
@@ -49,6 +50,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const signUp = async (email: string, password: string, fullName?: string) => {
+    // Rate limiting check
+    const rateLimitCheck = signupRateLimiter.check(email.toLowerCase());
+    if (!rateLimitCheck.isAllowed) {
+      return {
+        error: {
+          message: rateLimitCheck.message || 'Too many signup attempts',
+          status: 429,
+        }
+      };
+    }
+
     const redirectUrl = `${window.location.origin}/`;
 
     const { error } = await supabase.auth.signUp({
@@ -59,14 +71,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         data: fullName ? { full_name: fullName } : undefined
       }
     });
+
+    // Reset rate limit on successful signup
+    if (!error) {
+      signupRateLimiter.reset(email.toLowerCase());
+    }
+
     return { error };
   };
 
   const signIn = async (email: string, password: string) => {
+    // Rate limiting check
+    const rateLimitCheck = authRateLimiter.check(email.toLowerCase());
+    if (!rateLimitCheck.isAllowed) {
+      return {
+        error: {
+          message: rateLimitCheck.message || 'Too many login attempts',
+          status: 429,
+        }
+      };
+    }
+
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password
     });
+
+    // Reset rate limit on successful sign in
+    if (!error) {
+      authRateLimiter.reset(email.toLowerCase());
+    }
+
     return { error };
   };
 
