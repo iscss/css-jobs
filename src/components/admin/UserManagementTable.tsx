@@ -98,9 +98,13 @@ const UserManagementTable = () => {
   };
 
   const handleTogglePoster = (userId: string, currentStatus: boolean) => {
+    const newPosterStatus = !currentStatus;
     updatePermissions.mutate({
       userId,
-      updates: { is_approved_poster: !currentStatus }
+      updates: { 
+        is_approved_poster: newPosterStatus,
+        user_type: newPosterStatus ? 'job_poster' : 'job_seeker'
+      }
     });
   };
 
@@ -153,7 +157,7 @@ const UserManagementTable = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {allUsers?.map((user) => (
+              {allUsers?.sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime())?.map((user) => (
                 <TableRow key={user.id} className="hover:bg-muted/50 transition-colors">
                   <TableCell className="pl-6 py-6">
                     <div className="space-y-2">

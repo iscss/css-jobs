@@ -7,13 +7,40 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "13.0.4"
   }
   public: {
     Tables: {
+      approved_domains: {
+        Row: {
+          country: string | null
+          created_at: string | null
+          domain: string
+          id: string
+          institution_name: string
+          updated_at: string | null
+        }
+        Insert: {
+          country?: string | null
+          created_at?: string | null
+          domain: string
+          id?: string
+          institution_name: string
+          updated_at?: string | null
+        }
+        Update: {
+          country?: string | null
+          created_at?: string | null
+          domain?: string
+          id?: string
+          institution_name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       email_queue: {
         Row: {
           alert_id: string | null
@@ -194,6 +221,11 @@ export type Database = {
         Row: {
           application_deadline: string | null
           application_url: string | null
+          approval_status:
+            | Database["public"]["Enums"]["job_approval_status"]
+            | null
+          approved_at: string | null
+          approved_by_admin: string | null
           contact_email: string | null
           created_at: string
           department: string | null
@@ -205,17 +237,28 @@ export type Database = {
           is_featured: boolean | null
           is_published: boolean | null
           is_remote: boolean | null
+          job_status: string | null
           job_type: Database["public"]["Enums"]["job_type"]
           location: string
+          notification_sent_at: string | null
+          notification_sent_by: string | null
           pi_name: string | null
           posted_by: string
           requirements: string | null
+          status_updated_at: string | null
+          status_updated_by: string | null
+          submitted_for_approval_at: string | null
           title: string
           updated_at: string
         }
         Insert: {
           application_deadline?: string | null
           application_url?: string | null
+          approval_status?:
+            | Database["public"]["Enums"]["job_approval_status"]
+            | null
+          approved_at?: string | null
+          approved_by_admin?: string | null
           contact_email?: string | null
           created_at?: string
           department?: string | null
@@ -227,17 +270,28 @@ export type Database = {
           is_featured?: boolean | null
           is_published?: boolean | null
           is_remote?: boolean | null
+          job_status?: string | null
           job_type?: Database["public"]["Enums"]["job_type"]
           location: string
+          notification_sent_at?: string | null
+          notification_sent_by?: string | null
           pi_name?: string | null
           posted_by: string
           requirements?: string | null
+          status_updated_at?: string | null
+          status_updated_by?: string | null
+          submitted_for_approval_at?: string | null
           title: string
           updated_at?: string
         }
         Update: {
           application_deadline?: string | null
           application_url?: string | null
+          approval_status?:
+            | Database["public"]["Enums"]["job_approval_status"]
+            | null
+          approved_at?: string | null
+          approved_by_admin?: string | null
           contact_email?: string | null
           created_at?: string
           department?: string | null
@@ -249,18 +303,45 @@ export type Database = {
           is_featured?: boolean | null
           is_published?: boolean | null
           is_remote?: boolean | null
+          job_status?: string | null
           job_type?: Database["public"]["Enums"]["job_type"]
           location?: string
+          notification_sent_at?: string | null
+          notification_sent_by?: string | null
           pi_name?: string | null
           posted_by?: string
           requirements?: string | null
+          status_updated_at?: string | null
+          status_updated_by?: string | null
+          submitted_for_approval_at?: string | null
           title?: string
           updated_at?: string
         }
         Relationships: [
           {
+            foreignKeyName: "jobs_approved_by_admin_fkey"
+            columns: ["approved_by_admin"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_notification_sent_by_fkey"
+            columns: ["notification_sent_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "jobs_posted_by_fkey"
             columns: ["posted_by"]
+            isOneToOne: false
+            referencedRelation: "user_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_status_updated_by_fkey"
+            columns: ["status_updated_by"]
             isOneToOne: false
             referencedRelation: "user_profiles"
             referencedColumns: ["id"]
@@ -368,11 +449,32 @@ export type Database = {
           },
         ]
       }
+      system_settings: {
+        Row: {
+          key: string
+          updated_at: string | null
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string | null
+          value: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string | null
+          value?: Json
+        }
+        Relationships: []
+      }
       user_profiles: {
         Row: {
           approval_status: string | null
           approved_at: string | null
           approved_by: string | null
+          approved_jobs_count: number | null
+          auto_approved_at: string | null
+          can_publish_directly: boolean | null
           created_at: string
           email: string | null
           full_name: string | null
@@ -391,6 +493,9 @@ export type Database = {
           approval_status?: string | null
           approved_at?: string | null
           approved_by?: string | null
+          approved_jobs_count?: number | null
+          auto_approved_at?: string | null
+          can_publish_directly?: boolean | null
           created_at?: string
           email?: string | null
           full_name?: string | null
@@ -409,6 +514,9 @@ export type Database = {
           approval_status?: string | null
           approved_at?: string | null
           approved_by?: string | null
+          approved_jobs_count?: number | null
+          auto_approved_at?: string | null
+          can_publish_directly?: boolean | null
           created_at?: string
           email?: string | null
           full_name?: string | null
@@ -430,10 +538,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      can_access_admin_user_profiles: {
-        Args: Record<PropertyKey, never>
+      approve_job_and_update_counter: {
+        Args: { admin_id: string; job_id: string }
+        Returns: undefined
+      }
+      auto_approve_user_by_domain: {
+        Args: { user_email: string; user_id: string }
         Returns: boolean
       }
+      can_access_admin_user_profiles: { Args: never; Returns: boolean }
+      can_user_publish_directly: { Args: { user_id: string }; Returns: boolean }
       can_view_sensitive_profile_data: {
         Args: { profile_user_id: string }
         Returns: boolean
@@ -447,57 +561,53 @@ export type Database = {
         Returns: number
       }
       get_admin_user_profiles: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
-          id: string
-          full_name: string
-          email: string
-          institution: string
-          orcid_id: string
-          google_scholar_url: string
-          website_url: string
-          user_type: string
           approval_status: string
-          is_admin: boolean
-          is_approved_poster: boolean
-          created_at: string
-          updated_at: string
-          requested_at: string
           approved_at: string
           approved_by: string
-          auth_email: string
-          email_confirmed_at: string
-          last_sign_in_at: string
           auth_created_at: string
+          auth_email: string
+          created_at: string
+          email: string
+          email_confirmed_at: string
+          full_name: string
+          google_scholar_url: string
+          id: string
+          institution: string
+          is_admin: boolean
+          is_approved_poster: boolean
+          last_sign_in_at: string
+          orcid_id: string
+          requested_at: string
+          updated_at: string
+          user_type: string
+          website_url: string
         }[]
       }
       get_user_job_matches: {
-        Args: { user_id_param: string; limit_param?: number }
+        Args: { limit_param?: number; user_id_param: string }
         Returns: {
-          job_id: string
-          job_title: string
-          job_institution: string
-          job_location: string
           alert_keywords: string
           alert_location: string
+          job_id: string
+          job_institution: string
+          job_location: string
+          job_title: string
           matched_at: string
         }[]
       }
-      is_admin: {
-        Args: { user_id: string }
-        Returns: boolean
-      }
+      is_admin: { Args: { user_id?: string }; Returns: boolean }
       job_matches_alert: {
         Args: {
-          job_row: Database["public"]["Tables"]["jobs"]["Row"]
           alert_row: Database["public"]["Tables"]["job_alerts"]["Row"]
+          job_row: Database["public"]["Tables"]["jobs"]["Row"]
         }
         Returns: boolean
       }
-      queue_deadline_reminders: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
+      populate_approved_domains: { Args: never; Returns: string }
+      populate_university_domains: { Args: never; Returns: number }
+      queue_deadline_reminders: { Args: never; Returns: number }
       queue_job_alert_emails: {
         Args: { job_id_param: string }
         Returns: number
@@ -505,6 +615,7 @@ export type Database = {
     }
     Enums: {
       application_status: "pending" | "approved" | "rejected"
+      job_approval_status: "draft" | "pending" | "approved" | "rejected"
       job_type:
         | "PhD"
         | "Postdoc"
@@ -640,6 +751,7 @@ export const Constants = {
   public: {
     Enums: {
       application_status: ["pending", "approved", "rejected"],
+      job_approval_status: ["draft", "pending", "approved", "rejected"],
       job_type: [
         "PhD",
         "Postdoc",

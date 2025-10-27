@@ -8,16 +8,18 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Star, MapPin, Globe } from "lucide-react";
 
+interface JobFilters {
+  search: string;
+  types: string[];
+  remote: boolean;
+  featured: boolean;
+  region: string;
+  country: string;
+}
+
 interface JobFiltersProps {
-  onFiltersChange: (filters: any) => void;
-  currentFilters?: {
-    search: string;
-    types: string[];
-    remote: boolean;
-    featured: boolean;
-    region: string;
-    country: string;
-  };
+  onFiltersChange: (filters: Partial<JobFilters>) => void;
+  currentFilters?: JobFilters;
 }
 
 const JobFilters = ({ onFiltersChange, currentFilters }: JobFiltersProps) => {

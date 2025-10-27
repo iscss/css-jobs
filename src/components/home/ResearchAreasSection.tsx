@@ -9,12 +9,12 @@ const ResearchAreasSection = () => {
       url: "https://iscss.org/",
       description: "The International Society for Computational Social Science"
     },
-    {
-      name: "IC2S2",
-      image: "/sponsors/IC2S2-Logo-White.png",
-      url: "https://ic2s2.org/",
-      description: "The International Conference on Computational Social Science"
-    },
+    // {
+    //   name: "IC2S2",
+    //   image: "/sponsors/IC2S2-Logo-White.png",
+    //   url: "https://ic2s2.org/",
+    //   description: "The International Conference on Computational Social Science"
+    // },
     {
       name: "ICWSM",
       image: "/sponsors/ICWSM-2025.png",
@@ -28,14 +28,14 @@ const ResearchAreasSection = () => {
       <div className="container mx-auto px-4">
         <div className="text-center mb-16">
           <h2 className="text-4xl md:text-5xl font-bold text-slate-800 mb-6">
-            Our <span className="text-gradient-primary">Sponsors</span>
+            Made by and for the <span className="text-gradient-primary">community</span>
           </h2>
           <p className="text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed">
-            Collaborating with leading institutions, organizations, and conferences to advance computational social science.
+            Supported by
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+        <div className="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto">
           {sponsors.map((sponsor, index) => (
             <Card
               key={index}
@@ -43,7 +43,7 @@ const ResearchAreasSection = () => {
               onClick={() => window.open(sponsor.url, '_blank')}
             >
               <CardContent className="p-0">
-                <div className="aspect-[4/3] overflow-hidden bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-8">
+                <div className="aspect-[4/4] overflow-hidden bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-8">
                   <img
                     src={sponsor.image}
                     alt={sponsor.name}

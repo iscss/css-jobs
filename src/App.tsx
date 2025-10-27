@@ -10,8 +10,11 @@ import Auth from "./pages/Auth";
 import PostJob from "./pages/PostJob";
 import Profile from "./pages/Profile";
 import Admin from "./pages/Admin";
+import About from "./pages/About";
+import EmailVerified from "./pages/EmailVerified";
 import NotFound from "./pages/NotFound";
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import EmailVerificationHandler from './components/auth/EmailVerificationHandler';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -35,6 +38,7 @@ const AppRoutes = () => {
 
   return (
     <BrowserRouter>
+      <EmailVerificationHandler />
       <Routes>
         <Route path="/" element={<Index />} />
         <Route path="/jobs" element={<Jobs />} />
@@ -42,6 +46,8 @@ const AppRoutes = () => {
         <Route path="/post-job" element={<PostJob />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/admin" element={<Admin />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/email-verified" element={<EmailVerified />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>

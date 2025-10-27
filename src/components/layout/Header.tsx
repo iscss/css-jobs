@@ -2,11 +2,13 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Menu, X, Search, Briefcase, Plus, User, Shield, Home } from 'lucide-react';
+import { Menu, X, Search, Briefcase, Plus, User, Shield, Home, Info } from 'lucide-react';
 import AuthButton from './AuthButton';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAdminCheck } from '@/hooks/useAdminCheck';
 import { useAdminApprovals } from '@/hooks/useAdminApprovals';
+import { useUserProfile } from '@/hooks/useUserProfile';
+import { usePageRefresh } from '@/hooks/usePageRefresh';
 import { Badge } from '@/components/ui/badge';
 
 const Header = () => {
@@ -16,12 +18,23 @@ const Header = () => {
   const { user } = useAuth();
   const { data: isAdmin } = useAdminCheck();
   const { data: pendingApprovals } = useAdminApprovals();
+  const { data: userProfile } = useUserProfile();
+  const { refreshPageData } = usePageRefresh();
 
   const handleSearch = () => {
+    refreshPageData('/jobs');
     navigate('/jobs');
   };
 
+  const handleNavigation = (path: string) => {
+    refreshPageData(path);
+    navigate(path);
+  };
+
   const pendingCount = pendingApprovals?.length || 0;
+
+  // Check if user can post jobs (not a job-seeker)
+  const canPostJobs = user && userProfile?.user_type !== 'job_seeker';
 
   // Helper function to determine if a path is active
   const isActivePath = (path: string) => {
@@ -63,12 +76,14 @@ const Header = () => {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
-            <Link to="/">
-              <Button variant="ghost" className={getActiveStyles('/')}>
-                <Home className="w-4 h-4" />
-                Home
-              </Button>
-            </Link>
+            <Button 
+              variant="ghost" 
+              className={getActiveStyles('/')}
+              onClick={() => handleNavigation('/')}
+            >
+              <Home className="w-4 h-4" />
+              Home
+            </Button>
 
             <Button
               variant="ghost"
@@ -81,38 +96,53 @@ const Header = () => {
 
             {user && (
               <>
-                <Link to="/post-job">
-                  <Button variant="ghost" className={getActiveStyles('/post-job')}>
+                {canPostJobs && (
+                  <Button 
+                    variant="ghost" 
+                    className={getActiveStyles('/post-job')}
+                    onClick={() => handleNavigation('/post-job')}
+                  >
                     <Plus className="w-4 h-4" />
                     Post Job
                   </Button>
-                </Link>
+                )}
 
-                <Link to="/profile">
-                  <Button variant="ghost" className={getActiveStyles('/profile')}>
-                    <User className="w-4 h-4" />
-                    Profile
-                  </Button>
-                </Link>
+                <Button 
+                  variant="ghost" 
+                  className={getActiveStyles('/profile')}
+                  onClick={() => handleNavigation('/profile')}
+                >
+                  <User className="w-4 h-4" />
+                  Profile
+                </Button>
 
                 {isAdmin && (
-                  <Link to="/admin">
-                    <Button variant="ghost" className={`${getActiveStyles('/admin')} relative`}>
-                      <Shield className="w-4 h-4" />
-                      Admin
-                      {pendingCount > 0 && (
-                        <Badge
-                          variant="destructive"
-                          className="absolute -top-2 -right-2 h-5 w-5 p-0 text-xs flex items-center justify-center"
-                        >
-                          {pendingCount}
-                        </Badge>
-                      )}
-                    </Button>
-                  </Link>
+                  <Button 
+                    variant="ghost" 
+                    className={`${getActiveStyles('/admin')} relative`}
+                    onClick={() => handleNavigation('/admin')}
+                  >
+                    <Shield className="w-4 h-4" />
+                    Admin
+                    {pendingCount > 0 && (
+                      <Badge
+                        variant="destructive"
+                        className="absolute -top-2 -right-2 h-5 w-5 p-0 text-xs flex items-center justify-center"
+                      >
+                        {pendingCount}
+                      </Badge>
+                    )}
+                  </Button>
                 )}
               </>
             )}
+
+            <Link to="/about">
+              <Button variant="ghost" className={getActiveStyles('/about')}>
+                <Info className="w-4 h-4" />
+                About
+              </Button>
+            </Link>
           </nav>
 
           {/* Auth Button */}
@@ -136,16 +166,18 @@ const Header = () => {
         {isMenuOpen && (
           <div className="md:hidden border-t border-gray-200 py-4">
             <nav className="flex flex-col space-y-4">
-              <Link to="/">
-                <Button variant="ghost" className={`${getMobileActiveStyles('/')} w-full`}>
-                  <Home className="w-4 h-4" />
-                  Home
-                </Button>
-              </Link>
+              <Button 
+                variant="ghost" 
+                className={`${getMobileActiveStyles('/')} w-full`}
+                onClick={() => { handleNavigation('/'); setIsMenuOpen(false); }}
+              >
+                <Home className="w-4 h-4" />
+                Home
+              </Button>
 
               <Button
                 variant="ghost"
-                onClick={handleSearch}
+                onClick={() => { handleSearch(); setIsMenuOpen(false); }}
                 className={getMobileActiveStyles('/jobs')}
               >
                 <Search className="w-4 h-4" />
@@ -154,38 +186,53 @@ const Header = () => {
 
               {user && (
                 <>
-                  <Link to="/post-job">
-                    <Button variant="ghost" className={`${getMobileActiveStyles('/post-job')} w-full`}>
+                  {canPostJobs && (
+                    <Button 
+                      variant="ghost" 
+                      className={`${getMobileActiveStyles('/post-job')} w-full`}
+                      onClick={() => { handleNavigation('/post-job'); setIsMenuOpen(false); }}
+                    >
                       <Plus className="w-4 h-4" />
                       Post Job
                     </Button>
-                  </Link>
+                  )}
 
-                  <Link to="/profile">
-                    <Button variant="ghost" className={`${getMobileActiveStyles('/profile')} w-full`}>
-                      <User className="w-4 h-4" />
-                      Profile
-                    </Button>
-                  </Link>
+                  <Button 
+                    variant="ghost" 
+                    className={`${getMobileActiveStyles('/profile')} w-full`}
+                    onClick={() => { handleNavigation('/profile'); setIsMenuOpen(false); }}
+                  >
+                    <User className="w-4 h-4" />
+                    Profile
+                  </Button>
 
                   {isAdmin && (
-                    <Link to="/admin">
-                      <Button variant="ghost" className={`${getMobileActiveStyles('/admin')} w-full relative`}>
-                        <Shield className="w-4 h-4" />
-                        Admin
-                        {pendingCount > 0 && (
-                          <Badge
-                            variant="destructive"
-                            className="ml-2 h-5 w-5 p-0 text-xs flex items-center justify-center"
-                          >
-                            {pendingCount}
-                          </Badge>
-                        )}
-                      </Button>
-                    </Link>
+                    <Button 
+                      variant="ghost" 
+                      className={`${getMobileActiveStyles('/admin')} w-full relative`}
+                      onClick={() => { handleNavigation('/admin'); setIsMenuOpen(false); }}
+                    >
+                      <Shield className="w-4 h-4" />
+                      Admin
+                      {pendingCount > 0 && (
+                        <Badge
+                          variant="destructive"
+                          className="ml-2 h-5 w-5 p-0 text-xs flex items-center justify-center"
+                        >
+                          {pendingCount}
+                        </Badge>
+                      )}
+                    </Button>
                   )}
                 </>
               )}
+
+              <Link to="/about">
+                <Button variant="ghost" className={`${getMobileActiveStyles('/about')} w-full`}>
+                  <Info className="w-4 h-4" />
+                  About
+                </Button>
+              </Link>
 
               <div className="pt-4 border-t border-gray-200">
                 <AuthButton />

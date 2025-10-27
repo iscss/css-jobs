@@ -21,7 +21,7 @@ const SignupPromptModal: React.FC<SignupPromptModalProps> = ({ isOpen, onClose }
 
     const handleSignUp = () => {
         onClose();
-        navigate('/auth');
+        navigate('/auth?tab=signup');
     };
 
     const benefits = [

@@ -43,24 +43,17 @@ interface EditJobModalProps {
   onClose: () => void;
 }
 
-const EditJobModal = ({ job, isOpen, onClose }: EditJobModalProps) => {
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isRemote, setIsRemote] = useState(job.is_remote || false);
-  const [selectedCountry, setSelectedCountry] = useState("none");
-  const [selectedRegion, setSelectedRegion] = useState("none");
+// Define constants outside component to avoid re-creating on each render
+const regions = [
+  { value: "north-america", label: "North America" },
+  { value: "europe", label: "Europe" },
+  { value: "asia", label: "Asia" },
+  { value: "oceania", label: "Oceania" },
+  { value: "south-america", label: "South America" },
+  { value: "africa", label: "Africa" }
+];
 
-  const regions = [
-    { value: "north-america", label: "North America" },
-    { value: "europe", label: "Europe" },
-    { value: "asia", label: "Asia" },
-    { value: "oceania", label: "Oceania" },
-    { value: "south-america", label: "South America" },
-    { value: "africa", label: "Africa" }
-  ];
-
-  const countries = [
+const countries = [
     // North America
     { value: "us", label: "United States", region: "north-america" },
     { value: "ca", label: "Canada", region: "north-america" },
@@ -116,6 +109,14 @@ const EditJobModal = ({ job, isOpen, onClose }: EditJobModalProps) => {
     { value: "et", label: "Ethiopia", region: "africa" }
   ];
 
+const EditJobModal = ({ job, isOpen, onClose }: EditJobModalProps) => {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRemote, setIsRemote] = useState(job.is_remote || false);
+  const [selectedCountry, setSelectedCountry] = useState("none");
+  const [selectedRegion, setSelectedRegion] = useState("none");
+
   const { register, handleSubmit, setValue, formState: { errors }, reset } = useForm<JobFormData>();
 
   useEffect(() => {
@@ -125,7 +126,7 @@ const EditJobModal = ({ job, isOpen, onClose }: EditJobModalProps) => {
         institution: job.institution,
         department: job.department || '',
         location: job.location,
-        job_type: job.job_type as any,
+        job_type: job.job_type as JobFormData['job_type'],
         description: job.description,
         requirements: job.requirements || '',
         application_deadline: job.application_deadline || '',
@@ -137,7 +138,7 @@ const EditJobModal = ({ job, isOpen, onClose }: EditJobModalProps) => {
         tags: job.job_tags?.map(tag => tag.tag).join(', ') || ''
       });
       setIsRemote(job.is_remote || false);
-      setValue('job_type', job.job_type as any);
+      setValue('job_type', job.job_type as JobFormData['job_type']);
 
       // Try to detect region/country from existing location
       const location = job.location.toLowerCase();
@@ -260,7 +261,7 @@ const EditJobModal = ({ job, isOpen, onClose }: EditJobModalProps) => {
 
             <div className="space-y-2">
               <Label htmlFor="job_type">Job Type *</Label>
-              <Select onValueChange={(value) => setValue('job_type', value as any)} defaultValue={job.job_type}>
+              <Select onValueChange={(value) => setValue('job_type', value as JobFormData['job_type'])} defaultValue={job.job_type}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select job type" />
                 </SelectTrigger>

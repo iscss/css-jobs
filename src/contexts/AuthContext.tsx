@@ -2,13 +2,14 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { authRateLimiter, signupRateLimiter } from '@/lib/rate-limit';
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signUp: (email: string, password: string, fullName?: string) => Promise<{ error: any }>;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, fullName?: string) => Promise<{ error: unknown }>;
+  signIn: (email: string, password: string) => Promise<{ error: unknown }>;
   signOut: () => Promise<void>;
 }
 
@@ -49,8 +50,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const signUp = async (email: string, password: string, fullName?: string) => {
+    // Rate limiting check
+    const rateLimitCheck = signupRateLimiter.check(email.toLowerCase());
+    if (!rateLimitCheck.isAllowed) {
+      return {
+        error: {
+          message: rateLimitCheck.message || 'Too many signup attempts',
+          status: 429,
+        }
+      };
+    }
+
     const redirectUrl = `${window.location.origin}/`;
-    
+
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -59,19 +71,51 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         data: fullName ? { full_name: fullName } : undefined
       }
     });
+
+    // Reset rate limit on successful signup
+    if (!error) {
+      signupRateLimiter.reset(email.toLowerCase());
+    }
+
     return { error };
   };
 
   const signIn = async (email: string, password: string) => {
+    // Rate limiting check
+    const rateLimitCheck = authRateLimiter.check(email.toLowerCase());
+    if (!rateLimitCheck.isAllowed) {
+      return {
+        error: {
+          message: rateLimitCheck.message || 'Too many login attempts',
+          status: 429,
+        }
+      };
+    }
+
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password
     });
+
+    // Reset rate limit on successful sign in
+    if (!error) {
+      authRateLimiter.reset(email.toLowerCase());
+    }
+
     return { error };
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      // Use local scope to only sign out the current session
+      // This prevents 403 errors that can occur with global scope
+      await supabase.auth.signOut({ scope: 'local' });
+    } catch (error) {
+      console.error('Error during signOut:', error);
+      // If signOut fails, we can still clear the local session state
+      setUser(null);
+      setSession(null);
+    }
   };
 
   const value: AuthContextType = {

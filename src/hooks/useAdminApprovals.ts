@@ -50,7 +50,7 @@ export const useUpdateApprovalStatus = () => {
     }) => {
       if (!user) throw new Error('User must be authenticated');
 
-      const updateData: any = {
+      const updateData: Record<string, unknown> = {
         approval_status: status,
         approved_at: new Date().toISOString(),
         approved_by: user.id,

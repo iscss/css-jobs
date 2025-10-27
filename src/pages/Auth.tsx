@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,11 +12,29 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { sanitizeInput, sanitizeEmail, sanitizeUrl } from '@/lib/sanitize';
-import { UserCheck, Briefcase, Users, Globe, GraduationCap } from 'lucide-react';
+import { UserCheck, Briefcase, Users, Globe, GraduationCap, Check, X } from 'lucide-react';
 import Header from '@/components/layout/Header';
 
+// Strong password validation schema
+const passwordSchema = z
+  .string()
+  .min(12, 'Password must be at least 12 characters')
+  .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+  .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+  .regex(/[0-9]/, 'Password must contain at least one number')
+  .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character (!@#$%^&*)');
+
+// Password strength checker component
+const PasswordRequirement = ({ met, text }: { met: boolean; text: string }) => (
+  <div className={`flex items-center gap-2 text-sm ${met ? 'text-green-600' : 'text-gray-500'}`}>
+    {met ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
+    <span>{text}</span>
+  </div>
+);
+
 const Auth = () => {
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [searchParams] = useSearchParams();
+  const [isSignUp, setIsSignUp] = useState(searchParams.get('tab') === 'signup');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
@@ -25,6 +46,17 @@ const Auth = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // Password validation checks
+  const passwordChecks = {
+    minLength: password.length >= 12,
+    hasUppercase: /[A-Z]/.test(password),
+    hasLowercase: /[a-z]/.test(password),
+    hasNumber: /[0-9]/.test(password),
+    hasSpecial: /[^A-Za-z0-9]/.test(password),
+  };
+
+  const isPasswordValid = Object.values(passwordChecks).every(Boolean);
+
   useEffect(() => {
     if (user) {
       navigate('/');
@@ -33,6 +65,17 @@ const Auth = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate password strength for signup
+    if (isSignUp && !isPasswordValid) {
+      toast({
+        title: "Weak password",
+        description: "Please ensure your password meets all security requirements.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -66,7 +109,7 @@ const Auth = () => {
           email: sanitizedEmail,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/`,
+            emailRedirectTo: `${window.location.origin}/email-verified`,
             data: {
               full_name: sanitizedFullName,
               user_type: userType,
@@ -102,7 +145,13 @@ const Auth = () => {
 
       if (error) {
         const errorMessage = error.message;
-        if (errorMessage.includes('Invalid login credentials')) {
+        if (errorMessage.includes('Too many')) {
+          toast({
+            title: "Too many attempts",
+            description: errorMessage,
+            variant: "destructive",
+          });
+        } else if (errorMessage.includes('Invalid login credentials')) {
           toast({
             title: "Invalid credentials",
             description: "Please check your email and password and try again.",
@@ -237,12 +286,22 @@ const Auth = () => {
                 <Input
                   id="password"
                   type="password"
-                  placeholder="Enter your password"
+                  placeholder={isSignUp ? "Create a strong password" : "Enter your password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  minLength={6}
+                  minLength={isSignUp ? 12 : 6}
                 />
+                {isSignUp && password.length > 0 && (
+                  <div className="mt-3 p-3 bg-gray-50 rounded-md space-y-2">
+                    <p className="text-sm font-medium text-gray-700 mb-2">Password Requirements:</p>
+                    <PasswordRequirement met={passwordChecks.minLength} text="At least 12 characters" />
+                    <PasswordRequirement met={passwordChecks.hasUppercase} text="One uppercase letter" />
+                    <PasswordRequirement met={passwordChecks.hasLowercase} text="One lowercase letter" />
+                    <PasswordRequirement met={passwordChecks.hasNumber} text="One number" />
+                    <PasswordRequirement met={passwordChecks.hasSpecial} text="One special character (!@#$%^&*)" />
+                  </div>
+                )}
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? 'Loading...' : (isSignUp ? 'Create Account' : 'Sign In')}
