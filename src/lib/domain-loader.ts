@@ -69,33 +69,46 @@ export class DomainLoader {
   static async populateDatabase(): Promise<{ success: boolean; count: number; error?: string }> {
     try {
       console.log('Starting to populate university domains in database...');
-      
-      // Clear existing domains
-      const { error: deleteError } = await supabase
+
+      // Use the imported data
+      const universityData = universityDomainsData as UniversityData[];
+      console.log(`Loaded ${universityData.length} universities from import`);
+
+      // Clear existing domains - delete all at once
+      console.log('Clearing existing domains...');
+      const { error: deleteError, count } = await supabase
         .from('approved_domains')
         .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
-      
+        .neq('id', '00000000-0000-0000-0000-000000000000'); // This will match all records
+
       if (deleteError) {
+        console.error('Delete error:', deleteError);
         throw deleteError;
       }
 
-      // Prepare domain data
-      const domainData = [];
-      for (const university of universityDomainsData as UniversityData[]) {
+      console.log(`Cleared all existing domains`);
+
+      // Prepare domain data - deduplicate by domain
+      const domainMap = new Map<string, { domain: string; institution_name: string; country: string }>();
+
+      for (const university of universityData) {
         for (const domain of university.domains) {
           const cleanDomain = domain.toLowerCase().trim();
           if (cleanDomain && cleanDomain.includes('.')) {
-            domainData.push({
-              domain: cleanDomain,
-              institution_name: university.name,
-              country: university.country
-            });
+            // Only add if not already in map (keeps first occurrence)
+            if (!domainMap.has(cleanDomain)) {
+              domainMap.set(cleanDomain, {
+                domain: cleanDomain,
+                institution_name: university.name,
+                country: university.country
+              });
+            }
           }
         }
       }
 
-      console.log(`Prepared ${domainData.length} domain records`);
+      const domainData = Array.from(domainMap.values());
+      console.log(`Prepared ${domainData.length} unique domain records`);
 
       // Insert in batches to avoid timeout
       const batchSize = 1000;

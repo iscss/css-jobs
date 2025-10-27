@@ -100,9 +100,26 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Delete user from auth.users (this will cascade to all related tables)
+    // First, delete the user profile (this will cascade to jobs posted by the user)
+    console.log(`Attempting to delete user_profile for user ${userId}`)
+    const { error: profileDeleteError } = await supabase
+      .from('user_profiles')
+      .delete()
+      .eq('id', userId)
+
+    if (profileDeleteError) {
+      console.error('User profile deletion error:', profileDeleteError)
+      return new Response(
+        JSON.stringify({ error: 'Failed to delete user profile: ' + profileDeleteError.message }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    console.log(`User profile deleted, now deleting auth user ${userId}`)
+
+    // Delete user from auth.users (this will cascade to remaining related tables)
     const { error: deleteError } = await supabase.auth.admin.deleteUser(userId)
-    
+
     if (deleteError) {
       console.error('User deletion error:', deleteError)
       return new Response(
