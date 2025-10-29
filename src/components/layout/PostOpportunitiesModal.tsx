@@ -28,7 +28,7 @@ const PostOpportunitiesModal = ({ isOpen, onClose }: PostOpportunitiesModalProps
         </DialogHeader>
         <div className="space-y-4 py-4">
           <p className="text-gray-600">
-            To post job opportunities, you need to sign in and request job posting privileges.
+            To post job opportunities, you need to sign in and request job posting privileges. Don't worry, it's free and easy!
           </p>
           <div className="bg-blue-50 p-4 rounded-lg">
             <h4 className="font-medium text-blue-900 mb-2">What you'll get:</h4>
