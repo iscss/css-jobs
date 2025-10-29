@@ -69,15 +69,15 @@ const Header = () => {
             </div>
             <div className="hidden sm:block">
               <span className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                CSS Jobs
+                Jobs
               </span>
             </div>
           </Link>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               className={getActiveStyles('/')}
               onClick={() => handleNavigation('/')}
             >
@@ -97,8 +97,8 @@ const Header = () => {
             {user && (
               <>
                 {canPostJobs && (
-                  <Button 
-                    variant="ghost" 
+                  <Button
+                    variant="ghost"
                     className={getActiveStyles('/post-job')}
                     onClick={() => handleNavigation('/post-job')}
                   >
@@ -107,8 +107,8 @@ const Header = () => {
                   </Button>
                 )}
 
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   className={getActiveStyles('/profile')}
                   onClick={() => handleNavigation('/profile')}
                 >
@@ -117,8 +117,8 @@ const Header = () => {
                 </Button>
 
                 {isAdmin && (
-                  <Button 
-                    variant="ghost" 
+                  <Button
+                    variant="ghost"
                     className={`${getActiveStyles('/admin')} relative`}
                     onClick={() => handleNavigation('/admin')}
                   >
@@ -166,8 +166,8 @@ const Header = () => {
         {isMenuOpen && (
           <div className="md:hidden border-t border-gray-200 py-4">
             <nav className="flex flex-col space-y-4">
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 className={`${getMobileActiveStyles('/')} w-full`}
                 onClick={() => { handleNavigation('/'); setIsMenuOpen(false); }}
               >
@@ -187,8 +187,8 @@ const Header = () => {
               {user && (
                 <>
                   {canPostJobs && (
-                    <Button 
-                      variant="ghost" 
+                    <Button
+                      variant="ghost"
                       className={`${getMobileActiveStyles('/post-job')} w-full`}
                       onClick={() => { handleNavigation('/post-job'); setIsMenuOpen(false); }}
                     >
@@ -197,8 +197,8 @@ const Header = () => {
                     </Button>
                   )}
 
-                  <Button 
-                    variant="ghost" 
+                  <Button
+                    variant="ghost"
                     className={`${getMobileActiveStyles('/profile')} w-full`}
                     onClick={() => { handleNavigation('/profile'); setIsMenuOpen(false); }}
                   >
@@ -207,8 +207,8 @@ const Header = () => {
                   </Button>
 
                   {isAdmin && (
-                    <Button 
-                      variant="ghost" 
+                    <Button
+                      variant="ghost"
                       className={`${getMobileActiveStyles('/admin')} w-full relative`}
                       onClick={() => { handleNavigation('/admin'); setIsMenuOpen(false); }}
                     >
