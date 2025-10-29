@@ -60,11 +60,6 @@ const HeroSection = () => {
 
       <div className="container mx-auto px-4 relative">
         <div className="text-center max-w-5xl mx-auto">
-          {/* Badge */}
-          <div className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-indigo-100 to-purple-100 text-indigo-700 rounded-full text-sm font-medium mb-8 border border-indigo-200 shadow-sm">
-            <Sparkles className="w-4 h-4 mr-2" />
-            Connecting Research Communities Worldwide
-          </div>
 
           {/* Main heading */}
           <h1 className="text-5xl md:text-7xl font-serif font-bold text-slate-900 mb-6 leading-tight">
@@ -137,7 +132,7 @@ const HeroSection = () => {
           </div>
 
           {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Button
               onClick={() => navigate('/jobs')}
               size="lg"
@@ -156,26 +151,6 @@ const HeroSection = () => {
               Post Jobs
               <ArrowRight className="w-4 h-4" />
             </Button>
-          </div>
-
-          {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto">
-            <div className="text-center">
-              <div className="text-3xl md:text-4xl font-bold text-slate-900 mb-2">500+</div>
-              <div className="text-slate-600">Active Positions</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl md:text-4xl font-bold text-slate-900 mb-2">200+</div>
-              <div className="text-slate-600">Universities</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl md:text-4xl font-bold text-slate-900 mb-2">50+</div>
-              <div className="text-slate-600">Countries</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl md:text-4xl font-bold text-slate-900 mb-2">1000+</div>
-              <div className="text-slate-600">Researchers</div>
-            </div>
           </div>
         </div>
       </div>
