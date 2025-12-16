@@ -390,33 +390,6 @@ export type Database = {
         }
         Relationships: []
       }
-      organizations: {
-        Row: {
-          created_at: string
-          id: string
-          image_url: string | null
-          name: string
-          slug: string | null
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          id: string
-          image_url?: string | null
-          name: string
-          slug?: string | null
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          image_url?: string | null
-          name?: string
-          slug?: string | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
       poster_applications: {
         Row: {
           created_at: string
@@ -450,89 +423,6 @@ export type Database = {
         }
         Relationships: []
       }
-      properties: {
-        Row: {
-          address: string
-          agent_user_id: string
-          created_at: string | null
-          id: string
-          name: string
-          org_id: string
-          property_type: string
-          status: string
-          updated_at: string | null
-        }
-        Insert: {
-          address: string
-          agent_user_id: string
-          created_at?: string | null
-          id?: string
-          name: string
-          org_id: string
-          property_type: string
-          status?: string
-          updated_at?: string | null
-        }
-        Update: {
-          address?: string
-          agent_user_id?: string
-          created_at?: string | null
-          id?: string
-          name?: string
-          org_id?: string
-          property_type?: string
-          status?: string
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      rooms: {
-        Row: {
-          created_at: string | null
-          height: number | null
-          id: string
-          name: string
-          original_image_path: string | null
-          original_image_url: string | null
-          property_id: string
-          room_type: string
-          updated_at: string | null
-          width: number | null
-        }
-        Insert: {
-          created_at?: string | null
-          height?: number | null
-          id?: string
-          name: string
-          original_image_path?: string | null
-          original_image_url?: string | null
-          property_id: string
-          room_type: string
-          updated_at?: string | null
-          width?: number | null
-        }
-        Update: {
-          created_at?: string | null
-          height?: number | null
-          id?: string
-          name?: string
-          original_image_path?: string | null
-          original_image_url?: string | null
-          property_id?: string
-          room_type?: string
-          updated_at?: string | null
-          width?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "rooms_property_id_fkey"
-            columns: ["property_id"]
-            isOneToOne: false
-            referencedRelation: "properties"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       saved_jobs: {
         Row: {
           created_at: string
@@ -555,53 +445,6 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      styled_images: {
-        Row: {
-          created_at: string | null
-          error_message: string | null
-          generated_image_path: string | null
-          generated_image_url: string | null
-          id: string
-          prompt: string | null
-          room_id: string
-          status: string
-          style_name: string
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          error_message?: string | null
-          generated_image_path?: string | null
-          generated_image_url?: string | null
-          id?: string
-          prompt?: string | null
-          room_id: string
-          status?: string
-          style_name: string
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          error_message?: string | null
-          generated_image_path?: string | null
-          generated_image_url?: string | null
-          id?: string
-          prompt?: string | null
-          room_id?: string
-          status?: string
-          style_name?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "styled_images_room_id_fkey"
-            columns: ["room_id"]
-            isOneToOne: false
-            referencedRelation: "rooms"
             referencedColumns: ["id"]
           },
         ]
