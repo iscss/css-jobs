@@ -273,9 +273,7 @@ const Auth = () => {
                     <Alert className="border-blue-200 bg-blue-50">
                       <AlertCircle className="h-4 w-4 text-blue-600" />
                       <AlertDescription className="text-blue-900 text-sm">
-                        <strong>Quick Tip:</strong> Use your university email address (e.g., @stanford.edu, @ox.ac.uk)
-                        for automatic approval. We verify 10,500+ educational institutions worldwide.
-                        Other emails require manual admin approval.
+                        Institution/University emails will be automatically accepted. If you do not have a University affiliated email address, please note that it will need to go through manual review and approval.
                       </AlertDescription>
                     </Alert>
                   )}

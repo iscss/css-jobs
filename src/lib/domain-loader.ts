@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import universityDomainsData from '../../data/university-domains.json';
+import universityDomainsData from '../../public/data/university-domains.json';
 
 interface UniversityData {
   name: string;
