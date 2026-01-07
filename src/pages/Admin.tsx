@@ -157,7 +157,7 @@ const Admin = () => {
             </div>
           </div>
 
-          <AdminStats />
+          <AdminStats onTabChange={setActiveTab} />
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
             <TabsList className="grid w-full grid-cols-3">

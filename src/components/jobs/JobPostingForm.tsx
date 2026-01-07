@@ -45,6 +45,8 @@ const JobPostingForm = () => {
   const [isRemote, setIsRemote] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState("none");
   const [selectedRegion, setSelectedRegion] = useState("none");
+  const [jobTypeTouched, setJobTypeTouched] = useState(false);
+  const jobTypeRef = React.useRef<HTMLButtonElement>(null);
 
   const regions = [
     { value: "north-america", label: "North America" },
@@ -111,9 +113,42 @@ const JobPostingForm = () => {
     { value: "et", label: "Ethiopia", region: "africa" }
   ];
 
-  const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<JobFormData>();
+  const { register, handleSubmit, setValue, watch, formState: { errors, touchedFields }, setFocus } = useForm<JobFormData>({
+    mode: 'onBlur', // Validate on blur, not on change
+  });
 
   const onSubmit = async (data: JobFormData, isDraft = false, submitForApproval = false) => {
+    // Validate required fields for all submissions (drafts and non-drafts)
+    // Check for job_type specifically since it's not using standard validation
+    if (!data.job_type) {
+      toast({
+        title: "Job type required",
+        description: "Please select a job type.",
+        variant: "destructive",
+      });
+      // Focus and scroll to job type field
+      jobTypeRef.current?.focus();
+      jobTypeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
+    if (Object.keys(errors).length > 0) {
+      // Get first error and show toast
+      const firstError = Object.keys(errors)[0] as keyof JobFormData;
+      const errorMessage = errors[firstError]?.message || 'Please fix validation errors';
+
+      toast({
+        title: "Validation error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+
+      // Focus and scroll to first error field
+      setFocus(firstError);
+      document.getElementById(firstError)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
     if (!user) {
       toast({
         title: "Authentication required",
@@ -123,10 +158,11 @@ const JobPostingForm = () => {
       return;
     }
 
-    if (!userProfile?.is_approved_poster) {
+    // Only block if trying to publish directly without approval
+    if (!isDraft && !submitForApproval && !userProfile?.is_approved_poster) {
       toast({
         title: "Approval required",
-        description: "You need to be approved as a job poster before you can post jobs. Please contact an administrator.",
+        description: "You need to be approved as a job poster before you can publish jobs directly.",
         variant: "destructive",
       });
       return;
@@ -167,32 +203,24 @@ const JobPostingForm = () => {
         }
       }
 
-      // Determine job_status based on approval status
-      let jobStatusValue = 'inactive'; // Default for draft and pending jobs
-      if (isPublished && jobStatus === 'approved') {
-        jobStatusValue = 'active'; // Only active when published and approved
-      }
-
       // Sanitize all inputs before submission
       const jobData = {
         title: sanitizeInput(data.title, 200),
         institution: sanitizeInput(data.institution, 200),
-        department: data.department ? sanitizeInput(data.department, 200) : undefined,
+        department: data.department ? sanitizeInput(data.department, 200) : null,
         location: sanitizeInput(enhancedLocation, 200),
         description: sanitizeHtml(data.description),
-        requirements: data.requirements ? sanitizeHtml(data.requirements) : undefined,
-        duration: data.duration ? sanitizeInput(data.duration, 100) : undefined,
-        application_url: data.application_url ? sanitizeUrl(data.application_url) : undefined,
-        contact_email: data.contact_email ? sanitizeEmail(data.contact_email) : undefined,
-        pi_name: data.pi_name ? sanitizeInput(data.pi_name, 200) : undefined,
-        funding_source: data.funding_source ? sanitizeInput(data.funding_source, 200) : undefined,
+        requirements: data.requirements ? sanitizeHtml(data.requirements) : null,
+        duration: data.duration ? sanitizeInput(data.duration, 100) : null,
+        application_url: data.application_url ? sanitizeUrl(data.application_url) : null,
+        contact_email: data.contact_email ? sanitizeEmail(data.contact_email) : null,
+        pi_name: data.pi_name ? sanitizeInput(data.pi_name, 200) : null,
+        funding_source: data.funding_source ? sanitizeInput(data.funding_source, 200) : null,
         job_type: data.job_type,
         is_remote: isRemote,
         application_deadline: data.application_deadline || null,
         is_published: isPublished,
         approval_status: jobStatus,
-        job_status: jobStatusValue,
-        submitted_for_approval_at: submitForApproval || (!isDraft && !userProfile?.can_publish_directly) ? new Date().toISOString() : null,
         tags: data.tags ? data.tags.split(',').map(tag => sanitizeInput(tag.trim(), 50)).filter(tag => tag) : []
       };
 
@@ -217,10 +245,30 @@ const JobPostingForm = () => {
       }
 
       navigate('/profile');
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Job posting error:', error);
+
+      // Extract meaningful error message
+      let errorMessage = "There was an error creating your job posting. Please try again.";
+
+      if (error?.message) {
+        // Check for common constraint violations
+        if (error.message.includes('title_length')) {
+          errorMessage = "Job title must be between 5 and 200 characters.";
+        } else if (error.message.includes('institution_length')) {
+          errorMessage = "Institution name must be between 2 and 200 characters.";
+        } else if (error.message.includes('description_length')) {
+          errorMessage = "Job description must be between 50 and 10,000 characters.";
+        } else if (error.message.includes('new row violates row-level security policy')) {
+          errorMessage = "You don't have permission to post jobs. Please contact an administrator.";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+
       toast({
         title: "Error posting job",
-        description: "There was an error creating your job posting. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -329,16 +377,36 @@ const JobPostingForm = () => {
                 <Label htmlFor="title">Job Title *</Label>
                 <Input
                   id="title"
-                  {...register('title', { required: 'Job title is required' })}
+                  {...register('title', {
+                    required: 'Job title is required',
+                    minLength: { value: 5, message: 'Title must be at least 5 characters' },
+                    maxLength: { value: 200, message: 'Title must be less than 200 characters' }
+                  })}
                   placeholder="e.g., PhD Position in Computational Social Science"
+                  className={errors.title && touchedFields.title ? 'border-red-500' : ''}
                 />
-                {errors.title && <p className="text-sm text-red-600">{errors.title.message}</p>}
+                {errors.title && touchedFields.title && (
+                  <p className="text-sm text-red-600">{errors.title.message}</p>
+                )}
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="job_type">Job Type *</Label>
-                <Select onValueChange={(value) => setValue('job_type', value as JobFormData['job_type'])}>
-                  <SelectTrigger>
+                <Select
+                  onValueChange={(value) => {
+                    setValue('job_type', value as JobFormData['job_type']);
+                    setJobTypeTouched(true);
+                  }}
+                  onOpenChange={(open) => {
+                    if (!open && !watch('job_type')) {
+                      setJobTypeTouched(true);
+                    }
+                  }}
+                >
+                  <SelectTrigger
+                    ref={jobTypeRef}
+                    className={jobTypeTouched && !watch('job_type') ? 'border-red-500' : ''}
+                  >
                     <SelectValue placeholder="Select job type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -350,16 +418,26 @@ const JobPostingForm = () => {
                     <SelectItem value="Other">Other</SelectItem>
                   </SelectContent>
                 </Select>
+                {jobTypeTouched && !watch('job_type') && (
+                  <p className="text-sm text-red-600">Job type is required</p>
+                )}
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="institution">Institution *</Label>
                 <Input
                   id="institution"
-                  {...register('institution', { required: 'Institution is required' })}
+                  {...register('institution', {
+                    required: 'Institution is required',
+                    minLength: { value: 2, message: 'Institution must be at least 2 characters' },
+                    maxLength: { value: 200, message: 'Institution must be less than 200 characters' }
+                  })}
                   placeholder="e.g., Stanford University"
+                  className={errors.institution && touchedFields.institution ? 'border-red-500' : ''}
                 />
-                {errors.institution && <p className="text-sm text-red-600">{errors.institution.message}</p>}
+                {errors.institution && touchedFields.institution && (
+                  <p className="text-sm text-red-600">{errors.institution.message}</p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -379,7 +457,10 @@ const JobPostingForm = () => {
                   </Label>
                   <Input
                     id="location"
-                    {...register('location', { required: 'Location is required' })}
+                    {...register('location', {
+                      required: 'Location is required',
+                      minLength: { value: 2, message: 'Location must be at least 2 characters' }
+                    })}
                     placeholder="e.g., Stanford, CA (City, State/Province)"
                   />
                   {errors.location && <p className="text-sm text-red-600">{errors.location.message}</p>}
@@ -525,11 +606,18 @@ const JobPostingForm = () => {
                 <Label htmlFor="description">Job Description *</Label>
                 <Textarea
                   id="description"
-                  {...register('description', { required: 'Job description is required' })}
+                  {...register('description', {
+                    required: 'Job description is required',
+                    minLength: { value: 50, message: 'Description must be at least 50 characters' },
+                    maxLength: { value: 10000, message: 'Description must be less than 10,000 characters' }
+                  })}
                   placeholder="Provide a detailed description of the position..."
                   rows={6}
+                  className={errors.description && touchedFields.description ? 'border-red-500' : ''}
                 />
-                {errors.description && <p className="text-sm text-red-600">{errors.description.message}</p>}
+                {errors.description && touchedFields.description && (
+                  <p className="text-sm text-red-600">{errors.description.message}</p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -574,11 +662,11 @@ const JobPostingForm = () => {
                 type="button"
                 variant="secondary"
                 onClick={handleSubmit((data) => onSubmit(data, true))}
-                disabled={createJobMutation.isPending || !userProfile?.is_approved_poster}
+                disabled={createJobMutation.isPending}
               >
                 {createJobMutation.isPending ? 'Saving...' : 'Save as Draft'}
               </Button>
-              
+
               {userProfile?.can_publish_directly ? (
                 // Experienced users can publish directly
                 <Button
@@ -593,7 +681,7 @@ const JobPostingForm = () => {
                 <Button
                   type="button"
                   onClick={handleSubmit((data) => onSubmit(data, false, true))}
-                  disabled={createJobMutation.isPending || !userProfile?.is_approved_poster}
+                  disabled={createJobMutation.isPending}
                 >
                   {createJobMutation.isPending ? 'Submitting...' : 'Submit for Approval'}
                 </Button>

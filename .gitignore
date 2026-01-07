@@ -33,3 +33,15 @@ dist-ssr
 .env.production
 .env.development
 !.env.example
+
+# Generated files
+supabase/seed-domains.sql
+supabase/.temp/
+schema_dump.sql
+*_dump.sql
+
+# Development notes (internal only)
+running_notes.md
+*_notes.md
+TODO.md
+.notes/

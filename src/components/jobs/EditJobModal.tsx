@@ -159,7 +159,17 @@ const EditJobModal = ({ job, isOpen, onClose }: EditJobModalProps) => {
     }
   }, [job, reset, setValue]);
 
-  const onSubmit = async (data: JobFormData, isDraft = false) => {
+  const onSubmit = async (data: JobFormData, isDraft = false, submitForApproval = false) => {
+    // Prevent editing jobs that are pending approval
+    if (job.approval_status === 'pending') {
+      toast({
+        title: "Cannot edit job",
+        description: "Jobs that are pending approval cannot be edited. Withdraw the job from review first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       // Enhance location data with structured info
@@ -172,6 +182,14 @@ const EditJobModal = ({ job, isOpen, onClose }: EditJobModalProps) => {
         if (country && !enhancedLocation.toLowerCase().includes(country.label.toLowerCase())) {
           enhancedLocation = `${enhancedLocation}, ${country.label}`;
         }
+      }
+
+      // Determine approval status based on action
+      let approvalStatus = job.approval_status;
+      if (submitForApproval) {
+        approvalStatus = 'pending';
+      } else if (isDraft) {
+        approvalStatus = 'draft';
       }
 
       // Update the job
@@ -193,6 +211,7 @@ const EditJobModal = ({ job, isOpen, onClose }: EditJobModalProps) => {
           funding_source: data.funding_source,
           is_remote: isRemote,
           is_published: isDraft ? false : (job.is_published || false),
+          approval_status: approvalStatus,
           updated_at: new Date().toISOString()
         })
         .eq('id', job.id);
@@ -221,11 +240,20 @@ const EditJobModal = ({ job, isOpen, onClose }: EditJobModalProps) => {
       // Invalidate queries
       queryClient.invalidateQueries({ queryKey: ['user-jobs'] });
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['pending-jobs-admin'] });
 
-      toast({
-        title: "Job updated successfully!",
-        description: "Your job posting has been updated.",
-      });
+      // Show appropriate success message
+      if (submitForApproval) {
+        toast({
+          title: "Job submitted for approval!",
+          description: "Your job posting has been submitted and is waiting for admin approval.",
+        });
+      } else {
+        toast({
+          title: "Job updated successfully!",
+          description: "Your job posting has been updated.",
+        });
+      }
 
       onClose();
     } catch (error) {
@@ -480,17 +508,32 @@ const EditJobModal = ({ job, isOpen, onClose }: EditJobModalProps) => {
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={handleSubmit((data) => onSubmit(data, true))}
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? 'Saving...' : 'Save as Draft'}
-            </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Updating...' : 'Update Job'}
-            </Button>
+
+            {job.approval_status === 'draft' && (
+              <>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={handleSubmit((data) => onSubmit(data, true))}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? 'Saving...' : 'Save as Draft'}
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleSubmit((data) => onSubmit(data, false, true))}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? 'Submitting...' : 'Submit for Approval'}
+                </Button>
+              </>
+            )}
+
+            {job.approval_status !== 'draft' && (
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? 'Updating...' : 'Update Job'}
+              </Button>
+            )}
           </div>
         </form>
       </DialogContent>

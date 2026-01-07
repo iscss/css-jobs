@@ -4,7 +4,11 @@ import { useAdminApprovals } from "@/hooks/useAdminApprovals";
 import { Users, Briefcase, Clock, CheckCircle, XCircle, UserCheck } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const AdminStats = () => {
+interface AdminStatsProps {
+  onTabChange?: (tab: string) => void;
+}
+
+const AdminStats = ({ onTabChange }: AdminStatsProps) => {
   const { data: users, isLoading: usersLoading } = useAllUsers();
   const { data: jobs, isLoading: jobsLoading } = useAllJobs();
   const { data: pendingApprovals, isLoading: approvalsLoading } = useAdminApprovals();
@@ -25,6 +29,8 @@ const AdminStats = () => {
       icon: Users,
       color: "text-blue-500",
       bgColor: "bg-blue-50",
+      onClick: () => onTabChange?.('users'),
+      clickable: true,
     },
     {
       title: "Job Seekers",
@@ -32,6 +38,8 @@ const AdminStats = () => {
       icon: Users,
       color: "text-green-500",
       bgColor: "bg-green-50",
+      onClick: () => onTabChange?.('users'),
+      clickable: true,
     },
     {
       title: "Job Posters",
@@ -39,6 +47,8 @@ const AdminStats = () => {
       icon: UserCheck,
       color: "text-purple-500",
       bgColor: "bg-purple-50",
+      onClick: () => onTabChange?.('users'),
+      clickable: true,
     },
     {
       title: "Pending Approvals",
@@ -46,6 +56,8 @@ const AdminStats = () => {
       icon: Clock,
       color: "text-orange-500",
       bgColor: "bg-orange-50",
+      onClick: () => onTabChange?.('approvals'),
+      clickable: true,
     },
     {
       title: "Approved Posters",
@@ -53,6 +65,8 @@ const AdminStats = () => {
       icon: UserCheck,
       color: "text-emerald-500",
       bgColor: "bg-emerald-50",
+      onClick: () => onTabChange?.('users'),
+      clickable: true,
     },
   ];
 
@@ -63,6 +77,8 @@ const AdminStats = () => {
       icon: Briefcase,
       color: "text-indigo-500",
       bgColor: "bg-indigo-50",
+      onClick: () => onTabChange?.('jobs'),
+      clickable: true,
     },
     {
       title: "Published Jobs",
@@ -70,6 +86,8 @@ const AdminStats = () => {
       icon: CheckCircle,
       color: "text-emerald-500",
       bgColor: "bg-emerald-50",
+      onClick: () => onTabChange?.('jobs'),
+      clickable: true,
     },
     {
       title: "Draft Jobs",
@@ -77,6 +95,8 @@ const AdminStats = () => {
       icon: XCircle,
       color: "text-yellow-500",
       bgColor: "bg-yellow-50",
+      onClick: () => onTabChange?.('jobs'),
+      clickable: true,
     },
     {
       title: "Featured Jobs",
@@ -84,6 +104,8 @@ const AdminStats = () => {
       icon: CheckCircle,
       color: "text-pink-500",
       bgColor: "bg-pink-50",
+      onClick: () => onTabChange?.('jobs'),
+      clickable: true,
     },
   ];
 
@@ -96,7 +118,15 @@ const AdminStats = () => {
           {userStats.map((stat, index) => {
             const IconComponent = stat.icon;
             return (
-              <div key={index} className="bg-white rounded-xl p-4 shadow-lg border border-gray-100">
+              <div
+                key={index}
+                className={`bg-white rounded-xl p-4 shadow-lg border border-gray-100 ${
+                  stat.clickable
+                    ? 'cursor-pointer hover:shadow-xl hover:scale-105 transition-all duration-200 hover:border-gray-300'
+                    : ''
+                }`}
+                onClick={stat.onClick}
+              >
                 <div className="flex flex-col items-center text-center gap-2">
                   <div className={`w-10 h-10 ${stat.bgColor} rounded-lg flex items-center justify-center`}>
                     <IconComponent className={`w-5 h-5 ${stat.color}`} />
@@ -121,7 +151,15 @@ const AdminStats = () => {
           {jobStats.map((stat, index) => {
             const IconComponent = stat.icon;
             return (
-              <div key={index} className="bg-white rounded-xl p-4 shadow-lg border border-gray-100">
+              <div
+                key={index}
+                className={`bg-white rounded-xl p-4 shadow-lg border border-gray-100 ${
+                  stat.clickable
+                    ? 'cursor-pointer hover:shadow-xl hover:scale-105 transition-all duration-200 hover:border-gray-300'
+                    : ''
+                }`}
+                onClick={stat.onClick}
+              >
                 <div className="flex items-center gap-3">
                   <div className={`w-10 h-10 ${stat.bgColor} rounded-lg flex items-center justify-center`}>
                     <IconComponent className={`w-5 h-5 ${stat.color}`} />

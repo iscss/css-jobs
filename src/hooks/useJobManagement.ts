@@ -61,7 +61,7 @@ export const usePendingJobs = () => {
           )
         `)
         .eq('approval_status', 'pending')
-        .order('submitted_for_approval_at', { ascending: true }); // Oldest first
+        .order('updated_at', { ascending: true }); // Oldest submissions first
 
       if (error) throw error;
       return data;
@@ -94,13 +94,11 @@ export const useRetractJob = () => {
         updateData.approval_status = 'draft';
         updateData.approved_at = null;
         updateData.approved_by_admin = null;
-        updateData.job_status = 'inactive'; // Set job status to inactive when not published
       } else {
-        // If publishing, set approval status to approved and job status to active
+        // If publishing, set approval status to approved
         updateData.approval_status = 'approved';
         updateData.approved_at = new Date().toISOString();
         updateData.approved_by_admin = user.id;
-        updateData.job_status = 'active'; // Set job status to active when publishing
       }
 
       const { data, error } = await supabase
@@ -197,9 +195,7 @@ export const useWithdrawJob = () => {
       const { data, error } = await supabase
         .from('jobs')
         .update({
-          approval_status: 'draft',
-          submitted_for_approval_at: null,
-          job_status: 'inactive' // Set job status to inactive when withdrawing
+          approval_status: 'draft'
         })
         .eq('id', jobId)
         .eq('posted_by', user.id) // Ensure user can only withdraw their own jobs
@@ -242,17 +238,17 @@ export const useUpdateJobStatus = () => {
       postedBy
     }: {
       jobId: string;
-      jobStatus: 'active' | 'filled' | 'inactive';
+      jobStatus: 'filled';  // Only support marking as filled for now
       postedBy?: string;
     }) => {
       if (!user) throw new Error('User must be authenticated');
 
+      // Mark job as unpublished when filled
       let query = supabase
         .from('jobs')
         .update({
-          job_status: jobStatus,
-          status_updated_at: new Date().toISOString(),
-          status_updated_by: user.id
+          is_published: false,
+          updated_at: new Date().toISOString()
         })
         .eq('id', jobId);
 

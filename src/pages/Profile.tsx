@@ -5,6 +5,7 @@ import UserProfile from "@/components/profile/UserProfile";
 import MyJobPosts from "@/components/profile/MyJobPosts";
 import SavedJobs from "@/components/profile/SavedJobs";
 import JobAlerts from "@/components/profile/JobAlerts";
+import { PendingApprovalBanner } from "@/components/profile/PendingApprovalBanner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { useSearchParams } from "react-router-dom";
@@ -44,6 +45,15 @@ const Profile = () => {
               Manage your job applications and stay updated with new opportunities
             </p>
           </div>
+
+          {userProfile?.user_type === 'job_poster' &&
+           userProfile?.approval_status === 'pending' &&
+           !userProfile?.is_approved_poster &&
+           userProfile?.email && (
+            <div className="mb-6">
+              <PendingApprovalBanner userEmail={userProfile.email} />
+            </div>
+          )}
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
             <TabsList className={`grid w-full ${canSeeJobPosts ? 'grid-cols-4' : 'grid-cols-3'} bg-muted/30 p-1 rounded-xl gap-0.5 h-auto`}>

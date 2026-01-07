@@ -104,16 +104,15 @@ const MyJobPosts = () => {
         // Direct publish for experienced users
         const { error } = await supabase
           .from('jobs')
-          .update({ 
+          .update({
             is_published: true,
             approval_status: 'approved',
-            approved_at: new Date().toISOString(),
-            job_status: 'active' // Set job status to active when publishing
+            approved_at: new Date().toISOString()
           })
           .eq('id', job.id);
-          
+
         if (error) throw error;
-        
+
         toast({
           title: "Job Published",
           description: "Your job has been published successfully.",
@@ -122,10 +121,8 @@ const MyJobPosts = () => {
         // Submit for approval for new users
         const { error } = await supabase
           .from('jobs')
-          .update({ 
-            approval_status: 'pending',
-            submitted_for_approval_at: new Date().toISOString(),
-            job_status: 'inactive' // Keep inactive while pending approval
+          .update({
+            approval_status: 'pending'
           })
           .eq('id', job.id);
           
@@ -330,63 +327,56 @@ const MyJobPosts = () => {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-48">
-                            {/* Edit Option - Always available */}
-                            <DropdownMenuItem
-                              onClick={() => setEditingJob(job as Job)}
-                              className="cursor-pointer"
-                            >
-                              <Edit className="w-4 h-4 mr-2" />
-                              Edit
-                            </DropdownMenuItem>
+                            {/* Edit Option - Only available for drafts and approved jobs, not pending */}
+                            {((job as Record<string, unknown>).approval_status !== 'pending') && (
+                              <DropdownMenuItem
+                                onClick={() => setEditingJob(job as Job)}
+                                className="cursor-pointer"
+                              >
+                                <Edit className="w-4 h-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                            )}
+                            {((job as Record<string, unknown>).approval_status === 'pending') && (
+                              <DropdownMenuItem
+                                disabled
+                                className="cursor-not-allowed opacity-50"
+                              >
+                                <Edit className="w-4 h-4 mr-2" />
+                                Edit (Locked - Pending Review)
+                              </DropdownMenuItem>
+                            )}
                             
                             {(() => {
                               const approvalStatus = (job as Record<string, unknown>).approval_status || 'draft';
-                              const jobStatus = (job as Record<string, unknown>).job_status || 'active';
                               const canPublishDirectly = userProfile?.can_publish_directly || userProfile?.is_admin;
 
                               if (job.is_published && approvalStatus === 'approved') {
-                                // Published job - show job status controls
+                                // Published job - show retract and mark as filled options
                                 return (
                                   <>
                                     <DropdownMenuSeparator />
-                                    {jobStatus === 'active' && (
-                                      <>
-                                        <DropdownMenuItem
-                                          onClick={() => handleUpdateJobStatus(job.id, 'filled')}
-                                          disabled={updateJobStatus.isPending}
-                                          className="cursor-pointer text-green-600 focus:text-green-600"
-                                        >
-                                          <CheckCircle className="w-4 h-4 mr-2" />
-                                          Mark as Filled
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                          onClick={() => handleUpdateJobStatus(job.id, 'inactive')}
-                                          disabled={updateJobStatus.isPending}
-                                          className="cursor-pointer text-gray-600 focus:text-gray-600"
-                                        >
-                                          <Pause className="w-4 h-4 mr-2" />
-                                          Set Inactive
-                                        </DropdownMenuItem>
-                                      </>
-                                    )}
-                                    {jobStatus !== 'active' && (
-                                      <DropdownMenuItem
-                                        onClick={() => handleUpdateJobStatus(job.id, 'active')}
-                                        disabled={updateJobStatus.isPending}
-                                        className="cursor-pointer text-blue-600 focus:text-blue-600"
-                                      >
-                                        <Eye className="w-4 h-4 mr-2" />
-                                        Reactivate
-                                      </DropdownMenuItem>
-                                    )}
-                                    <DropdownMenuSeparator />
                                     <DropdownMenuItem
-                                      onClick={() => handleRetractJob(job.id, true)}
-                                      disabled={retractJob.isPending}
-                                      className="cursor-pointer text-red-600 focus:text-red-600"
+                                      onClick={() => handleUpdateJobStatus(job.id, 'filled')}
+                                      disabled={updateJobStatus.isPending}
+                                      className="cursor-pointer text-green-600 focus:text-green-600"
                                     >
-                                      <EyeOff className="w-4 h-4 mr-2" />
-                                      Retract Job
+                                      <CheckCircle className="w-4 h-4 mr-2" />
+                                      Mark as Filled (Unpublish)
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() => {
+                                        retractJob.mutate({
+                                          jobId: job.id,
+                                          isPublished: false,
+                                          postedBy: job.posted_by
+                                        });
+                                      }}
+                                      disabled={retractJob.isPending}
+                                      className="cursor-pointer text-orange-600 focus:text-orange-600"
+                                    >
+                                      <XCircle className="w-4 h-4 mr-2" />
+                                      Retract (Unpublish)
                                     </DropdownMenuItem>
                                   </>
                                 );

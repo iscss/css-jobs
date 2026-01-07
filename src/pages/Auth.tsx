@@ -12,8 +12,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { sanitizeInput, sanitizeEmail, sanitizeUrl } from '@/lib/sanitize';
-import { UserCheck, Briefcase, Users, Globe, GraduationCap, Check, X } from 'lucide-react';
+import { UserCheck, Briefcase, Users, Globe, GraduationCap, Check, X, AlertCircle } from 'lucide-react';
 import Header from '@/components/layout/Header';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 // Strong password validation schema
 const passwordSchema = z
@@ -267,6 +268,17 @@ const Auth = () => {
                       </div>
                     </RadioGroup>
                   </div>
+
+                  {userType === 'job_poster' && (
+                    <Alert className="border-blue-200 bg-blue-50">
+                      <AlertCircle className="h-4 w-4 text-blue-600" />
+                      <AlertDescription className="text-blue-900 text-sm">
+                        <strong>Quick Tip:</strong> Use your university email address (e.g., @stanford.edu, @ox.ac.uk)
+                        for automatic approval. We verify 10,500+ educational institutions worldwide.
+                        Other emails require manual admin approval.
+                      </AlertDescription>
+                    </Alert>
+                  )}
                 </>
               )}
 

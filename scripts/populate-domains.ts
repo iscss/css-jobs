@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import universityDomainsData from '../data/university-domains.json';
+import universityDomainsData from '../public/data/university-domains.json';
 
 interface UniversityData {
   name: string;

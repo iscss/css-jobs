@@ -270,11 +270,17 @@ WHERE email = 'new-admin@example.com';
 3. Find job → click "Feature"
 4. Job now shows in homepage carousel
 
-### Load University Domains (5,000+)
+### Load University Domains (10,500+)
 
-Currently manual import needed. Data is in `public/data/university-domains.json`.
+University email verification allows users with whitelisted domains to post jobs. Data is in `public/data/university-domains.json`.
 
-**Future:** Build admin UI to call `DomainLoader.populateDatabase()` (in `src/lib/domain-loader.ts`)
+**One-time setup:**
+1. Generate SQL file: `node scripts/generate-domains-sql.cjs`
+2. Open Supabase Dashboard → SQL Editor
+3. Paste contents of generated `supabase/seed-domains.sql`
+4. Click "Run"
+
+This loads 10,500+ university domains. Users with these email addresses will be auto-approved to post jobs.
 
 ### Enable Email Alerts
 
