@@ -71,14 +71,29 @@ const PendingJobApprovalCard = ({ job }: PendingJobApprovalCardProps) => {
     setIsProcessing(true);
     try {
       if (approvalAction === 'approve') {
-        // Call our database function to approve job and update user counter
-        const { error } = await supabase.rpc('approve_job_and_update_counter', {
-          job_id: job.id,
-          admin_id: user?.id
+        // Approve the job and publish it
+        const { error: jobError } = await supabase
+          .from('jobs')
+          .update({
+            approval_status: 'approved',
+            is_published: true,
+            approved_at: new Date().toISOString(),
+            approved_by_admin: user?.id
+          })
+          .eq('id', job.id);
+
+        if (jobError) throw jobError;
+
+        // Increment the user's approved jobs count
+        const { error: counterError } = await supabase.rpc('increment_approved_jobs_count', {
+          user_id: job.posted_by
         });
 
-        if (error) throw error;
-        
+        // Log but don't fail if counter update fails
+        if (counterError) {
+          console.warn('Failed to increment approved jobs count:', counterError);
+        }
+
         toast({
           title: "Job Approved",
           description: "The job has been approved and published successfully.",
