@@ -58,6 +58,11 @@ const Auth = () => {
 
   const isPasswordValid = Object.values(passwordChecks).every(Boolean);
 
+  // Sync isSignUp state with URL params when they change
+  useEffect(() => {
+    setIsSignUp(searchParams.get('tab') === 'signup');
+  }, [searchParams]);
+
   useEffect(() => {
     if (user) {
       navigate('/');
