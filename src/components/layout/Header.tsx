@@ -10,9 +10,11 @@ import { useAdminApprovals } from '@/hooks/useAdminApprovals';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { usePageRefresh } from '@/hooks/usePageRefresh';
 import { Badge } from '@/components/ui/badge';
+import PostOpportunitiesModal from './PostOpportunitiesModal';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showPostJobModal, setShowPostJobModal] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
@@ -35,6 +37,14 @@ const Header = () => {
 
   // Check if user can post jobs (not a job-seeker)
   const canPostJobs = user && userProfile?.user_type !== 'job_seeker';
+
+  const handlePostJobClick = () => {
+    if (canPostJobs) {
+      handleNavigation('/post-job');
+    } else {
+      setShowPostJobModal(true);
+    }
+  };
 
   // Helper function to determine if a path is active
   const isActivePath = (path: string) => {
@@ -94,19 +104,17 @@ const Header = () => {
               Browse Jobs
             </Button>
 
+            <Button
+              variant="ghost"
+              className={getActiveStyles('/post-job')}
+              onClick={handlePostJobClick}
+            >
+              <Plus className="w-4 h-4" />
+              Post Job
+            </Button>
+
             {user && (
               <>
-                {canPostJobs && (
-                  <Button
-                    variant="ghost"
-                    className={getActiveStyles('/post-job')}
-                    onClick={() => handleNavigation('/post-job')}
-                  >
-                    <Plus className="w-4 h-4" />
-                    Post Job
-                  </Button>
-                )}
-
                 <Button
                   variant="ghost"
                   className={getActiveStyles('/profile')}
@@ -184,19 +192,17 @@ const Header = () => {
                 Browse Jobs
               </Button>
 
+              <Button
+                variant="ghost"
+                className={`${getMobileActiveStyles('/post-job')} w-full`}
+                onClick={() => { handlePostJobClick(); setIsMenuOpen(false); }}
+              >
+                <Plus className="w-4 h-4" />
+                Post Job
+              </Button>
+
               {user && (
                 <>
-                  {canPostJobs && (
-                    <Button
-                      variant="ghost"
-                      className={`${getMobileActiveStyles('/post-job')} w-full`}
-                      onClick={() => { handleNavigation('/post-job'); setIsMenuOpen(false); }}
-                    >
-                      <Plus className="w-4 h-4" />
-                      Post Job
-                    </Button>
-                  )}
-
                   <Button
                     variant="ghost"
                     className={`${getMobileActiveStyles('/profile')} w-full`}
@@ -241,6 +247,11 @@ const Header = () => {
           </div>
         )}
       </div>
+
+      <PostOpportunitiesModal
+        isOpen={showPostJobModal}
+        onClose={() => setShowPostJobModal(false)}
+      />
     </header>
   );
 };
