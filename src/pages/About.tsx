@@ -37,12 +37,24 @@ const About = () => {
       website: "http://cbudak.com/index.html",
       scholar: "https://scholar.google.com/citations?user=wIhJS60AAAAJ&hl=en"
     },
-    // {
-    //   name: "Ingmar Weber",
-    //   role: "Advisor",
-    //   photo: "/team/ingmar.jpg",
-    //   icon: <Users className="w-4 h-4" />
-    // }
+    {
+      name: "Caroline Rogers",
+      role: "Operations",
+      photo: "/team/caroline.png",
+      icon: <Users className="w-4 h-4" />,
+      affiliation: "University of Pennsylvania",
+      title: "Superstar",
+      website: "https://css.seas.upenn.edu/caroline-rogers/"
+    },
+    {
+      name: "Regina (Jeanne) Ruane",
+      role: "Lead",
+      photo: "/team/jeanne.jpg",
+      icon: <Users className="w-4 h-4" />,
+      affiliation: "University of Pennsylvania",
+      title: "Mastermind",
+      website: "https://css.seas.upenn.edu/people/regina-jeanne-ruane/"
+    },
   ];
 
   return (
