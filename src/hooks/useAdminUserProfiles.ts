@@ -24,6 +24,8 @@ export interface AdminUserProfile {
   email_confirmed_at: string | null;
   last_sign_in_at: string | null;
   auth_created_at: string | null;
+  email_opt_out: boolean | null;
+  unsubscribe_token: string | null;
 }
 
 export const useAdminUserProfiles = () => {

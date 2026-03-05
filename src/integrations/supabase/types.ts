@@ -477,6 +477,7 @@ export type Database = {
           can_publish_directly: boolean | null
           created_at: string
           email: string | null
+          email_opt_out: boolean | null
           full_name: string | null
           google_scholar_url: string | null
           id: string
@@ -485,6 +486,7 @@ export type Database = {
           is_approved_poster: boolean | null
           orcid_id: string | null
           requested_at: string | null
+          unsubscribe_token: string | null
           updated_at: string
           user_type: string | null
           website_url: string | null
@@ -498,6 +500,7 @@ export type Database = {
           can_publish_directly?: boolean | null
           created_at?: string
           email?: string | null
+          email_opt_out?: boolean | null
           full_name?: string | null
           google_scholar_url?: string | null
           id: string
@@ -506,6 +509,7 @@ export type Database = {
           is_approved_poster?: boolean | null
           orcid_id?: string | null
           requested_at?: string | null
+          unsubscribe_token?: string | null
           updated_at?: string
           user_type?: string | null
           website_url?: string | null
@@ -519,6 +523,7 @@ export type Database = {
           can_publish_directly?: boolean | null
           created_at?: string
           email?: string | null
+          email_opt_out?: boolean | null
           full_name?: string | null
           google_scholar_url?: string | null
           id?: string
@@ -527,6 +532,7 @@ export type Database = {
           is_approved_poster?: boolean | null
           orcid_id?: string | null
           requested_at?: string | null
+          unsubscribe_token?: string | null
           updated_at?: string
           user_type?: string | null
           website_url?: string | null
@@ -571,6 +577,7 @@ export type Database = {
           created_at: string
           email: string
           email_confirmed_at: string
+          email_opt_out: boolean
           full_name: string
           google_scholar_url: string
           id: string
@@ -580,10 +587,15 @@ export type Database = {
           last_sign_in_at: string
           orcid_id: string
           requested_at: string
+          unsubscribe_token: string
           updated_at: string
           user_type: string
           website_url: string
         }[]
+      }
+      handle_unsubscribe: {
+        Args: { token: string }
+        Returns: boolean
       }
       get_user_job_matches: {
         Args: { limit_param?: number; user_id_param: string }

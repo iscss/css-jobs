@@ -30,7 +30,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useAllUsers, useUpdateUserPermissions, useDeleteUser } from '@/hooks/useUserManagement';
-import { User, Shield, ShieldOff, UserX, Mail, Eye, CheckCircle, XCircle, Trash2, MoreHorizontal, Building2 } from 'lucide-react';
+import { User, Shield, ShieldOff, UserX, Mail, Eye, CheckCircle, XCircle, Trash2, MoreHorizontal, Building2, Download, MailX } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import UserProfileModal from './UserProfileModal';
@@ -108,6 +108,33 @@ const UserManagementTable = () => {
     });
   };
 
+  const handleExportEmails = () => {
+    if (!allUsers) return;
+
+    const eligibleUsers = allUsers.filter(
+      (u) => u.email_confirmed_at && !u.email_opt_out
+    );
+
+    const csvHeader = 'Name,Email,Institution,User Type,Email Opt Out';
+    const csvRows = eligibleUsers.map((u) => {
+      const name = (u.full_name || '').replace(/,/g, ' ');
+      const email = u.email || u.auth_email || '';
+      const institution = (u.institution || '').replace(/,/g, ' ');
+      const userType = u.user_type || '';
+      return `${name},${email},${institution},${userType},false`;
+    });
+
+    const csv = [csvHeader, ...csvRows].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const date = new Date().toISOString().split('T')[0];
+    link.href = url;
+    link.download = `css-jobs-emails-${date}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'N/A';
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -139,10 +166,21 @@ const UserManagementTable = () => {
     <>
       <Card>
         <CardHeader className="pb-6">
-          <CardTitle className="flex items-center gap-3 text-xl">
-            <User className="w-6 h-6" />
-            All Users ({allUsers?.length || 0})
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-3 text-xl">
+              <User className="w-6 h-6" />
+              All Users ({allUsers?.length || 0})
+            </CardTitle>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleExportEmails}
+              disabled={!allUsers?.length}
+            >
+              <Download className="w-4 h-4 mr-1" />
+              Export Emails (CSV)
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
@@ -203,6 +241,12 @@ const UserManagementTable = () => {
                           </>
                         )}
                       </div>
+                      {user.email_opt_out && (
+                        <Badge variant="outline" className="w-fit text-xs text-orange-600 border-orange-300">
+                          <MailX className="w-3 h-3 mr-1" />
+                          Unsubscribed
+                        </Badge>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell className="py-6">
