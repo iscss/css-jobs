@@ -43,7 +43,7 @@ const About = () => {
       photo: "/team/caroline.png",
       icon: <Users className="w-4 h-4" />,
       affiliation: "University of Pennsylvania",
-      title: "Superstar",
+      title: "",
       website: "https://css.seas.upenn.edu/caroline-rogers/"
     },
     {
@@ -52,7 +52,7 @@ const About = () => {
       photo: "/team/jeanne.jpg",
       icon: <Users className="w-4 h-4" />,
       affiliation: "University of Pennsylvania",
-      title: "Mastermind",
+      title: "",
       website: "https://css.seas.upenn.edu/people/regina-jeanne-ruane/"
     },
   ];
