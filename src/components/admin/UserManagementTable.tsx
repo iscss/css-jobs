@@ -115,13 +115,14 @@ const UserManagementTable = () => {
       (u) => u.email_confirmed_at && !u.email_opt_out
     );
 
-    const csvHeader = 'Name,Email,Institution,User Type,Email Opt Out';
+    const csvHeader = 'Name,Email,Institution,User Type,Email Opt Out,Unsubscribe Token';
     const csvRows = eligibleUsers.map((u) => {
       const name = (u.full_name || '').replace(/,/g, ' ');
       const email = u.email || u.auth_email || '';
       const institution = (u.institution || '').replace(/,/g, ' ');
       const userType = u.user_type || '';
-      return `${name},${email},${institution},${userType},false`;
+      const token = u.unsubscribe_token || '';
+      return `${name},${email},${institution},${userType},false,${token}`;
     });
 
     const csv = [csvHeader, ...csvRows].join('\n');

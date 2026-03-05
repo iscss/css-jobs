@@ -7,13 +7,14 @@ function buildExportCsv(users: Partial<AdminUserProfile>[]) {
     (u) => u.email_confirmed_at && !u.email_opt_out
   );
 
-  const csvHeader = 'Name,Email,Institution,User Type,Email Opt Out';
+  const csvHeader = 'Name,Email,Institution,User Type,Email Opt Out,Unsubscribe Token';
   const csvRows = eligibleUsers.map((u) => {
     const name = (u.full_name || '').replace(/,/g, ' ');
     const email = u.email || u.auth_email || '';
     const institution = (u.institution || '').replace(/,/g, ' ');
     const userType = u.user_type || '';
-    return `${name},${email},${institution},${userType},false`;
+    const token = u.unsubscribe_token || '';
+    return `${name},${email},${institution},${userType},false,${token}`;
   });
 
   return [csvHeader, ...csvRows].join('\n');
@@ -47,7 +48,7 @@ const baseUser: AdminUserProfile = {
 describe('Email CSV Export Logic', () => {
   it('includes verified opted-in users', () => {
     const csv = buildExportCsv([baseUser]);
-    expect(csv).toContain('Test User,test@example.com,MIT,job_seeker,false');
+    expect(csv).toContain('Test User,test@example.com,MIT,job_seeker,false,abc-123');
   });
 
   it('excludes unverified users', () => {
@@ -94,6 +95,6 @@ describe('Email CSV Export Logic', () => {
 
   it('has correct CSV header', () => {
     const csv = buildExportCsv([]);
-    expect(csv).toBe('Name,Email,Institution,User Type,Email Opt Out');
+    expect(csv).toBe('Name,Email,Institution,User Type,Email Opt Out,Unsubscribe Token');
   });
 });
