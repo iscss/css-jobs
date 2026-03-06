@@ -2,6 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.2'
 
 // Allowed origins for CORS
 const ALLOWED_ORIGINS = [
+  'https://jobs.iscss.org',
   'https://css-jobs.andersgiovanni.com',
   'http://localhost:8080',
   'http://localhost:5173',
