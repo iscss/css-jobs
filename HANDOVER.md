@@ -1,7 +1,9 @@
 # CSS Job Board - Project Handover
 
+> **Note:** This handover document was written in December 2025 and has not been updated since. The production URL has moved from `https://css-jobs.andersgiovanni.com` to **https://jobs.iscss.org**. The Supabase project was also migrated to a new instance (`ukkqeczgommifgecyrez`). Accounts for both Vercel and Supabase are now under `admin@iscss.org`. See `README.md` for current details.
+
 **Last Updated:** December 2025
-**Production URL:** https://css-jobs.andersgiovanni.com
+**Production URL:** https://css-jobs.andersgiovanni.com [now https://jobs.iscss.org]
 **Status:** Production-ready, actively maintained
 
 ---
