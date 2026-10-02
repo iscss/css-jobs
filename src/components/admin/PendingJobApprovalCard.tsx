@@ -12,7 +12,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Briefcase, User, Calendar, MapPin, Building2, CheckCircle, XCircle, Eye, Mail } from 'lucide-react';
+import { Briefcase, User, Calendar, MapPin, Building2, CheckCircle, XCircle, Eye, Mail, Bot, ExternalLink, Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -33,6 +33,14 @@ interface PendingJobApprovalCardProps {
   job: Job;
 }
 
+// The score only orders the queue, so the colours are a hint, not a verdict:
+// every imported job stays reviewable regardless of where it lands.
+const relevanceTone = (score: number) => {
+  if (score >= 0.5) return 'border-green-300 text-green-700 bg-green-50';
+  if (score >= 0.25) return 'border-amber-300 text-amber-700 bg-amber-50';
+  return 'border-gray-300 text-gray-600 bg-gray-50';
+};
+
 const PendingJobApprovalCard = ({ job }: PendingJobApprovalCardProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -41,6 +49,36 @@ const PendingJobApprovalCard = ({ job }: PendingJobApprovalCardProps) => {
   const [approvalAction, setApprovalAction] = useState<'approve' | 'reject' | null>(null);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Provenance for automatically imported postings. Admins need the link to
+  // the original listing to judge whether an import is genuine.
+  const isImported = job.is_auto_imported === true;
+  const sourceUrl = job.source_url;
+  const sourceName = job.source;
+  const relevanceScore =
+    job.relevance_score === null || job.relevance_score === undefined
+      ? null
+      : Number(job.relevance_score);
+  const relevanceReasoning = job.relevance_reasoning;
+  const postedAt = job.posted_at;
+  const deadline = job.application_deadline;
+
+  // Age matters as much as relevance: some feeds keep listings for years, so
+  // a perfect keyword match can still be a role that closed long ago.
+  const ageDays = postedAt
+    ? Math.floor((Date.now() - new Date(postedAt).getTime()) / 86400000)
+    : null;
+  const deadlinePassed = deadline
+    ? new Date(deadline).getTime() < Date.now()
+    : false;
+
+  const formatAge = (days: number) => {
+    if (days <= 0) return 'today';
+    if (days === 1) return 'yesterday';
+    if (days < 30) return `${days}d ago`;
+    if (days < 365) return `${Math.round(days / 30)}mo ago`;
+    return `${(days / 365).toFixed(1)}y ago`;
+  };
 
   const formatTimeAgo = (dateString: string | null) => {
     if (!dateString) return 'Unknown';
@@ -151,11 +189,71 @@ const PendingJobApprovalCard = ({ job }: PendingJobApprovalCardProps) => {
               <div className="min-w-0 flex-1">
                 <div className="flex items-start justify-between mb-2">
                   <h3 className="text-lg font-semibold text-gray-900 truncate pr-2">{job.title}</h3>
-                  <Badge variant="outline" className="border-orange-300 text-orange-700 bg-orange-100 shrink-0">
-                    Pending Job Approval
-                  </Badge>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {isImported && relevanceScore !== null && (
+                      <Badge
+                        variant="outline"
+                        className={`shrink-0 ${relevanceTone(relevanceScore)}`}
+                        title={relevanceReasoning ?? undefined}
+                      >
+                        {Math.round(relevanceScore * 100)}% match
+                      </Badge>
+                    )}
+                    <Badge variant="outline" className="border-orange-300 text-orange-700 bg-orange-100 shrink-0">
+                      Pending Job Approval
+                    </Badge>
+                  </div>
                 </div>
-                
+
+                {isImported && (
+                  <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
+                    {ageDays !== null && (
+                      <Badge
+                        variant="outline"
+                        className={
+                          ageDays > 365
+                            ? 'border-red-300 text-red-700 bg-red-50'
+                            : ageDays > 180
+                            ? 'border-amber-300 text-amber-700 bg-amber-50'
+                            : 'border-gray-300 text-gray-600 bg-gray-50'
+                        }
+                        title={`Posted ${postedAt}`}
+                      >
+                        <Clock className="w-3 h-3 mr-1" />
+                        {formatAge(ageDays)}
+                      </Badge>
+                    )}
+                    {deadline && (
+                      <Badge
+                        variant="outline"
+                        className={
+                          deadlinePassed
+                            ? 'border-red-300 text-red-700 bg-red-50'
+                            : 'border-green-300 text-green-700 bg-green-50'
+                        }
+                      >
+                        {deadlinePassed ? 'Closed ' : 'Closes '}
+                        {deadline}
+                      </Badge>
+                    )}
+                    <Badge variant="outline" className="border-blue-300 text-blue-700 bg-blue-50">
+                      <Bot className="w-3 h-3 mr-1" />
+                      Auto-imported
+                    </Badge>
+                    {sourceUrl && (
+                      <a
+                        href={sourceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-blue-700 hover:underline"
+                      >
+                        View original{sourceName ? ` on ${sourceName}` : ''}
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-sm text-gray-600">

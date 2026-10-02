@@ -44,4 +44,4 @@ schema_dump.sql
 running_notes.md
 *_notes.md
 TODO.md
-.notes/
+.notes/supabase/.branches/

@@ -227,13 +227,16 @@ export type Database = {
           approved_at: string | null
           approved_by_admin: string | null
           contact_email: string | null
+          content_hash: string | null
           created_at: string
           department: string | null
           description: string
           duration: string | null
           funding_source: string | null
           id: string
+          imported_at: string | null
           institution: string
+          is_auto_imported: boolean
           is_featured: boolean | null
           is_published: boolean | null
           is_remote: boolean | null
@@ -243,8 +246,14 @@ export type Database = {
           notification_sent_at: string | null
           notification_sent_by: string | null
           pi_name: string | null
+          posted_at: string | null
           posted_by: string
+          relevance_reasoning: string | null
+          relevance_score: number | null
           requirements: string | null
+          source: string | null
+          source_job_id: string | null
+          source_url: string | null
           status_updated_at: string | null
           status_updated_by: string | null
           submitted_for_approval_at: string | null
@@ -260,13 +269,16 @@ export type Database = {
           approved_at?: string | null
           approved_by_admin?: string | null
           contact_email?: string | null
+          content_hash?: string | null
           created_at?: string
           department?: string | null
           description: string
           duration?: string | null
           funding_source?: string | null
           id?: string
+          imported_at?: string | null
           institution: string
+          is_auto_imported?: boolean
           is_featured?: boolean | null
           is_published?: boolean | null
           is_remote?: boolean | null
@@ -276,8 +288,14 @@ export type Database = {
           notification_sent_at?: string | null
           notification_sent_by?: string | null
           pi_name?: string | null
+          posted_at: string | null
           posted_by: string
+          relevance_reasoning?: string | null
+          relevance_score?: number | null
           requirements?: string | null
+          source?: string | null
+          source_job_id?: string | null
+          source_url?: string | null
           status_updated_at?: string | null
           status_updated_by?: string | null
           submitted_for_approval_at?: string | null
@@ -293,13 +311,16 @@ export type Database = {
           approved_at?: string | null
           approved_by_admin?: string | null
           contact_email?: string | null
+          content_hash?: string | null
           created_at?: string
           department?: string | null
           description?: string
           duration?: string | null
           funding_source?: string | null
           id?: string
+          imported_at?: string | null
           institution?: string
+          is_auto_imported?: boolean
           is_featured?: boolean | null
           is_published?: boolean | null
           is_remote?: boolean | null
@@ -309,8 +330,14 @@ export type Database = {
           notification_sent_at?: string | null
           notification_sent_by?: string | null
           pi_name?: string | null
+          posted_at?: string | null
           posted_by?: string
+          relevance_reasoning?: string | null
+          relevance_score?: number | null
           requirements?: string | null
+          source?: string | null
+          source_job_id?: string | null
+          source_url?: string | null
           status_updated_at?: string | null
           status_updated_by?: string | null
           submitted_for_approval_at?: string | null

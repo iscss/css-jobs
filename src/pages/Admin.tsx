@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -7,6 +7,11 @@ import { Button } from "@/components/ui/button";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import PendingApprovalCard from "@/components/admin/PendingApprovalCard";
+import PendingJobFilters, {
+  applyPendingFilters,
+  EMPTY_PENDING_FILTERS,
+  type PendingFilters,
+} from "@/components/admin/PendingJobFilters";
 import PendingJobApprovalCard from "@/components/admin/PendingJobApprovalCard";
 import UserManagementTable from "@/components/admin/UserManagementTable";
 import JobManagementTable from "@/components/admin/JobManagementTable";
@@ -25,6 +30,15 @@ const Admin = () => {
   const { data: isAdmin, isLoading: adminLoading } = useAdminCheck();
   const { data: pendingApprovals, isLoading: approvalsLoading } = useAdminApprovals();
   const { data: pendingJobs, isLoading: pendingJobsLoading } = usePendingJobs();
+  const [pendingFilters, setPendingFilters] =
+    useState<PendingFilters>(EMPTY_PENDING_FILTERS);
+
+  // Filtering runs client-side: the queue is already loaded, so this stays
+  // instant and avoids a refetch on every keystroke.
+  const visiblePendingJobs = useMemo(
+    () => applyPendingFilters(pendingJobs ?? [], pendingFilters),
+    [pendingJobs, pendingFilters],
+  );
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('approvals');
   const queryClient = useQueryClient();
@@ -208,12 +222,33 @@ const Admin = () => {
                         ))}
                       </div>
                     ) : pendingJobs && pendingJobs.length > 0 ? (
-                      pendingJobs.map((job) => (
-                        <PendingJobApprovalCard
-                          key={job.id}
-                          job={job}
+                      <>
+                        <PendingJobFilters
+                          jobs={pendingJobs}
+                          filters={pendingFilters}
+                          onChange={setPendingFilters}
+                          resultCount={visiblePendingJobs.length}
                         />
-                      ))
+                        {visiblePendingJobs.length > 0 ? (
+                          visiblePendingJobs.map((job) => (
+                            <PendingJobApprovalCard
+                              key={job.id}
+                              job={job}
+                            />
+                          ))
+                        ) : (
+                          <div className="text-center py-6 bg-gray-50 rounded-lg border">
+                            <Briefcase className="w-10 h-10 text-gray-400 mx-auto mb-2" />
+                            <h3 className="text-md font-medium text-gray-700 mb-1">
+                              No jobs match these filters
+                            </h3>
+                            <p className="text-gray-500 text-sm">
+                              {pendingJobs.length} job{pendingJobs.length === 1 ? '' : 's'} are
+                              still pending — try clearing a filter.
+                            </p>
+                          </div>
+                        )}
+                      </>
                     ) : (
                       <div className="text-center py-6 bg-green-50 rounded-lg border border-green-200">
                         <Briefcase className="w-10 h-10 text-green-500 mx-auto mb-2" />

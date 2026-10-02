@@ -61,6 +61,13 @@ export const usePendingJobs = () => {
           )
         `)
         .eq('approval_status', 'pending')
+        // Human submissions first (they are never auto-imported), then the
+        // most likely CSS imports, newest first within the same score. Nothing
+        // is filtered out - the long tail of low-scoring imports stays in the
+        // queue, just further down.
+        .order('is_auto_imported', { ascending: true })
+        .order('relevance_score', { ascending: false, nullsFirst: false })
+        .order('posted_at', { ascending: false, nullsFirst: false })
         .order('updated_at', { ascending: true }); // Oldest submissions first
 
       if (error) throw error;
