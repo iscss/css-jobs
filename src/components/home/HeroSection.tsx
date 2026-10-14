@@ -43,37 +43,33 @@ const HeroSection = () => {
   };
 
   const popularSearches = [
-    { term: 'PhD', color: 'bg-blue-100 text-blue-700 hover:bg-blue-200' },
-    { term: 'Postdoc', color: 'bg-green-100 text-green-700 hover:bg-green-200' },
-    { term: 'Machine Learning', color: 'bg-purple-100 text-purple-700 hover:bg-purple-200' },
-    { term: 'Data Science', color: 'bg-orange-100 text-orange-700 hover:bg-orange-200' },
-    { term: 'Remote', color: 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200' }
+    { term: 'PhD', color: 'bg-white/10 text-white hover:bg-white/20' },
+    { term: 'Postdoc', color: 'bg-white/10 text-white hover:bg-white/20' },
+    { term: 'Machine Learning', color: 'bg-white/10 text-white hover:bg-white/20' },
+    { term: 'Data Science', color: 'bg-white/10 text-white hover:bg-white/20' },
+    { term: 'Remote', color: 'bg-white/10 text-white hover:bg-white/20' }
   ];
 
   return (
-    <section className="relative bg-gradient-to-br from-slate-50 via-white to-indigo-50 pt-20 pb-32 overflow-hidden">
+    <section className="relative bg-brand-navy pt-16 pb-20 overflow-hidden">
       {/* Background decorative elements */}
-      <div className="absolute inset-0 bg-grid-slate-100 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))] -z-10"></div>
-      <div className="absolute top-10 left-10 w-72 h-72 bg-gradient-to-r from-purple-300 to-pink-300 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"></div>
-      <div className="absolute top-0 right-4 w-72 h-72 bg-gradient-to-r from-yellow-300 to-orange-300 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000"></div>
-      <div className="absolute -bottom-8 left-20 w-72 h-72 bg-gradient-to-r from-pink-300 to-indigo-300 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-4000"></div>
 
       <div className="container mx-auto px-4 relative">
         <div className="text-center max-w-5xl mx-auto">
 
           {/* Main heading */}
-          <h1 className="text-5xl md:text-7xl font-serif font-bold text-slate-900 mb-6 leading-tight">
+          <h1 className="text-5xl md:text-7xl font-serif font-bold text-white mb-6 leading-tight">
             Find Your Next
-            <span className="block bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+            <span className="block text-brand-gold">
               Research Position
             </span>
           </h1>
 
           {/* Subtitle */}
-          <p className="text-xl md:text-2xl text-slate-600 mb-12 max-w-4xl mx-auto leading-relaxed">
+          <p className="text-lg md:text-xl text-white/80 mb-12 max-w-4xl mx-auto leading-relaxed">
             Discover exceptional opportunities in Computational Social Science, from PhD positions to faculty roles.
-            <span className="font-semibold text-slate-700"> Find your next position</span> or
-            <span className="font-semibold text-slate-700"> share job opportunities</span> with our global research community.
+            <span className="font-semibold text-white"> Find your next position</span> or
+            <span className="font-semibold text-white"> share job opportunities</span> with our global research community.
           </p>
 
           {/* Enhanced Search Section */}
@@ -95,7 +91,7 @@ const HeroSection = () => {
                     <Button
                       type="submit"
                       size="lg"
-                      className="px-8 py-6 text-lg font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-lg hover:shadow-xl transition-all duration-200 rounded-2xl whitespace-nowrap"
+                      className="px-8 py-6 text-base font-semibold bg-brand-teal hover:bg-brand-teal-dark text-white rounded-2xl whitespace-nowrap"
                     >
                       <Search className="w-5 h-5 mr-2" />
                       Search
@@ -107,7 +103,7 @@ const HeroSection = () => {
 
             {/* Popular searches */}
             <div className="space-y-4">
-              <p className="text-sm font-medium text-gray-600">Popular searches:</p>
+              <p className="text-sm font-medium text-white/80">Popular searches:</p>
               <div className="flex flex-wrap justify-center gap-3">
                 {popularSearches.map((search) => (
                   <button
@@ -123,8 +119,8 @@ const HeroSection = () => {
             </div>
 
             {/* Enhanced hint section */}
-            <div className="mt-8 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl border border-blue-100 shadow-lg">
-              <p className="text-sm text-blue-800 flex items-center justify-center gap-2 font-medium">
+            <div className="mt-8 p-4 bg-white/10 rounded-2xl border border-white/20">
+              <p className="text-sm text-white/90 flex items-center justify-center gap-2 font-medium">
                 <TrendingUp className="w-4 h-4" />
                 <span>✨ Featured positions are highlighted below • Browse all positions for comprehensive results</span>
               </p>
@@ -136,7 +132,7 @@ const HeroSection = () => {
             <Button
               onClick={() => navigate('/jobs')}
               size="lg"
-              className="px-8 py-4 text-lg font-semibold bg-gradient-to-r from-slate-800 to-slate-900 hover:from-slate-900 hover:to-black shadow-xl hover:shadow-2xl transition-all duration-200 flex items-center gap-2"
+              className="px-8 py-4 text-base font-semibold bg-brand-teal hover:bg-brand-teal-dark text-white flex items-center gap-2"
             >
               <Briefcase className="w-5 h-5" />
               Browse Jobs
@@ -145,7 +141,7 @@ const HeroSection = () => {
             <Button
               onClick={handlePostOpportunities}
               size="lg"
-              className="px-8 py-4 text-lg font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-xl hover:shadow-2xl transition-all duration-200 flex items-center gap-2"
+              className="px-8 py-4 text-base font-semibold bg-transparent border border-white/40 hover:bg-white/10 text-white flex items-center gap-2"
             >
               <Users className="w-5 h-5" />
               Post Jobs
