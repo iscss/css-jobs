@@ -1,35 +1,26 @@
-
-import { Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const Footer = () => {
   return (
-    <footer className="bg-gradient-to-r from-slate-50 to-slate-100 border-t border-slate-200 py-8">
-      <div className="container mx-auto px-4">
-        <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-          {/* Brand */}
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
-              <Sparkles className="text-white w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-slate-800">CSS Jobs</h3>
-              <p className="text-sm text-slate-600">Computational Social Science Careers</p>
-            </div>
-          </div>
-
-          {/* Essential Links */}
-          <div className="flex items-center">
-            <Link to="/about" className="text-slate-600 hover:text-slate-800 transition-colors text-sm font-medium">
-              About
-            </Link>
-          </div>
-
-          {/* Copyright */}
-          <div className="text-slate-500 text-sm">
-            © 2025 CSS Jobs
-          </div>
+    <footer className="border-t border-border bg-white">
+      <div className="border-t-[3px] border-brand-gold" />
+      <div className="mx-auto max-w-[1400px] px-7 py-5 flex flex-col md:flex-row items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <span className="font-bold tracking-widest text-sm text-brand-navy">ISCSS</span>
+          <span className="text-border">|</span>
+          <span className="text-[11px] text-[#888]">International Society for Computational Social Science</span>
         </div>
+
+        <nav className="flex items-center gap-5 text-[11px] text-[#555]">
+          <Link to="/jobs" className="hover:text-slate-800">Jobs</Link>
+          <Link to="/about" className="hover:text-slate-800">About</Link>
+          <a href="https://events.iscss.org" target="_blank" rel="noopener noreferrer" className="hover:text-slate-800">CSS Events</a>
+          <a href="https://iscss.org" target="_blank" rel="noopener noreferrer" className="hover:text-slate-800">iscss.org</a>
+        </nav>
+
+        <p className="text-[11px] text-[#aaa]">
+          &copy; {new Date().getFullYear()} ISCSS. All rights reserved.
+        </p>
       </div>
     </footer>
   );

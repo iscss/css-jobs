@@ -56,36 +56,31 @@ const Header = () => {
 
   // Helper function to get active styles
   const getActiveStyles = (path: string) => {
-    const baseStyles = "flex items-center gap-2 text-gray-600 hover:text-gray-900";
-    const activeStyles = "text-indigo-600 bg-indigo-50 hover:text-indigo-700 hover:bg-indigo-100";
+    const baseStyles = "flex items-center gap-2 h-8 px-2 text-xs font-medium rounded-none text-white/80 hover:text-white hover:bg-transparent";
+    const activeStyles = "text-white border-b-2 border-brand-gold";
     return isActivePath(path) ? `${baseStyles} ${activeStyles}` : baseStyles;
   };
 
   // Helper function to get mobile active styles
   const getMobileActiveStyles = (path: string) => {
-    const baseStyles = "flex items-center gap-2 justify-start text-gray-600 hover:text-gray-900";
-    const activeStyles = "text-indigo-600 bg-indigo-50 hover:text-indigo-700 hover:bg-indigo-100";
+    const baseStyles = "flex items-center gap-2 justify-start text-xs font-medium rounded-none text-white/80 hover:text-white hover:bg-white/10";
+    const activeStyles = "text-white border-l-2 border-brand-gold";
     return isActivePath(path) ? `${baseStyles} ${activeStyles}` : baseStyles;
   };
 
   return (
-    <header className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
+    <header className="sticky top-0 z-50 w-full bg-brand-navy">
+      <div className="h-[3px] bg-brand-gold" />
+      <div className="container mx-auto px-6">
+        <div className="flex items-center justify-between h-[49px]">
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">CSS</span>
-            </div>
-            <div className="hidden sm:block">
-              <span className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                Jobs
-              </span>
-            </div>
+          <Link to="/" className="flex items-center gap-3">
+            <span className="font-bold tracking-widest text-white text-[15px]">ISCSS</span>
+            <span className="hidden sm:block text-xs font-medium text-white/80">Jobs</span>
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-8">
+          <nav className="hidden md:flex items-center gap-7">
             <Button
               variant="ghost"
               className={getActiveStyles('/')}
@@ -163,6 +158,7 @@ const Header = () => {
             <Button
               variant="ghost"
               size="sm"
+              className="text-white hover:bg-white/10 hover:text-white"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
             >
               {isMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -172,7 +168,7 @@ const Header = () => {
 
         {/* Mobile Navigation */}
         {isMenuOpen && (
-          <div className="md:hidden border-t border-gray-200 py-4">
+          <div className="md:hidden border-t border-white/20 py-4">
             <nav className="flex flex-col space-y-4">
               <Button
                 variant="ghost"
@@ -240,7 +236,7 @@ const Header = () => {
                 </Button>
               </Link>
 
-              <div className="pt-4 border-t border-gray-200">
+              <div className="pt-4 border-t border-white/20">
                 <AuthButton />
               </div>
             </nav>
