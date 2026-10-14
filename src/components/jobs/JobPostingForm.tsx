@@ -320,9 +320,9 @@ const JobPostingForm = () => {
         );
       } else {
         return (
-          <Alert className="border-blue-200 bg-blue-50">
-            <Clock className="h-4 w-4 text-blue-600" />
-            <AlertDescription className="text-blue-800">
+          <Alert className="border-brand-surface-2 bg-brand-surface">
+            <Clock className="h-4 w-4 text-brand-navy" />
+            <AlertDescription className="text-brand-navy">
               <strong>New Poster:</strong> Your jobs will be reviewed before publication. After 3 approved jobs, you can publish directly. Current: {approvedJobsCount}/3 approved job{approvedJobsCount !== 1 ? 's' : ''}.
             </AlertDescription>
           </Alert>
@@ -353,9 +353,9 @@ const JobPostingForm = () => {
     }
 
     return (
-      <Alert className="border-blue-200 bg-blue-50">
-        <AlertCircle className="h-4 w-4 text-blue-600" />
-        <AlertDescription className="text-blue-800">
+      <Alert className="border-brand-surface-2 bg-brand-surface">
+        <AlertCircle className="h-4 w-4 text-brand-navy" />
+        <AlertDescription className="text-brand-navy">
           You need to request approval to post jobs. Please update your profile to request job posting privileges.
         </AlertDescription>
       </Alert>
@@ -631,7 +631,7 @@ const JobPostingForm = () => {
               </div>
             </div>
 
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-200">
+            <div className="bg-brand-surface p-4 rounded-lg border border-brand-surface-2">
               <div className="flex items-center space-x-3">
                 <Checkbox
                   id="is_remote"
@@ -639,10 +639,10 @@ const JobPostingForm = () => {
                   onCheckedChange={(checked) => setIsRemote(checked === true)}
                 />
                 <div>
-                  <Label htmlFor="is_remote" className="font-medium text-blue-900 cursor-pointer">
+                  <Label htmlFor="is_remote" className="font-medium text-brand-navy cursor-pointer">
                     This is a remote position
                   </Label>
-                  <p className="text-xs text-blue-700 mt-1">
+                  <p className="text-xs text-brand-navy mt-1">
                     Check this if the position can be performed remotely or is location-independent
                   </p>
                 </div>

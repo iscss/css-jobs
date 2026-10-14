@@ -63,24 +63,24 @@ const About = () => {
         <Header />
         <main className="main-content">
           {/* Hero Section */}
-          <section className="relative bg-gradient-to-br from-slate-50 via-white to-indigo-50 pt-20 pb-32 overflow-hidden">
+          <section className="relative bg-brand-surface pt-20 pb-32 overflow-hidden">
             {/* Background decorative elements */}
             <div className="absolute inset-0 bg-grid-slate-100 [mask-image:linear-gradient(0deg,white,rgba(255,255,255,0.6))] -z-10"></div>
-            <div className="absolute top-10 left-10 w-72 h-72 bg-gradient-to-r from-purple-300 to-pink-300 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"></div>
+            <div className="absolute top-10 left-10 w-72 h-72 bg-brand-navy rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"></div>
             <div className="absolute top-0 right-4 w-72 h-72 bg-gradient-to-r from-yellow-300 to-orange-300 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000"></div>
-            <div className="absolute -bottom-8 left-20 w-72 h-72 bg-gradient-to-r from-pink-300 to-indigo-300 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-4000"></div>
+            <div className="absolute -bottom-8 left-20 w-72 h-72 bg-brand-navy rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-4000"></div>
 
             <div className="container mx-auto px-4 relative">
               <div className="text-center max-w-4xl mx-auto">
                 {/* Badge */}
-                <div className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-indigo-100 to-purple-100 text-indigo-700 rounded-full text-sm font-medium mb-8 border border-indigo-200 shadow-sm">
+                <div className="inline-flex items-center px-6 py-3 bg-brand-surface text-brand-navy rounded-full text-sm font-medium mb-8 border border-brand-surface-2 shadow-sm">
                   Built with ❤️ for the CSS Community
                 </div>
 
                 {/* Main heading */}
                 <h1 className="text-5xl md:text-6xl font-serif font-bold text-slate-900 mb-6 leading-tight">
                   About
-                  <span className="block bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+                  <span className="block text-brand-navy">
                     CSS Jobs
                   </span>
                 </h1>
@@ -99,7 +99,7 @@ const About = () => {
               <div className="max-w-4xl mx-auto">
                 <div className="text-center mb-16">
                   <h2 className="text-4xl md:text-5xl font-bold text-slate-800 mb-6">
-                    Our <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Mission</span>
+                    Our <span className="text-brand-navy">Mission</span>
                   </h2>
                 </div>
 
@@ -118,11 +118,11 @@ const About = () => {
           </section>
 
           {/* Team Section */}
-          <section className="py-20 bg-gradient-to-br from-slate-50 to-indigo-50">
+          <section className="py-20 bg-brand-surface">
             <div className="container mx-auto px-4">
               <div className="text-center mb-16">
                 <h2 className="text-4xl md:text-5xl font-bold text-slate-800 mb-6">
-                  Meet Our <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Team</span>
+                  Meet Our <span className="text-brand-navy">Team</span>
                 </h2>
                 <p className="text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed">
                   CSS Jobs is the result of collaborative effort and shared vision for the computational social science community.
@@ -146,19 +146,19 @@ const About = () => {
                               if (fallback) fallback.style.display = 'flex';
                             }}
                           />
-                          <div className="hidden absolute inset-0 items-center justify-center bg-gradient-to-br from-indigo-100 to-purple-100 text-indigo-600 text-xl">
+                          <div className="hidden absolute inset-0 items-center justify-center bg-brand-surface text-brand-navy text-xl">
                             {member.icon}
                           </div>
                         </div>
                         <CardContent className="p-6 md:flex-1 flex flex-col justify-center gap-2">
-                          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-xs font-semibold rounded-full shadow-sm w-fit">
+                          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-brand-navy text-white text-xs font-semibold rounded-full shadow-sm w-fit">
                             {member.icon}
                             {member.role.toUpperCase()}
                           </div>
                           <h3 className="text-2xl font-bold text-slate-900">{member.name}</h3>
                           {member.title && (
                             <span className="inline-flex items-center gap-2 px-3 py-1 bg-slate-100 text-slate-700 text-sm font-semibold rounded-full w-fit">
-                              <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
+                              <div className="w-2 h-2 bg-brand-navy rounded-full"></div>
                               {member.title}
                             </span>
                           )}
@@ -171,7 +171,7 @@ const About = () => {
                                 href={member.website}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="w-32 group/btn relative overflow-hidden bg-gradient-to-r from-indigo-500 to-indigo-600 text-white px-4 py-2 rounded-lg font-semibold text-sm text-center transition-all duration-300 hover:from-indigo-600 hover:to-indigo-700 hover:shadow-lg"
+                                className="w-32 group/btn relative overflow-hidden bg-brand-navy text-white px-4 py-2 rounded-lg font-semibold text-sm text-center transition-all duration-300 hover:bg-brand-navy/90 hover:shadow-lg"
                               >
                                 <div className="flex items-center justify-center gap-2">
                                   <Globe className="w-4 h-4" />
@@ -184,7 +184,7 @@ const About = () => {
                                 href={member.scholar}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="w-32 group/btn relative overflow-hidden bg-gradient-to-r from-purple-500 to-purple-600 text-white px-4 py-2 rounded-lg font-semibold text-sm text-center transition-all duration-300 hover:from-purple-600 hover:to-purple-700 hover:shadow-lg"
+                                className="w-32 group/btn relative overflow-hidden bg-brand-navy text-white px-4 py-2 rounded-lg font-semibold text-sm text-center transition-all duration-300 hover:bg-brand-navy/90 hover:shadow-lg"
                               >
                                 <div className="flex items-center justify-center gap-2">
                                   <GraduationCap className="w-4 h-4" />
@@ -207,16 +207,16 @@ const About = () => {
             <div className="container mx-auto px-4">
               <div className="max-w-4xl mx-auto text-center">
                 <h2 className="text-4xl md:text-5xl font-bold text-slate-800 mb-6">
-                  Get In <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Touch</span>
+                  Get In <span className="text-brand-navy">Touch</span>
                 </h2>
                 <p className="text-xl text-slate-600 mb-12 leading-relaxed">
                   Have questions, suggestions, or want to contribute? We'd love to hear from the community.
                 </p>
 
                 <div className="max-w-md mx-auto">
-                  <Card className="modern-card modern-card-hover border-0 bg-gradient-to-br from-indigo-50 to-purple-50">
+                  <Card className="modern-card modern-card-hover border-0 bg-brand-surface">
                     <CardContent className="p-8 text-center">
-                      <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-indigo-100 to-purple-100 text-indigo-600 rounded-full mb-4">
+                      <div className="inline-flex items-center justify-center w-16 h-16 bg-brand-surface text-brand-navy rounded-full mb-4">
                         <Mail className="w-6 h-6" />
                       </div>
                       <h3 className="text-lg font-semibold text-slate-800 mb-2">Email Us</h3>
@@ -225,7 +225,7 @@ const About = () => {
                         variant="outline"
                         size="sm"
                         onClick={() => window.location.href = 'mailto:contact@css-jobs.com'}
-                        className="border-indigo-200 text-indigo-600 hover:bg-indigo-50"
+                        className="border-brand-surface-2 text-brand-navy hover:bg-brand-surface"
                       >
                         Send Email
                       </Button>

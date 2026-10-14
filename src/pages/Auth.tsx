@@ -254,7 +254,7 @@ const Auth = () => {
                       <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 transition-colors">
                         <RadioGroupItem value="job_seeker" id="job_seeker" />
                         <Label htmlFor="job_seeker" className="flex items-center gap-2 cursor-pointer flex-1">
-                          <UserCheck className="w-4 h-4 text-blue-600" />
+                          <UserCheck className="w-4 h-4 text-brand-navy" />
                           <div>
                             <div className="font-medium">Look for jobs</div>
                             <div className="text-sm text-gray-500">Browse and apply to research positions</div>
@@ -275,9 +275,9 @@ const Auth = () => {
                   </div>
 
                   {userType === 'job_poster' && (
-                    <Alert className="border-blue-200 bg-blue-50">
-                      <AlertCircle className="h-4 w-4 text-blue-600" />
-                      <AlertDescription className="text-blue-900 text-sm">
+                    <Alert className="border-brand-surface-2 bg-brand-surface">
+                      <AlertCircle className="h-4 w-4 text-brand-navy" />
+                      <AlertDescription className="text-brand-navy text-sm">
                         Institution/University emails will be automatically accepted. If you do not have a University affiliated email address, please note that it will need to go through manual review and approval.
                       </AlertDescription>
                     </Alert>

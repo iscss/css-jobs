@@ -78,11 +78,11 @@ const ForgotPassword = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <p className="text-sm text-blue-900">
+              <div className="bg-brand-surface border border-brand-surface-2 rounded-lg p-4">
+                <p className="text-sm text-brand-navy">
                   <strong>What to do next:</strong>
                 </p>
-                <ul className="mt-2 text-sm text-blue-800 list-disc list-inside space-y-1">
+                <ul className="mt-2 text-sm text-brand-navy list-disc list-inside space-y-1">
                   <li>Check your email inbox (including spam/junk folders)</li>
                   <li>Click the password reset link in the email</li>
                   <li>The link will expire in 1 hour for security</li>

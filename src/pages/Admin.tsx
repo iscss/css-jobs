@@ -118,8 +118,8 @@ const Admin = () => {
             <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <Shield className="w-8 h-8 text-indigo-600" />
-                  <h1 className="text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                  <Shield className="w-8 h-8 text-brand-navy" />
+                  <h1 className="text-4xl font-bold text-brand-navy">
                     Admin Dashboard
                   </h1>
                 </div>
@@ -128,15 +128,15 @@ const Admin = () => {
                   disabled={isRefreshing}
                   className={`
                     relative overflow-hidden px-6 py-2 
-                    bg-gradient-to-r from-indigo-500 to-purple-600 
-                    hover:from-indigo-600 hover:to-purple-700
+                    bg-brand-navy 
+                    hover:bg-brand-navy/90
                     text-white font-medium rounded-xl
                     shadow-lg hover:shadow-xl
                     transform transition-all duration-300
                     hover:scale-105 hover:-translate-y-0.5
                     disabled:opacity-70 disabled:cursor-not-allowed
                     disabled:transform-none disabled:hover:shadow-lg
-                    ${isRefreshing ? 'animate-pulse shadow-indigo-500/50' : ''}
+                    ${isRefreshing ? 'animate-pulse shadow-brand-navy/30' : ''}
                   `}
                 >
                   <div className="flex items-center gap-2 relative z-10">
@@ -154,8 +154,8 @@ const Admin = () => {
                   {/* Animated background effects */}
                   {isRefreshing && (
                     <>
-                      <div className="absolute inset-0 bg-gradient-to-r from-indigo-400/30 to-purple-500/30 animate-pulse" />
-                      <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500/20 to-purple-600/20 rounded-xl blur animate-ping" />
+                      <div className="absolute inset-0 bg-brand-surface-2 animate-pulse" />
+                      <div className="absolute -inset-1 bg-brand-surface-2 rounded-xl blur animate-ping" />
                     </>
                   )}
                 </Button>
@@ -265,7 +265,7 @@ const Admin = () => {
                     <Users className="w-5 h-5" />
                     Pending User Approvals
                     {pendingApprovals && pendingApprovals.length > 0 && (
-                      <Badge variant="outline" className="border-blue-300 text-blue-700 bg-blue-100">
+                      <Badge variant="outline" className="border-brand-navy/30 text-brand-navy bg-brand-surface-2">
                         {pendingApprovals.length}
                       </Badge>
                     )}

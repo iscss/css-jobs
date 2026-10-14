@@ -50,11 +50,11 @@ const CompactJobCard = ({ job, onViewDetails }: CompactJobCardProps) => {
 
   const getJobTypeColor = (type: string) => {
     switch (type.toLowerCase()) {
-      case 'phd': return 'bg-blue-500 text-white';
-      case 'postdoc': return 'bg-emerald-500 text-white';
-      case 'faculty': return 'bg-purple-500 text-white';
-      case 'ra': return 'bg-orange-500 text-white';
-      case 'internship': return 'bg-pink-500 text-white';
+      case 'phd': return 'bg-brand-navy text-white';
+      case 'postdoc': return 'bg-brand-teal-dark text-white';
+      case 'faculty': return 'bg-brand-gold text-brand-navy';
+      case 'ra': return 'bg-slate-600 text-white';
+      case 'internship': return 'bg-brand-teal text-white';
       default: return 'bg-slate-500 text-white';
     }
   };
@@ -64,7 +64,7 @@ const CompactJobCard = ({ job, onViewDetails }: CompactJobCardProps) => {
       {/* Featured badge */}
       {job.is_featured && (
         <div className="absolute -top-2 -right-2 z-10">
-          <div className="bg-gradient-to-r from-purple-500 to-violet-600 text-white px-3 py-1.5 rounded-full text-xs font-medium shadow-lg flex items-center gap-2">
+          <div className="bg-brand-navy text-white px-3 py-1.5 rounded-full text-xs font-medium shadow-lg flex items-center gap-2">
             <Star className="w-4 h-4 fill-amber-500 text-amber-500" />
             Featured
           </div>
@@ -82,7 +82,7 @@ const CompactJobCard = ({ job, onViewDetails }: CompactJobCardProps) => {
             </span>
           )}
         </div>
-        <h3 className="text-lg font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors leading-tight">
+        <h3 className="text-lg font-semibold text-gray-900 group-hover:text-brand-navy transition-colors leading-tight">
           {truncateText(job.title, 70)}
         </h3>
       </div>
@@ -150,7 +150,7 @@ const CompactJobCard = ({ job, onViewDetails }: CompactJobCardProps) => {
               </div>
             )}
             {job.duration && (
-              <div className="flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs">
+              <div className="flex items-center gap-1 px-2 py-1 bg-brand-surface text-brand-navy rounded text-xs">
                 <Clock className="w-3 h-3" />
                 {job.duration}
               </div>
@@ -174,7 +174,7 @@ const CompactJobCard = ({ job, onViewDetails }: CompactJobCardProps) => {
               className={`px-3 py-2.5 rounded-lg font-medium transition-all duration-300 flex items-center justify-center transform ${isLoading ? 'scale-95 opacity-75' : 'scale-100 opacity-100'
                 } ${isSaved
                   ? 'secondary-gradient text-white shadow-lg hover:shadow-xl'
-                  : 'border border-gray-300 text-gray-600 hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50 hover:scale-105'
+                  : 'border border-gray-300 text-gray-600 hover:border-brand-navy/30 hover:text-brand-navy hover:bg-brand-surface hover:scale-105'
                 }`}
             >
               <div className={`transition-transform duration-200 ${isLoading ? 'animate-pulse' : ''}`}>

@@ -67,7 +67,7 @@ const FeaturedJobs = () => {
           </div>
           <h2 className="text-4xl font-bold text-gray-900 mb-6">No Featured Jobs Available</h2>
           <p className="text-xl text-gray-600 mb-10">Check back soon for new featured opportunities!</p>
-          <Button onClick={() => navigate('/jobs')} size="lg" className="bg-indigo-600 hover:bg-indigo-700">
+          <Button onClick={() => navigate('/jobs')} size="lg" className="bg-brand-navy hover:bg-brand-navy">
             Browse All Jobs
           </Button>
         </div>
@@ -105,7 +105,7 @@ const FeaturedJobs = () => {
               <Button 
                 onClick={() => navigate('/jobs')}
                 size="lg"
-                className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 flex items-center gap-2 shadow-lg hover:shadow-xl transition-all duration-200"
+                className="bg-brand-navy hover:bg-brand-navy/90 flex items-center gap-2 shadow-lg hover:shadow-xl transition-all duration-200"
               >
                 Browse All {/* Keep existing code for the rest of the button */} <ArrowRight className="w-4 h-4" />
               </Button>
@@ -115,13 +115,13 @@ const FeaturedJobs = () => {
               </div>
             </div>
             
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-100 shadow-lg max-w-2xl mx-auto">
-              <p className="text-blue-800 font-medium flex items-center justify-center gap-2">
+            <div className="bg-brand-surface rounded-2xl p-6 border border-brand-surface-2 shadow-lg max-w-2xl mx-auto">
+              <p className="text-brand-navy font-medium flex items-center justify-center gap-2">
                 <Star className="w-5 h-5 text-amber-500" />
                 These are our top recommended positions • 
                 <button 
                   onClick={() => navigate('/jobs')}
-                  className="text-blue-700 hover:text-blue-900 underline font-semibold transition-colors"
+                  className="text-brand-navy hover:text-brand-navy underline font-semibold transition-colors"
                 >
                   View all opportunities →
                 </button>
@@ -147,9 +147,9 @@ const FeaturedJobs = () => {
 
           {/* Enhanced Call to Action */}
           <div className="text-center">
-            <div className="bg-gradient-to-r from-slate-50 via-white to-indigo-50 rounded-3xl p-12 border border-indigo-100 shadow-xl max-w-4xl mx-auto">
+            <div className="bg-brand-surface rounded-3xl p-12 border border-brand-surface-2 shadow-xl max-w-4xl mx-auto">
               <div className="mb-6">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full mb-4">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-brand-navy rounded-full mb-4">
                   <Sparkles className="w-8 h-8 text-white" />
                 </div>
               </div>

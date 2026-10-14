@@ -257,7 +257,7 @@ const Jobs = () => {
                 {/* Enhanced header section */}
                 <div className="mb-8">
                   <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
-                    <h1 className="text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent mb-3">
+                    <h1 className="text-4xl font-bold text-brand-navy mb-3">
                       Browse All Positions
                     </h1>
                     <p className="text-gray-600 text-lg mb-4">
@@ -270,20 +270,20 @@ const Jobs = () => {
 
                     {/* Search query display and active filters */}
                     {hasActiveFilters && (
-                      <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
+                      <div className="mt-6 p-4 bg-brand-surface rounded-xl border border-brand-surface-2">
                         <div className="flex flex-wrap items-center gap-3 mb-3">
-                          <div className="flex items-center gap-2 text-blue-700 font-medium">
+                          <div className="flex items-center gap-2 text-brand-navy font-medium">
                             <Filter className="w-4 h-4" />
                             <span>Active Filters:</span>
                           </div>
 
                           {filters.search && (
-                            <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200 flex items-center gap-2 px-3 py-1">
+                            <Badge className="bg-brand-surface-2 text-brand-navy hover:bg-brand-surface-2 flex items-center gap-2 px-3 py-1">
                               <Search className="w-3 h-3" />
                               "{filters.search}"
                               <button
                                 onClick={clearSearch}
-                                className="ml-1 hover:bg-blue-300 rounded-full p-0.5"
+                                className="ml-1 hover:bg-brand-navy/20 rounded-full p-0.5"
                               >
                                 <X className="w-3 h-3" />
                               </button>
@@ -303,12 +303,12 @@ const Jobs = () => {
                           ))}
 
                           {filters.remote && (
-                            <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-200 flex items-center gap-2 px-3 py-1">
+                            <Badge className="bg-brand-surface-2 text-brand-navy hover:bg-brand-surface-2 flex items-center gap-2 px-3 py-1">
                               <Globe className="w-3 h-3" />
                               Remote
                               <button
                                 onClick={() => setFilters(prev => ({ ...prev, remote: false }))}
-                                className="ml-1 hover:bg-purple-300 rounded-full p-0.5"
+                                className="ml-1 hover:bg-brand-navy/20 rounded-full p-0.5"
                               >
                                 <X className="w-3 h-3" />
                               </button>
@@ -329,12 +329,12 @@ const Jobs = () => {
                           )}
 
                           {filters.region && filters.region !== "all" && (
-                            <Badge className="bg-indigo-100 text-indigo-800 hover:bg-indigo-200 flex items-center gap-2 px-3 py-1">
+                            <Badge className="bg-brand-surface-2 text-brand-navy hover:bg-brand-surface-2 flex items-center gap-2 px-3 py-1">
                               <MapPin className="w-3 h-3" />
                               {getRegionLabel(filters.region)}
                               <button
                                 onClick={() => setFilters(prev => ({ ...prev, region: "all" }))}
-                                className="ml-1 hover:bg-indigo-300 rounded-full p-0.5"
+                                className="ml-1 hover:bg-brand-navy/20 rounded-full p-0.5"
                               >
                                 <X className="w-3 h-3" />
                               </button>
@@ -359,7 +359,7 @@ const Jobs = () => {
                           variant="outline"
                           size="sm"
                           onClick={clearAllFilters}
-                          className="text-blue-700 border-blue-300 hover:bg-blue-100 hover:border-blue-400"
+                          className="text-brand-navy border-brand-navy/30 hover:bg-brand-surface-2 hover:border-brand-navy/30"
                         >
                           Clear all filters
                         </Button>

@@ -35,9 +35,9 @@ const PostOpportunitiesModal = ({ isOpen, onClose }: PostOpportunitiesModalProps
           <p className="text-gray-600">
             To post job opportunities, you need to create an account as a job poster. It's free!
           </p>
-          <div className="bg-blue-50 p-4 rounded-lg">
-            <h4 className="font-medium text-blue-900 mb-2">What you'll get:</h4>
-            <ul className="text-sm text-blue-800 space-y-1">
+          <div className="bg-brand-surface p-4 rounded-lg">
+            <h4 className="font-medium text-brand-navy mb-2">What you'll get:</h4>
+            <ul className="text-sm text-brand-navy space-y-1">
               <li>• Post research positions and opportunities</li>
               <li>• Manage your job postings</li>
               <li>• University emails are automatically approved</li>

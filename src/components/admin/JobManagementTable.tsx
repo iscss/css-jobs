@@ -385,7 +385,7 @@ const JobManagementTable = () => {
                           );
                         } else {
                           return (
-                            <Badge variant="outline" className="w-fit border-blue-300 text-blue-700 bg-blue-50">
+                            <Badge variant="outline" className="w-fit border-brand-navy/30 text-brand-navy bg-brand-surface">
                               <Eye className="w-3 h-3 mr-1" />
                               Active
                             </Badge>
@@ -534,7 +534,7 @@ const JobManagementTable = () => {
                                       <DropdownMenuItem
                                         onClick={() => handleUpdateJobStatus(job.id, 'active', job.posted_by)}
                                         disabled={updateJobStatus.isPending}
-                                        className="cursor-pointer text-blue-600 focus:text-blue-600"
+                                        className="cursor-pointer text-brand-navy focus:text-brand-navy"
                                       >
                                         <Eye className="w-4 h-4 mr-2" />
                                         Reactivate Job

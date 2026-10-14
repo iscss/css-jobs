@@ -236,7 +236,7 @@ const PendingJobApprovalCard = ({ job }: PendingJobApprovalCardProps) => {
                         {deadline}
                       </Badge>
                     )}
-                    <Badge variant="outline" className="border-blue-300 text-blue-700 bg-blue-50">
+                    <Badge variant="outline" className="border-brand-navy/30 text-brand-navy bg-brand-surface">
                       <Bot className="w-3 h-3 mr-1" />
                       Auto-imported
                     </Badge>
@@ -245,7 +245,7 @@ const PendingJobApprovalCard = ({ job }: PendingJobApprovalCardProps) => {
                         href={sourceUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-blue-700 hover:underline"
+                        className="inline-flex items-center gap-1 text-brand-navy hover:underline"
                       >
                         View original{sourceName ? ` on ${sourceName}` : ''}
                         <ExternalLink className="w-3 h-3" />

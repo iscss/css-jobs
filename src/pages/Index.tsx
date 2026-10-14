@@ -110,12 +110,12 @@ const Index = () => {
           <HeroSection />
 
           {/* Job Posting Highlight Section */}
-          <section className="py-12 bg-gradient-to-r from-indigo-50 to-purple-50 border-y border-indigo-100">
+          <section className="py-12 bg-brand-surface border-y border-brand-surface-2">
             <div className="container mx-auto px-4">
               <div className="max-w-4xl mx-auto">
                 <div className="grid md:grid-cols-2 gap-8 items-center">
                   <div className="space-y-4 text-center md:text-left">
-                    <div className="flex items-center justify-center md:justify-start gap-2 text-indigo-600">
+                    <div className="flex items-center justify-center md:justify-start gap-2 text-brand-navy">
                       <Search className="w-5 h-5" />
                       <span className="font-semibold">Looking for a job?</span>
                     </div>
@@ -125,7 +125,7 @@ const Index = () => {
                     </p>
                   </div>
                   <div className="space-y-4 text-center md:text-left">
-                    <div className="flex items-center justify-center md:justify-start gap-2 text-purple-600">
+                    <div className="flex items-center justify-center md:justify-start gap-2 text-brand-navy">
                       <Briefcase className="w-5 h-5" />
                       <span className="font-semibold">Looking to hire?</span>
                     </div>

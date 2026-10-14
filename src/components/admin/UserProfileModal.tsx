@@ -48,7 +48,7 @@ const UserProfileModal = ({ user, isOpen, onClose }: UserProfileModalProps) => {
     const getUserTypeColor = (type: string) => {
         switch (type) {
             case 'job_poster': return 'bg-green-100 text-green-800';
-            case 'job_seeker': return 'bg-blue-100 text-blue-800';
+            case 'job_seeker': return 'bg-brand-surface-2 text-brand-navy';
             default: return 'bg-gray-100 text-gray-800';
         }
     };
@@ -336,7 +336,7 @@ const UserProfileModal = ({ user, isOpen, onClose }: UserProfileModalProps) => {
                                                             );
                                                         } else {
                                                             return (
-                                                                <Badge className="bg-blue-100 text-blue-800 text-xs border border-blue-300">
+                                                                <Badge className="bg-brand-surface-2 text-brand-navy text-xs border border-brand-navy/30">
                                                                     <Eye className="w-2 h-2 mr-1" />
                                                                     Active
                                                                 </Badge>

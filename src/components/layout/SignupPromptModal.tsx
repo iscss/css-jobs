@@ -31,7 +31,7 @@ const SignupPromptModal: React.FC<SignupPromptModalProps> = ({ isOpen, onClose }
             description: "Bookmark interesting positions for later review"
         },
         {
-            icon: <Bell className="w-5 h-5 text-blue-500" />,
+            icon: <Bell className="w-5 h-5 text-brand-navy" />,
             title: "Job Alerts",
             description: "Get notified when new jobs match your interests"
         },
@@ -46,7 +46,7 @@ const SignupPromptModal: React.FC<SignupPromptModalProps> = ({ isOpen, onClose }
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle className="text-xl font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                    <DialogTitle className="text-xl font-semibold text-brand-navy">
                         Join CSS Jobs Today!
                     </DialogTitle>
                     <DialogDescription className="text-gray-600">
