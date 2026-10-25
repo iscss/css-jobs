@@ -8,9 +8,14 @@
 // Invoke manually:
 //   curl -X POST "$SUPABASE_URL/functions/v1/ingest-jobs" \
 //        -H "Authorization: Bearer $SERVICE_ROLE_KEY"
-// Optional body: {"source": "jobrxiv", "dryRun": true}
+// Optional body: {"source": "jobrxiv", "dryRun": true, "llm": false}
+//
+// If ANTHROPIC_API_KEY is set, new listings are scored by Claude Haiku
+// (ANTHROPIC_MODEL, default claude-haiku-5-5). Without a key, or with
+// "llm": false, or if a call fails, the keyword score is used instead.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.2';
+import Anthropic from 'npm:@anthropic-ai/sdk';
 import { ADAPTERS } from '../_shared/adapters.ts';
 import {
   normalizeJob,
@@ -18,8 +23,24 @@ import {
   StaleJobError,
   type NormalizedJob,
 } from '../_shared/ingest.ts';
+import {
+  DEFAULT_MODEL,
+  mapWithConcurrency,
+  scoreWithLlm,
+  type MessagesClient,
+} from '../_shared/llm.ts';
 
 const BOT_ID = '00000000-0000-4000-a000-000000000b07';
+
+const LLM_CONCURRENCY = 5;
+const DEFAULT_MAX_LLM_PER_RUN = 150;
+
+interface LlmContext {
+  client: MessagesClient;
+  model: string;
+  /** Calls left in this run, shared across sources. */
+  remaining: number;
+}
 
 interface SourceRow {
   slug: string;
@@ -38,6 +59,8 @@ interface SourceResult {
   duplicates: number;
   skipped: number;
   stale: number;
+  llmScored: number;
+  llmFallback: number;
   error?: string;
   samples?: { title: string; institution: string; score: number }[];
 }
@@ -56,7 +79,7 @@ Deno.serve(async (req) => {
     return json({ error: 'Unauthorized' }, 401);
   }
 
-  let body: { source?: string; dryRun?: boolean } = {};
+  let body: { source?: string; dryRun?: boolean; llm?: boolean } = {};
   try {
     body = await req.json();
   } catch {
@@ -85,14 +108,26 @@ Deno.serve(async (req) => {
     return json({ error: 'no active sources matched' }, 404);
   }
 
+  const apiKey = Deno.env.get('ANTHROPIC_API_KEY') ?? '';
+  const llm: LlmContext | null = apiKey && body.llm !== false
+    ? {
+      client: new Anthropic({ apiKey }) as unknown as MessagesClient,
+      model: Deno.env.get('ANTHROPIC_MODEL') || DEFAULT_MODEL,
+      remaining: Number(
+        Deno.env.get('MAX_LLM_PER_RUN') ?? DEFAULT_MAX_LLM_PER_RUN,
+      ),
+    }
+    : null;
+
   const results: SourceResult[] = [];
   for (const source of sources as SourceRow[]) {
-    results.push(await runSource(supabase, source, body.dryRun === true));
+    results.push(await runSource(supabase, source, body.dryRun === true, llm));
   }
 
   return json({
     ok: results.every((r) => r.status === 'success'),
     dryRun: body.dryRun === true,
+    llm: llm ? { model: llm.model, enabled: true } : { enabled: false },
     results,
   });
 });
@@ -102,6 +137,7 @@ async function runSource(
   supabase: any,
   source: SourceRow,
   dryRun: boolean,
+  llm: LlmContext | null,
 ): Promise<SourceResult> {
   const startedAt = new Date().toISOString();
   const result: SourceResult = {
@@ -112,6 +148,8 @@ async function runSource(
     duplicates: 0,
     skipped: 0,
     stale: 0,
+    llmScored: 0,
+    llmFallback: 0,
   };
 
   try {
@@ -157,7 +195,61 @@ async function runSource(
       return true;
     });
 
-    result.samples = [...batch]
+    // Drop listings already in the database before spending anything on them.
+    // Daily runs are mostly repeats, so this keeps the model cost near zero.
+    const known = new Set<string>();
+    for (let i = 0; i < batch.length; i += 50) {
+      const urls = batch.slice(i, i + 50).map((j) => j.source_url);
+      const { data } = await supabase
+        .from('jobs')
+        .select('source_url')
+        .in('source_url', urls);
+      for (const row of data ?? []) known.add(row.source_url);
+    }
+    const fresh = batch.filter((job) => {
+      if (known.has(job.source_url)) {
+        result.duplicates++;
+        return false;
+      }
+      return true;
+    });
+
+    // Re-score new listings with the model. Keyword-disqualified roles are
+    // skipped (nothing to gain), and any failure keeps the keyword score.
+    if (llm) {
+      const candidates = fresh
+        .filter((job) => !job.relevance_reasoning.startsWith('excluded'))
+        .slice(0, Math.max(0, llm.remaining));
+      llm.remaining -= candidates.length;
+
+      await mapWithConcurrency(candidates, LLM_CONCURRENCY, async (job) => {
+        const scored = await scoreWithLlm(llm.client, job, llm.model);
+        if (scored) {
+          job.relevance_score = scored.score;
+          job.relevance_reasoning = `AI: ${scored.reasoning}`;
+          // Keep a regex-found deadline if there is one; otherwise store the
+          // model's. The public site stops showing the job after this date.
+          if (!job.application_deadline && scored.deadline) {
+            job.application_deadline = scored.deadline;
+          }
+          result.llmScored++;
+        } else {
+          result.llmFallback++;
+        }
+      });
+    }
+
+    // A deadline the model found may show the job has already closed.
+    const today = new Date().toISOString().slice(0, 10);
+    const open = fresh.filter((job) => {
+      if (job.application_deadline && job.application_deadline < today) {
+        result.stale++;
+        return false;
+      }
+      return true;
+    });
+
+    result.samples = [...open]
       .sort((a, b) => b.relevance_score - a.relevance_score)
       .slice(0, 5)
       .map((j) => ({
@@ -170,7 +262,7 @@ async function runSource(
       // Insert one at a time: a batch insert aborts wholesale on the first
       // duplicate, and duplicates are the expected steady state once a feed
       // has been ingested once.
-      for (const job of batch) {
+      for (const job of open) {
         const { error } = await supabase.from('jobs').insert(job);
 
         if (!error) {
