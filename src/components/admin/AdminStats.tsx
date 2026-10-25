@@ -1,5 +1,5 @@
 import { useAllUsers } from "@/hooks/useUserManagement";
-import { useAllJobs } from "@/hooks/useJobManagement";
+import { useJobCounts } from "@/hooks/useJobManagement";
 import { useAdminApprovals } from "@/hooks/useAdminApprovals";
 import { Users, Briefcase, Clock, CheckCircle, XCircle, UserCheck } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -10,7 +10,7 @@ interface AdminStatsProps {
 
 const AdminStats = ({ onTabChange }: AdminStatsProps) => {
   const { data: users, isLoading: usersLoading } = useAllUsers();
-  const { data: jobs, isLoading: jobsLoading } = useAllJobs();
+  const { data: jobCounts, isLoading: jobsLoading } = useJobCounts();
   const { data: pendingApprovals, isLoading: approvalsLoading } = useAdminApprovals();
 
   const jobSeekers = users?.filter(user => user.user_type === 'job_seeker') || [];
@@ -18,9 +18,6 @@ const AdminStats = ({ onTabChange }: AdminStatsProps) => {
   
   const approvedPosters = users?.filter(user => user.is_approved_poster) || [];
   const adminUsers = users?.filter(user => user.is_admin) || [];
-  const publishedJobs = jobs?.filter(job => job.is_published) || [];
-  const unpublishedJobs = jobs?.filter(job => !job.is_published) || [];
-  const featuredJobs = jobs?.filter(job => job.is_featured) || [];
 
   const userStats = [
     {
@@ -73,7 +70,7 @@ const AdminStats = ({ onTabChange }: AdminStatsProps) => {
   const jobStats = [
     {
       title: "Total Jobs",
-      value: jobsLoading ? "..." : jobs?.length || 0,
+      value: jobsLoading ? "..." : jobCounts?.total ?? 0,
       icon: Briefcase,
       color: "text-brand-navy",
       bgColor: "bg-brand-surface",
@@ -82,7 +79,7 @@ const AdminStats = ({ onTabChange }: AdminStatsProps) => {
     },
     {
       title: "Published Jobs",
-      value: jobsLoading ? "..." : publishedJobs.length,
+      value: jobsLoading ? "..." : jobCounts?.published ?? 0,
       icon: CheckCircle,
       color: "text-emerald-500",
       bgColor: "bg-emerald-50",
@@ -90,8 +87,17 @@ const AdminStats = ({ onTabChange }: AdminStatsProps) => {
       clickable: true,
     },
     {
-      title: "Draft Jobs",
-      value: jobsLoading ? "..." : unpublishedJobs.length,
+      title: "Pending Review",
+      value: jobsLoading ? "..." : jobCounts?.pending ?? 0,
+      icon: Clock,
+      color: "text-orange-500",
+      bgColor: "bg-orange-50",
+      onClick: () => onTabChange?.('approvals'),
+      clickable: true,
+    },
+    {
+      title: "Rejected Jobs",
+      value: jobsLoading ? "..." : jobCounts?.rejected ?? 0,
       icon: XCircle,
       color: "text-yellow-500",
       bgColor: "bg-yellow-50",
@@ -100,7 +106,7 @@ const AdminStats = ({ onTabChange }: AdminStatsProps) => {
     },
     {
       title: "Featured Jobs",
-      value: jobsLoading ? "..." : featuredJobs.length,
+      value: jobsLoading ? "..." : jobCounts?.featured ?? 0,
       icon: CheckCircle,
       color: "text-brand-navy",
       bgColor: "bg-brand-surface",
@@ -147,7 +153,7 @@ const AdminStats = ({ onTabChange }: AdminStatsProps) => {
       {/* Job Statistics */}
       <div>
         <h3 className="text-lg font-semibold text-gray-800 mb-4">Job Management</h3>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
           {jobStats.map((stat, index) => {
             const IconComponent = stat.icon;
             return (

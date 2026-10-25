@@ -37,6 +37,40 @@ export const useAllJobs = () => {
   });
 };
 
+// Exact job counts for the admin dashboard. The job list above is capped at
+// 1,000 rows by the API, so counting it in the browser undercounts as soon as
+// the table grows. The key shares the 'all-jobs-admin' prefix, so every
+// mutation that refreshes the list refreshes these too.
+export const useJobCounts = () => {
+  const { user } = useAuth();
+  const { data: isAdmin } = useAdminCheck();
+
+  return useQuery({
+    queryKey: ['all-jobs-admin', 'counts'],
+    queryFn: async () => {
+      if (!user || !isAdmin) throw new Error('User must be authenticated admin');
+
+      const count = async (apply?: (q: any) => any) => {
+        let query = supabase.from('jobs').select('id', { count: 'exact', head: true });
+        if (apply) query = apply(query);
+        const { count: n, error } = await query;
+        if (error) throw error;
+        return n ?? 0;
+      };
+
+      const [total, published, pending, rejected, featured] = await Promise.all([
+        count(),
+        count((q) => q.eq('is_published', true)),
+        count((q) => q.eq('approval_status', 'pending')),
+        count((q) => q.eq('approval_status', 'rejected')),
+        count((q) => q.eq('is_featured', true)),
+      ]);
+      return { total, published, pending, rejected, featured };
+    },
+    enabled: !!user && !!isAdmin,
+  });
+};
+
 export const usePendingJobs = () => {
   const { user } = useAuth();
   const { data: isAdmin } = useAdminCheck();
