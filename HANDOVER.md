@@ -2,7 +2,9 @@
 
 > **Note:** This handover document was written in December 2025 and has not been updated since. The production URL has moved from `https://css-jobs.andersgiovanni.com` to **https://jobs.iscss.org**. The Supabase project was also migrated to a new instance (`ukkqeczgommifgecyrez`). Accounts for both Vercel and Supabase are now under `admin@iscss.org`. See `README.md` for current details.
 
-**Last Updated:** December 2025
+> **Update (October 2026):** Automated job ingestion was added after this document was written: jobs are imported nightly from external feeds, checked for dead links, scored for relevance by an AI model, and queued for admin approval; expired jobs are hidden and deleted automatically. The home page was also removed (`/` now redirects to `/jobs`). Sections below that are affected are marked **[updated]**. For the full picture, see `README.md` ("Automated Job Ingestion") and `INGESTION.md`.
+
+**Last Updated:** December 2025 (ingestion notes added October 2026)
 **Production URL:** https://css-jobs.andersgiovanni.com [now https://jobs.iscss.org]
 **Status:** Production-ready, actively maintained
 
@@ -70,15 +72,15 @@ A job board for **Computational Social Science** academic positions with:
 ```
 css-jobs/
 ├── src/
-│   ├── pages/           # 10 route pages (Index, Jobs, Auth, Profile, Admin, etc.)
+│   ├── pages/           # Route pages (Jobs, Auth, Profile, Admin, etc.). Index is no longer routed. [updated]
 │   ├── components/      # Organized by feature (admin/, jobs/, profile/, layout/, ui/)
 │   ├── hooks/           # 15 custom React Query hooks
 │   ├── contexts/        # AuthContext for session management
 │   ├── integrations/    # Supabase client + auto-generated types
 │   └── lib/             # Utilities (sanitize, rate-limit, domain-loader)
 ├── supabase/
-│   ├── functions/       # Edge functions (delete-user)
-│   └── migrations/      # 18 SQL migrations
+│   ├── functions/       # Edge functions (delete-user, unsubscribe, ingest-jobs, check-listings) [updated]
+│   └── migrations/      # SQL migrations (incl. ingestion, link checking, expiry) [updated]
 ├── public/              # Static assets (team photos, university-domains.json)
 └── vercel.json          # Deployment config with security headers
 ```
@@ -110,6 +112,11 @@ Get these from: [Supabase Dashboard](https://supabase.com/dashboard/project/vbek
 | `job_alerts` | Alert configs | keywords, location, is_active (infrastructure ready) |
 | `email_queue` | Email sending | recipient_email, subject, html_content, sent_at (awaiting Resend) |
 | `approved_domains` | University whitelist | domain, institution_name, country |
+| `job_sources` | Feeds and career sites the importer reads **[updated]** | slug, adapter, feed_url, config, max_age_days, is_active |
+| `scrape_runs` | Log of each import run **[updated]** | source_slug, status, fetched_count, inserted_count, error_message |
+| `ingestion_settings` | Function URL and service key for the nightly job (admin-only) **[updated]** | key, value |
+
+`jobs` also gained, for automation: `is_auto_imported`, `source`, `source_url`, `content_hash`, `relevance_score`, `relevance_reasoning`, `posted_at`, `application_deadline`, `link_status`, `link_status_reason`, `link_checked_at`. **[updated]**
 
 ### User Roles & Permissions
 
@@ -127,7 +134,7 @@ Get these from: [Supabase Dashboard](https://supabase.com/dashboard/project/vbek
 **Admin** (manually set in database):
 - All features
 - Approve/reject users and jobs
-- Feature jobs on homepage
+- Feature jobs (badge in the jobs list)
 - Delete users/jobs
 - Access admin dashboard at `/admin`
 
@@ -140,6 +147,19 @@ Get these from: [Supabase Dashboard](https://supabase.com/dashboard/project/vbek
 4. Job visible on /jobs page
 
 (After 3 approved jobs, poster can publish directly)
+```
+
+**Imported jobs [updated]:**
+
+```
+1. Nightly import inserts job → approval_status='pending', is_published=false
+   (a database trigger forces this; the code cannot publish)
+2. Link check deletes it if the posting is dead or closed
+3. Admin reviews the queue (sorted by AI relevance score) → approved / rejected
+4. Job visible on /jobs until its application_deadline, then hidden by the
+   database and deleted by the nightly purge
+5. Published jobs found dead or closed are hidden (job_status='filled') and
+   deleted 3 days later, which leaves time to reactivate a wrong flag
 ```
 
 ---
@@ -201,9 +221,9 @@ When a user verifies their email from an approved university domain (stanford.ed
 **Access:** `/admin` (requires `is_admin=true` in database)
 
 **Features:**
-- **Stats:** User count, job count, pending approvals
-- **Pending Approvals:** Review and approve/reject job poster requests
-- **Jobs Management:** Approve/reject jobs, feature on homepage, delete
+- **Stats:** User count, job counts (total, published, pending review, rejected, featured; exact counts from the database) **[updated]**, pending approvals
+- **Pending Approvals:** Review and approve/reject job poster requests, and the imported-jobs queue with filters, AI relevance scores and reasons **[updated]**
+- **Jobs Management:** Approve/reject jobs, feature, delete
 - **User Management:** View all users, toggle permissions, delete users
 
 **Setting first admin:**
@@ -251,7 +271,14 @@ supabase functions deploy
 
 # Deploy specific function
 supabase functions deploy delete-user
+
+# Ingestion functions are called by the scheduler with the service key,
+# so the built-in JWT check is off [updated]
+supabase functions deploy ingest-jobs --no-verify-jwt
+supabase functions deploy check-listings --no-verify-jwt
 ```
+
+The AI scoring needs `ANTHROPIC_API_KEY` as a Supabase secret (`supabase secrets set ANTHROPIC_API_KEY=...`). See `README.md` for the full production setup. **[updated]**
 
 ---
 
@@ -265,12 +292,12 @@ SET is_admin = true
 WHERE email = 'new-admin@example.com';
 ```
 
-### Feature a Job on Homepage
+### Feature a Job **[updated]**
 
 1. Login as admin
 2. Go to Admin Dashboard → Jobs tab
 3. Find job → click "Feature"
-4. Job now shows in homepage carousel
+4. The job gets a "Featured" badge in the jobs list. (It used to appear in a homepage carousel, but the home page has been removed.)
 
 ### Load University Domains (10,500+)
 
@@ -295,6 +322,13 @@ This loads 10,500+ university domains. Users with these email addresses will be 
 ---
 
 ## Known Issues & Future Work
+
+### Ingestion: not yet deployed to production **[updated]**
+
+- The migrations, the two ingestion functions and the `ANTHROPIC_API_KEY` secret are not applied to production yet (see `README.md`, "Production setup").
+- The link check (`check-listings`) is not yet on a schedule.
+- About 80 university jobs cannot be link-checked because their sites return HTTP 403; they stay unverified.
+- The admin "Inactive" job status button offers a value the database does not allow (`job_status` accepts only `active` and `filled`).
 
 ### Infrastructure Ready But Disabled
 
