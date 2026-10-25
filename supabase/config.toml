@@ -36,3 +36,6 @@ enable_confirmations = false
 # service role key itself.
 [functions.ingest-jobs]
 verify_jwt = false
+
+[functions.check-listings]
+verify_jwt = false
