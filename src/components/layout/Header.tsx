@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Menu, X, Search, Briefcase, Plus, User, Shield, Home, Info } from 'lucide-react';
+import { Menu, X, Search, Briefcase, Plus, User, Shield, Info } from 'lucide-react';
 import AuthButton from './AuthButton';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAdminCheck } from '@/hooks/useAdminCheck';
@@ -74,21 +74,13 @@ const Header = () => {
       <div className="container mx-auto px-6">
         <div className="flex items-center justify-between h-[49px]">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-3">
+          <Link to="/jobs" className="flex items-center gap-3">
             <span className="font-bold tracking-widest text-white text-[15px]">ISCSS</span>
             <span className="hidden sm:block text-xs font-medium text-white/80">Jobs</span>
           </Link>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-7">
-            <Button
-              variant="ghost"
-              className={getActiveStyles('/')}
-              onClick={() => handleNavigation('/')}
-            >
-              <Home className="w-4 h-4" />
-              Home
-            </Button>
 
             <Button
               variant="ghost"
@@ -170,14 +162,6 @@ const Header = () => {
         {isMenuOpen && (
           <div className="md:hidden border-t border-white/20 py-4">
             <nav className="flex flex-col space-y-4">
-              <Button
-                variant="ghost"
-                className={`${getMobileActiveStyles('/')} w-full`}
-                onClick={() => { handleNavigation('/'); setIsMenuOpen(false); }}
-              >
-                <Home className="w-4 h-4" />
-                Home
-              </Button>
 
               <Button
                 variant="ghost"
