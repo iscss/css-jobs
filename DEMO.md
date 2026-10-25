@@ -2,8 +2,8 @@
 
 **Runtime:** ~8 minutes. **Setup:** ~5 minutes before anyone is watching.
 
-The one thing to land: *jobs arrive automatically, but a human decides what
-goes live.*
+The one thing to land: *jobs arrive automatically, bad ones are filtered out
+automatically, but a human decides what goes live.*
 
 ---
 
@@ -20,8 +20,11 @@ npx supabase start
 Wait for the block of URLs and keys. ~30 seconds (longer on first run).
 
 ```bash
-# Terminal 2 — the import function
-npx supabase functions serve --no-verify-jwt
+# Terminal 2 — the import and link-check functions.
+# For AI scoring, put your Anthropic key in supabase/functions/.env first
+# (copy supabase/functions/.env.example). Without a key the import still works
+# and uses keyword scoring.
+npx supabase functions serve --no-verify-jwt --env-file supabase/functions/.env
 ```
 Wait for `Serving functions on http://127.0.0.1:54321/functions/v1/<function-name>`.
 
@@ -48,12 +51,17 @@ Expect **13 passed, 0 failed**. If anything fails, jump to Troubleshooting.
 ```bash
 psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -tAc \
   "SELECT 'pending: '||count(*) FROM jobs WHERE approval_status='pending';
-   SELECT 'published: '||count(*) FROM jobs WHERE is_published;"
+   SELECT 'published: '||count(*) FROM jobs WHERE is_published;
+   SELECT approval_status||': '||count(*) FROM jobs GROUP BY 1 ORDER BY 1;"
 ```
 
 You want:
 - **published: 2** — two hand-posted jobs so the public board looks real
-- **pending:** anything in the low hundreds (it drifts as jobRxiv posts more)
+- **pending:** a short list, roughly 80-100 after the cleanup (see Step 2 for
+  the story). If it is over 1,000, the backlog has not been cleaned up yet: run
+  the link check and the AI re-score first (INGESTION.md, "Clearing a backlog").
+- **rejected:** the jobs the system set aside as clearly irrelevant. They are
+  kept, not deleted.
 
 **Write the pending number on a sticky note.** You'll say it out loud twice.
 
@@ -89,8 +97,9 @@ cards below the heading "Pending Job Approvals".
 
 Leave tab 3 signed out — that's the whole point of it.
 
-**Final check:** tab 1 shows ~150 pending jobs, tab 3 shows exactly 2 jobs.
-That gap is the demo.
+**Final check:** tab 1 shows your pending number (about 85), tab 3 shows exactly
+2 jobs. The admin dashboard cards should read Published 2, Pending Review as
+above, and Rejected as above. That gap is the demo.
 
 ---
 
@@ -119,41 +128,52 @@ Now share your screen.
 
 **Go to tab 1** (`/admin`), Pending Approvals tab.
 
-**2a. The scale.** Point at the count badge next to "Pending Job Approvals".
+**2a. The scale — tell the funnel.** Point at the dashboard cards, then the
+count badge next to "Pending Job Approvals".
 
-> "This is the review queue. There are about [your number] jobs waiting, all
-> pulled in automatically from jobRxiv — an academic job board that publishes a
-> feed of postings."
+> "The importer pulled in [your total] postings. About half were already closed
+> or dead links, and it removed those on its own. A large share of the rest were
+> clearly not computational social science, and it set those aside. What's left
+> for a person to review is this — [your pending number] jobs."
+
+*(Rehearsal numbers: 1,679 imported → 888 dead or closed, deleted → 704
+clearly irrelevant, rejected and kept → 85 left to review. Use your own counts
+from the 1.3 query.)*
 
 **2b. One card in detail.** Point at the top card and walk through its parts:
 
 - **"Auto-imported" badge** (blue, with a robot icon)
   > "This tells you it came from a feed, not a person."
-- **Match percentage** (green badge, top right, e.g. "50% match")
+- **Match percentage** (green badge, top right, e.g. "90% match")
   > "How likely this is computational social science."
 - **"View original" link**
   > "Goes straight to the real posting, so you can check it's genuine before
   > approving."
+- **Deadline badge**, when the posting states one
+  > "If a posting states a closing date, we store it, and the job comes off the
+  > public site on its own that day."
 
-**2c. Optional — hover the match badge.** A tooltip shows which keywords fired
-(e.g. `social reinforcement (+0.35), computational (+0.15)`).
+**2c. Hover the match badge.** A tooltip shows the AI's one-sentence reason
+(it starts with "AI:"), for example "PhD in economics applying NLP to public
+opinion on energy policy."
 
-> "It'll tell you why it scored the way it did."
+> "It tells you why it scored the way it did, in plain language, so you can
+> disagree with it."
 
-**2d. The important point — scroll down.** Scroll a long way, past dozens of
-cards, until scores are 0%. Land on something clearly unrelated — a lab
-technician or clinical role.
+**2d. The important point — what was set aside.** Scroll to the lower scores
+(around 20-30%) and read one reason aloud, such as a health data role: "strong
+ML methods but the research questions are clinical rather than social."
 
-> "Here's the thing I want to be clear about. This one scored zero — it's a lab
-> role, nothing to do with social science. But it's still here. It wasn't
-> deleted or filtered out.
->
-> The scoring only decides what you look at *first*. Everything the system
-> finds stays in the queue. If the scoring is wrong about something, you'd
-> still see it — it'd just be further down."
+> "Here's what I want to be clear about. The system didn't delete anything for
+> being irrelevant. Jobs it judged clearly unrelated are marked rejected and
+> kept, so nothing is lost and the same job won't be pulled in again tomorrow.
+> The only things it deletes are postings that are already closed or dead links.
+> Everything in this queue is still a person's call."
 
 *Why this matters: it's the answer to "what if the AI throws away a good job?"
-Answering before it's asked is much stronger than answering after.*
+Answering before it's asked is much stronger than answering after. In testing,
+the AI disagreed with the old keyword filter on about 3 in 100 low-scoring jobs,
+which is why the model scores them and the keywords are only a fallback.*
 
 Scroll back to the top.
 
@@ -186,8 +206,7 @@ pending) two or three times. The visual gap does the work.
 
 **Back to tab 1** (`/admin`).
 
-**4a.** Find the top card — *Postdoctoral Fellow in Social Reinforcement
-Learning*, Max Planck Institute, 50% match.
+**4a.** Take the top card in the queue (the highest-scoring one).
 
 > "Let's say I've reviewed this one and it looks good."
 
@@ -210,73 +229,106 @@ Click **Approve Job**.
 > "And there it is. Three jobs now — the two that were already there, plus the
 > one I just approved."
 
-Point at the newly added Max Planck posting.
+Point at the newly added posting (the one you just approved).
 
-> "One job went live because I approved it. The other ~149 are still sitting in
-> the queue, still invisible, waiting for someone to look at them."
+> "One job went live because I approved it. The other [your pending number
+> minus one] are still sitting in the queue, still invisible, waiting for
+> someone to look at them."
 
 *This before/after is what convinces people the approval gate is real. Everything
 else is supporting detail.*
+
+**Optional 4g — expiry.** If someone asks what happens when a job closes:
+
+> "When a posting states a closing date, we store it. On that date the job
+> disappears from the public site by itself, because the database stops
+> returning it. A nightly job then deletes it. For jobs with no stated date, we
+> check the link every few days, and a dead link takes the job down."
+
+You can show the deadline badge on an admin card as the example.
 
 ## Step 5 — Run an import live (1.5 minutes)
 
 **Switch to terminal 4.** Run the prepared command.
 
-> "This is the import itself. In production it would run on a schedule —
-> once a day, overnight. I'm running it by hand so you can see what it does."
+> "This is the import itself. In production it runs on a schedule, once a day
+> overnight. I'm running it by hand so you can see what it does."
 
-It takes 10–20 seconds. Point at the output:
+It takes 10-30 seconds. Point at the output:
 
 ```json
-"fetched": 100,
+"fetched": 250,
 "inserted": 0,
-"duplicates": 100,
-"skipped": 0
+"duplicates": 250,
+"stale": 0,
+"llmScored": 0,
+"llmFallback": 0
 ```
 
-> "It fetched 100 jobs from the feed and inserted zero of them — it recognised
-> every one as already imported. That's the deduplication working. You can run
-> this every day and it won't create duplicates."
+> "It fetched 250 jobs from the feed and inserted none of them — it recognised
+> every one as already imported. That's the deduplication working. It also means
+> it didn't spend anything scoring them: only new jobs go to the AI."
 
 **If `inserted` is not 0** — that's fine, and arguably a better story:
 
-> "It found some new postings this time — those got added. The ones it had
-> already seen were skipped as duplicates."
+> "It found some new postings this time. Those were checked, scored by the AI
+> — `llmScored` is how many — and added to the queue. The ones it had already
+> seen were skipped."
 
-*(This genuinely happened in preparation: a run 15 hours later brought in 50 new
-jobs and correctly skipped the 50 it already had.)*
+If `llmFallback` is above 0, say so plainly: those jobs got the simple keyword
+score because the AI call failed, and the import carried on.
 
 **Optional** — scroll up in the output to the `samples` array showing the
 highest-scoring listings from this run.
+
+**Optional — the link check.** Show that dead links are removed:
+
+```bash
+curl -s -X POST "http://127.0.0.1:54321/functions/v1/check-listings" \
+  -H "Authorization: Bearer $SRK" -H "Content-Type: application/json" \
+  -d '{"dryRun": true, "limit": 20}' | python3 -m json.tool
+```
+
+> "This visits each job's link and checks it's still there and still open.
+> A dry run just reports. In a real run, a dead or closed job in the queue is
+> deleted, and a public job is hidden straight away."
 
 ## Step 6 — Where it's going (1.5 minutes)
 
 Stop sharing, or switch back to the admin queue as a backdrop.
 
 **What works now:**
-- Automatic import from jobRxiv, deduplicated and ranked by relevance
+- Automatic import from jobRxiv, CoMSES Net and several university career sites
+  (Workday), deduplicated, with an AI relevance score and a plain-language reason
+- Dead and closed postings are found and removed automatically
+- Closing dates are stored, and jobs leave the public site on their own date
 - Human approval enforced by the database, not just the interface
-- New sources can be added with a single database row — no code changes
+- New sources can be added with a single database row if an adapter fits
 
 **What isn't built yet:**
-- Scheduling — runs are manual today
-- Only jobRxiv is connected
-- Nothing is deployed; this is all running on my laptop
+- Nothing is deployed to production; this is all running on my laptop
+- The link check isn't on a schedule yet (the nightly import and the nightly
+  expiry cleanup are built)
+- About 80 university jobs can't be link-checked because their sites block the
+  checker; they stay in the queue, unverified
+- Most postings state no closing date, so those rely on the link check
 
 **On sources — be straight about this:**
-> "I checked several. jobRxiv works well. Euraxess turned out to have no public
+> "I checked several. jobRxiv, CoMSES and the Workday university sites work well.
+> Euraxess turned out to have no public
 > way to read their listings — their system is for posting *to* them. HigherEdJobs
 > blocks automated access. jobs.ac.uk changed their feeds and the documented URLs
 > are dead. So each new source is its own small piece of work, and I'd prioritise
 > the aggregators that cover many universities at once."
 
 **On cost:**
-> "Nothing so far. The relevance ranking uses keyword matching, which is free.
-> Using an AI model would rank better — around one to three dollars a month —
-> but I'd rather run it as-is for a few weeks and see whether the ordering is
-> actually good enough first."
+> "The AI step costs a small fraction of a cent per new job, and jobs we've
+> already seen cost nothing. Scoring a thousand-job backlog cost under ten
+> cents. I've set a monthly spending cap on the key. Real usage is on the
+> Anthropic console, and I'd check it after the first weeks."
 
-**Close with the ask** — whatever you need: approval to deploy, a decision on
+**Close with the ask** — whatever you need: approval to deploy (the database
+changes and the API key are the two things that need a decision), a decision on
 sources, or time to continue.
 
 ---
@@ -290,8 +342,28 @@ publish. The test script proves it by trying to insert an already-approved job
 directly in SQL — the database forces it back to pending.
 
 **"What if the scoring misses a good job?"**
-It stays in the queue, lower down. Nothing is deleted. About two thirds of the
-current queue scores under 20% and every one is still reviewable.
+Possible, so the ordering is a guide and not a gate. In testing, a model read a
+random sample of jobs the old keyword rules had scored low, and rated about 3
+in 100 as strong matches. That is why the model scores them now. Jobs it rates
+clearly irrelevant are set aside as rejected, not deleted, so they can be
+brought back. Everything above that line stays in the queue for a person.
+
+**"What does it cost, and what if the AI is down?"**
+A small fraction of a cent per new job, with a monthly cap on the key. If the
+API fails for any reason, the job gets a simple keyword score and the import
+carries on. The failure is counted in the run output.
+
+**"Could someone game the AI with text in a job posting?"**
+The posting text is treated as data, and the model's reply is just a number, a
+sentence and a date, validated strictly. Even a manipulated score can only
+change the order of the queue: the database forces every import to pending, so
+nothing can reach the public site without a person approving it.
+
+**"What happens when a job closes?"**
+If it states a closing date, the public site stops showing it that day and a
+nightly job deletes it. If not, the link check finds a dead or closed page
+within a few days and takes it down (published jobs are hidden first, then
+deleted 3 days later, so a mistaken flag can be undone).
 
 **"Is this legal?"**
 We use published RSS feeds, which exist to be read by software. We respect
@@ -310,9 +382,8 @@ broken feed looks different from a quiet one.
 One row in the `job_sources` table, if they publish a feed. No deployment.
 
 **"How long did this take?"**
-One evening for the working pipeline. Most of the time went into checking which
-sources are actually usable, and fixing some database issues I found along the
-way.
+[Say how long it took you.] A lot of the effort went into checking which sources
+are actually usable, and into the cleanup logic: link checking and expiry.
 
 ---
 
@@ -335,21 +406,38 @@ Terminal 2 (`functions serve`) isn't running.
 The two seed jobs are missing. Run the Full Reset below.
 
 **Queue is empty**
-Run the import command once to load jobs.
+Run the import command once to load jobs. If the queue was cleaned up and you
+rejected everything under 20%, "Any match" in the filters may be hiding what's
+left; check the Rejected count on the dashboard.
+
+**The import output says `"llm": {"enabled": false}` or `llmFallback` is high**
+The functions server doesn't have the key. Check that `supabase/functions/.env`
+exists with `ANTHROPIC_API_KEY=...`, then restart terminal 2 with
+`--env-file supabase/functions/.env`. If `llmScored` is 0 and `llmFallback` is
+high with the key present, the key may be wrong or the account out of credit.
+
+**Link check returns many `unknown`**
+Some university sites return HTTP 403 to the checker. `unknown` is never acted
+on, so nothing is lost; those jobs just stay unverified.
 
 ## Quick reset (between rehearsals, ~2 seconds)
 
-Undoes approvals, keeps everything else:
+Undoes the approvals you made during a rehearsal, keeps everything else:
 
 ```bash
 psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -c \
-  "UPDATE jobs SET approval_status='pending', is_published=false WHERE is_auto_imported;"
+  "UPDATE jobs SET approval_status='pending', is_published=false
+   WHERE is_auto_imported AND approval_status='approved';"
 ```
 
-## Full reset (~2 minutes)
+## Full reset (~2 minutes, plus the cleanup below)
 
 Rebuilds the database from scratch, recreates the admin, re-imports, and
-re-seeds the two public jobs:
+re-seeds the two public jobs. For the first import after a reset, raise the AI
+cap so every new job is scored (add `MAX_LLM_PER_RUN=1500` to
+`supabase/functions/.env` and restart terminal 2; this costs roughly ten
+cents). The default cap is 150 per run, and jobs beyond it keep the keyword
+score.
 
 ```bash
 npx supabase db reset
@@ -371,3 +459,25 @@ psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -f scripts/seed-d
 
 ./scripts/verify-ingestion.sh
 ```
+
+A fresh import has well over a thousand pending jobs, many already closed. To
+get back to the short demo queue:
+
+```bash
+# 1. Remove dead and closed postings. Repeat until "remaining" is 0
+#    (about 20 minutes for a full backlog; it is deliberately gentle on the
+#    source sites).
+curl -s -X POST "http://127.0.0.1:54321/functions/v1/check-listings" \
+  -H "Authorization: Bearer $SRK" -H "Content-Type: application/json" \
+  -d '{"limit": 60}' | python3 -m json.tool
+
+# 2. Set aside the clearly irrelevant ones (kept as rejected, not deleted)
+psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -c \
+  "UPDATE jobs SET approval_status='rejected'
+   WHERE approval_status='pending' AND is_auto_imported AND relevance_score < 0.2;"
+```
+
+Then re-run the 1.3 query to confirm the starting state. Jobs scored only by
+keywords (because they came in past the AI cap) can be under-scored, so use the
+raised cap above.
+

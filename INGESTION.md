@@ -31,8 +31,11 @@ Prerequisites: Docker Desktop running.
 # 1. Start the local stack (~1 min first time)
 npx supabase start
 
-# 2. Serve edge functions (leave running in its own terminal)
-npx supabase functions serve --no-verify-jwt
+# 2. Serve edge functions (leave running in its own terminal).
+#    For AI scoring, first copy supabase/functions/.env.example to
+#    supabase/functions/.env and add your Anthropic key. Without a key the
+#    import still works and uses keyword scoring.
+npx supabase functions serve --no-verify-jwt --env-file supabase/functions/.env
 
 # 3. Start the app (leave running in its own terminal)
 npm run dev            # http://localhost:8080
@@ -53,16 +56,29 @@ curl -X POST "http://127.0.0.1:54321/functions/v1/ingest-jobs" \
 ```
 
 Add `"dryRun": true` to the body to fetch and score without inserting — useful
-for showing the pipeline without changing the queue.
+for showing the pipeline without changing the queue. Add `"llm": false` to skip
+the AI step, and `"source": "jobrxiv"` to run one source.
 
-The response reports `fetched`, `inserted`, `duplicates`, and `skipped` per
-source, plus the five highest-scoring listings.
+The response reports `fetched`, `inserted`, `duplicates`, `skipped` and `stale`
+per source, how many jobs the AI scored (`llmScored`) and how many fell back to
+keyword scoring (`llmFallback`), plus the five highest-scoring listings.
+
+To remove dead and closed postings, run the link check (see
+[Listing liveness](#listing-liveness)). It works in small batches; repeat until
+`remaining` is 0:
+
+```bash
+curl -s -X POST "http://127.0.0.1:54321/functions/v1/check-listings" \
+  -H "Authorization: Bearer $SRK" -H "Content-Type: application/json" \
+  -d '{"limit": 60}'
+```
 
 ### Suggested demo narrative
 
-1. Show `/admin` — the pending queue, sorted with the most likely CSS jobs first.
-2. Run the curl command — a second run inserts 0 and reports 100 duplicates,
-   which demonstrates deduplication.
+1. Show `/admin` — the pending queue, sorted with the most likely CSS jobs first,
+   each with the AI's one-sentence reason in the score tooltip.
+2. Run the curl command — a second run inserts few or no new jobs and reports
+   the rest as duplicates, which demonstrates deduplication.
 3. Open http://localhost:8080/jobs in a private window — imported jobs are
    **not** there.
 4. Approve one job in `/admin`.
@@ -74,7 +90,17 @@ source, plus the five highest-scoring listings.
 npx supabase db reset     # wipes and reapplies migrations
 ```
 
-Then recreate the demo admin (the reset clears auth users):
+To undo only the approvals made during a rehearsal (keeps imports and rejects):
+
+```sql
+UPDATE jobs SET approval_status='pending', is_published=false
+WHERE is_auto_imported AND approval_status='approved';
+```
+
+Do **not** reset every imported job to pending: that would also bring back the
+jobs the cleanup rejected.
+
+After a full `db reset`, recreate the demo admin (the reset clears auth users):
 
 ```bash
 SRK=$(npx supabase status -o json | python3 -c "import json,sys; print(json.load(sys.stdin)['SERVICE_ROLE_KEY'])")
@@ -92,20 +118,31 @@ psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -c \
 ## How it works
 
 ```
-job_sources (table)  →  adapter  →  normalize  →  dedupe  →  insert as pending
+job_sources → adapter → normalize → dedupe → keyword pre-filter → AI score
+                                                                    ↓
+                                                          insert as pending
+                                                                    ↓
+                                          link check removes dead / closed jobs
                                                                     ↓
                                                           ADMIN REVIEW (human)
                                                                     ↓
                                                         approve → live on /jobs
+                                                                    ↓
+                              hidden at its deadline, deleted by the nightly purge
 ```
 
 | File | Role |
 |------|------|
-| `supabase/functions/ingest-jobs/index.ts` | Entry point; loops sources, inserts, logs runs |
-| `supabase/functions/_shared/adapters.ts` | Per-feed fetch + parse |
-| `supabase/functions/_shared/ingest.ts` | Normalization, constraint validation, scoring, hashing |
-| `src/lib/ingest.test.ts` | Unit tests for normalization and scoring (19) |
-| `src/lib/adapters.test.ts` | Unit tests for feed parsing (9) |
+| `supabase/functions/ingest-jobs/index.ts` | Entry point; loops sources, drops known jobs, scores new ones, inserts, logs runs |
+| `supabase/functions/check-listings/index.ts` | Link check and cleanup of stored jobs |
+| `supabase/functions/_shared/adapters.ts` | Per-source fetch + parse (jobRxiv, CoMSES, generic RSS, Workday) |
+| `supabase/functions/_shared/ingest.ts` | Normalization, constraint validation, keyword scoring (pre-filter and fallback), hashing |
+| `supabase/functions/_shared/llm.ts` | AI relevance scoring and closing-date extraction |
+| `supabase/functions/_shared/liveness.ts` | Is a posting still there and still open |
+| `src/lib/ingest.test.ts` | Unit tests for normalization and keyword scoring (37) |
+| `src/lib/adapters.test.ts` | Unit tests for feed parsing (18) |
+| `src/lib/llm.test.ts` | Unit tests for AI scoring, deadline handling and prompts (30) |
+| `src/lib/liveness.test.ts` | Unit tests for link classification (18) |
 | `scripts/verify-ingestion.sh` | Database-level safety checks (13) |
 
 ---
@@ -116,9 +153,10 @@ Two layers, because they answer different questions.
 
 ### Unit tests — `npx vitest run`
 
-28 tests over the pure functions, with feeds mocked. Fast, no database needed.
-They cover entity decoding, HTML stripping, job-type mapping, relevance
-scoring, content hashing, constraint validation, and RSS parsing.
+103 tests over the pure functions, with feeds and the AI client mocked. Fast,
+no database or network needed. They cover entity decoding, HTML stripping,
+job-type mapping, keyword scoring, content hashing, constraint validation, feed
+parsing, AI reply parsing, deadline validation, and link classification.
 
 Notable cases:
 
@@ -129,6 +167,12 @@ Notable cases:
   but not in production, so returning it would fail every insert.
 - **Malformed listings are skipped, not thrown.** One bad item must not abort a
   100-item run.
+- **Any AI failure falls back to the keyword score.** An API error, refusal or
+  unparseable reply never aborts a run.
+- **The word "expired" in a stylesheet is not a closed posting.** Link checking
+  looks only at visible text, status codes, redirects and structured metadata.
+- **A doubtful AI deadline is discarded.** Impossible dates, dates years away
+  and review-start dates become null.
 
 ### Safety checks — `./scripts/verify-ingestion.sh`
 
@@ -164,7 +208,10 @@ INSERT INTO job_sources (slug, name, adapter, feed_url, config) VALUES (
 ```
 
 Available adapters: `rss-jobrxiv` (jobRxiv's structured job feed),
-`rss-generic` (plain RSS 2.0; institution and location come from `config`).
+`rss-comses` (CoMSES Net; institution is recovered from the text),
+`rss-generic` (plain RSS 2.0; institution and location come from `config`), and
+`workday` (university career sites on Workday; needs `config.institution` and
+optional `search_terms`). Adding another Workday university is one row.
 
 Pause a source with `UPDATE job_sources SET is_active = false WHERE slug = '…'`.
 
@@ -181,13 +228,40 @@ rather than treating as a failure.
 
 ### Relevance scoring
 
-`scoreRelevance()` in `_shared/ingest.ts` assigns 0.0–1.0 from weighted
-keywords. **It only orders the queue — nothing is ever discarded because of a
-low score.** Every fetched listing that passes database constraints is
-imported and reviewable.
+Scoring runs in two steps. **It only orders the queue — a score never
+publishes anything.**
 
-To swap in an LLM scorer later (better ordering, roughly $1–3/month with Claude
-Haiku), replace that one function — the rest of the pipeline is unchanged.
+1. **Keyword pre-filter (free).** `scoreRelevance()` in `_shared/ingest.ts`
+   scores obviously unrelated roles (clinical, lab, marketing, administrative)
+   as 0. Those skip the AI step. On a random sample, the AI agreed with this
+   filter on 98 of 99 jobs.
+2. **AI score.** For everything else, `scoreWithLlm()` in `_shared/llm.ts` asks
+   an Anthropic Haiku model for a 0-1 CSS relevance score, a one-sentence
+   reason, and the application closing date if the posting states one. The
+   reason is shown as "AI: ..." in the admin tooltip. Only new jobs are scored:
+   jobs already in the database are dropped first, so repeat runs cost almost
+   nothing.
+
+Keyword scoring still runs for every job and is the **fallback** if the AI is
+unavailable (no key, API error, refusal, or an unreadable reply). The keyword
+scoring tables missed real CSS roles in testing (about 3% of its low scores
+were rated 0.5 or higher by the AI), so they are only a safety net.
+
+Settings (Supabase secrets, or `supabase/functions/.env` locally):
+`ANTHROPIC_API_KEY`, optional `ANTHROPIC_MODEL`, and `MAX_LLM_PER_RUN`
+(default 150). The cost is a small fraction of a cent per new job; check real
+spend on the Anthropic console.
+
+**Clearing a backlog.** To bring an old, noisy queue down to something
+reviewable: run the link check until `remaining` is 0, re-score what is left
+with the AI, then reject everything under a threshold (0.2 worked well):
+
+```sql
+UPDATE jobs SET approval_status = 'rejected'
+WHERE approval_status = 'pending' AND is_auto_imported AND relevance_score < 0.2;
+```
+
+Rejected jobs stay in the table, so their URLs still block re-import.
 
 ---
 
@@ -244,6 +318,14 @@ SELECT cron.alter_job(
 A source that starts failing shows up as `status = 'error'` with the message in
 `scrape_runs` — check that table rather than assuming a quiet day means no jobs.
 
+**Other scheduled and manual steps**
+
+| Step | When | Notes |
+|------|------|-------|
+| `ingest-jobs-daily` | 03:00 UTC | Fetch, score, insert as pending |
+| `purge-expired-jobs` | 00:05 UTC | Deletes jobs past their deadline, and hidden dead or closed jobs after 3 days |
+| `check-listings` | Manual for now | Not yet on a schedule; add a `pg_cron` entry like the ingestion one |
+
 ---
 
 ## Freshness
@@ -257,6 +339,12 @@ listing at ingest:
 - **A posting date older than the source's window**, set per source in
   `job_sources.max_age_days` (NULL disables the check).
 
+- **A closing date found by the AI.** Most postings state their deadline near
+  the end, so the prompt includes short excerpts from around any "deadline" or
+  "apply by" wording. A year-less date is resolved from the posting date, and a
+  date when review of applications *begins* is ignored. A job whose AI-found
+  deadline has already passed is not inserted.
+
 A listing with **no date at all is kept** — absence of a date is not evidence
 of staleness, and an admin can still judge it.
 
@@ -269,19 +357,61 @@ Current windows: CoMSES 180 days, Workday universities 365, jobRxiv none
 (it expires its own entries). Measured effect on CoMSES: 120 fetched,
 116 rejected as stale.
 
+### After import: expiry and deletion
+
+- **Public visibility ends at the deadline.** The read rule on `jobs` requires
+  `application_deadline` to be unset or today-or-later (UTC), so a job
+  disappears on its own with no polling.
+- **Deletion.** `purge_expired_jobs()` runs nightly and deletes jobs past their
+  deadline (published or not) plus hidden dead/closed jobs older than 3 days.
+  Tags, saved jobs, alert matches and queued emails cascade with the job.
+- **Most jobs state no deadline** (about 85% in testing), so they stay until the
+  link check finds them closed.
+
 The admin card shows an age badge (`3d ago`, `4mo ago`, `1.4y ago`) coloured
 amber past 180 days and red past a year, plus a deadline badge when one is
 found.
 
 ---
 
+## Listing liveness
+
+`check-listings` re-checks stored jobs' links (`source_url`, or `application_url`
+for hand-posted jobs) and classifies each one:
+
+| Result | Meaning | Action |
+|--------|---------|--------|
+| `live` | Page loads and looks open | Nothing |
+| `dead` | HTTP 404/410, or a redirect to the site's homepage | Pending: deleted. Published: hidden (`job_status = 'filled'`), deleted after 3 days |
+| `closed` | A past `validThrough` date, a visible "listing has expired" notice, a passed `application_deadline`, or a Workday posting with applications closed | Same as dead |
+| `unknown` | Blocked (403/429), server error, or timeout | **Never acted on** |
+
+Workday pages are JavaScript apps that return 200 for anything, so Workday jobs
+are checked through the same JSON endpoint the importer uses. The function never
+publishes anything; hiding a published job is the only public-facing change it
+makes. Published jobs are rechecked every 3 days, pending jobs weekly
+(`publishedRecheckDays` and `recheckDays` in the request body). Each call checks
+the least recently checked jobs first and is gentle on the sites (two requests
+at a time with a short pause), so a large backlog takes a while.
+
+Known gap: some Workday sites return 403 to the check, so those jobs stay
+`unknown`.
+
+---
+
 ## Not yet done
-- **More sources.** Only jobRxiv is wired up. See "Sources investigated" below.
-- **Bulk actions.** No bulk approve/reject in the admin UI yet; at a few
-  hundred pending jobs that becomes worth adding.
-- **Deploy.** The function has not been deployed to production:
-  `npx supabase functions deploy ingest-jobs`, and the migration needs
-  `npx supabase db push`.
+- **More sources.** jobRxiv, CoMSES and nine Workday university sites are wired
+  up (CMU's Workday search currently returns HTTP 422). See "Sources
+  investigated" below.
+- **Bulk actions.** No bulk approve/reject in the admin UI yet. Rejecting by
+  score threshold is done with SQL (see "Clearing a backlog").
+- **Schedule the link check** alongside the nightly import.
+- **Admin "Inactive" button.** It offers a status the database does not allow
+  (`job_status` accepts only `active` and `filled`).
+- **Deploy.** None of this is on production yet. It needs
+  `npx supabase db push` for the migrations, `npx supabase functions deploy
+  ingest-jobs --no-verify-jwt` and `check-listings --no-verify-jwt`, and the
+  `ANTHROPIC_API_KEY` secret (see the README).
 
 ---
 
@@ -289,12 +419,27 @@ found.
 
 | Source | Status | Notes |
 |--------|--------|-------|
+| **CoMSES Net** | ✅ Working | RSS feed with no structured institution or location fields; institution is recovered from the text. Lists old postings, so it has a 180-day window. |
+| **Workday university sites** | ✅ Working | UChicago, Wisconsin, OSU, UW, Cornell, UMD, Brown, UVA via the public JSON search. CMU currently returns HTTP 422. |
 | **jobRxiv** | ✅ Working | `https://jobrxiv.org/?feed=job_feed` — real RSS with structured `job_listing:location`, `job_listing:job_type`, `job_listing:company`. `posts_per_page=100` works; `paged` does not. |
 | Euraxess | ❌ No read API | Its XML guidelines are for *submitting* jobs to Euraxess. No RSS or JSON export. Would require HTML scraping. |
 | HigherEdJobs | ❌ Blocked | Documented category feeds (Sociology `catID=93`, CS `102`, PolSci `90`) return an Imperva/Incapsula bot-protection page instead of RSS. |
 | jobs.ac.uk | ⚠️ Feeds moved | `/feeds` 404s and `?format=rss` returns HTML. `robots.txt` is permissive and a sitemap exists (`sitemap0.xml`, ~8k URLs), so a sitemap-based adapter is possible but needs per-page HTML parsing. |
 | Nature Careers / AJO | ⚠️ Not RSS | Both return HTML at the URLs tried; needs more investigation. |
 | LinkedIn / Indeed | 🚫 Excluded | Scraping prohibited by their terms of service. |
+
+---
+
+## Migrations added by this work
+
+| Migration | What it does |
+|-----------|--------------|
+| `20260803000000_job_ingestion` | Ingestion columns, `job_sources`, `scrape_runs`, the pending-only trigger, constraints |
+| `20260804000000_job_posted_at` | `posted_at` and freshness support |
+| `20260805000000_schedule_ingestion` | `ingestion_settings`, `run_job_ingestion()` and the 03:00 UTC cron |
+| `20260806000000_listing_liveness` | `link_status`, `link_status_reason`, `link_checked_at` |
+| `20260807000000_expire_published_jobs` | Public read rule hides jobs after their deadline |
+| `20260808000000_purge_expired_jobs` | Nightly `purge_expired_jobs()` and its cron |
 
 ---
 
