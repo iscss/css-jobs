@@ -157,7 +157,8 @@ Get these from: [Supabase Dashboard](https://supabase.com/dashboard/project/vbek
 2. Link check deletes it if the posting is dead or closed
 3. Admin reviews the queue (sorted by AI relevance score) → approved / rejected
 4. Job visible on /jobs until its application_deadline, then hidden by the
-   database and deleted by the nightly purge
+   database and deleted by the nightly purge. Rejected imports are deleted 30
+   days after rejection.
 5. Published jobs found dead or closed are hidden (job_status='filled') and
    deleted 3 days later, which leaves time to reactivate a wrong flag
 ```
@@ -221,9 +222,9 @@ When a user verifies their email from an approved university domain (stanford.ed
 **Access:** `/admin` (requires `is_admin=true` in database)
 
 **Features:**
-- **Stats:** User count, job counts (total, published, pending review, rejected, featured; exact counts from the database) **[updated]**, pending approvals
+- **Stats:** User count, job counts (total, published, pending review, rejected, featured; exact counts from the database; clicking a card opens Job Management with that filter selected) **[updated]**, pending approvals
 - **Pending Approvals:** Review and approve/reject job poster requests, and the imported-jobs queue with filters, AI relevance scores and reasons **[updated]**
-- **Jobs Management:** Approve/reject jobs, feature, delete
+- **Jobs Management:** Filter by status (all, published, pending, rejected, draft, closed), type, origin and deadline; sort by newest, oldest, match, closing soonest or title; approve/reject, feature, delete. Both this tab and the pending queue have tick boxes plus a bulk Approve / Reject bar (max 300 per action, with a confirmation that says how many jobs are changed and skipped) **[updated]**
 - **User Management:** View all users, toggle permissions, delete users
 
 **Setting first admin:**
@@ -326,7 +327,7 @@ This loads 10,500+ university domains. Users with these email addresses will be 
 ### Ingestion: not yet deployed to production **[updated]**
 
 - The migrations, the two ingestion functions and the `ANTHROPIC_API_KEY` secret are not applied to production yet (see `README.md`, "Production setup").
-- The link check (`check-listings`) is not yet on a schedule.
+- The link check (`check-listings`) is scheduled every 2 hours by `pg_cron`, but, like the nightly import, only runs once deployed and configured (see `README.md`).
 - About 80 university jobs cannot be link-checked because their sites return HTTP 403; they stay unverified.
 - The admin "Inactive" job status button offers a value the database does not allow (`job_status` accepts only `active` and `filled`).
 

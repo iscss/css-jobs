@@ -242,11 +242,11 @@ Posting text comes from third parties, so the scoring prompt treats it as data a
 ### Expiry and cleanup
 
 - **Closing date.** When a posting states one, it is stored in `application_deadline`. The public read rule hides a job after that date (a job stays visible through the deadline day, UTC), with no polling.
-- **Nightly purge.** `purge_expired_jobs()` runs at 00:05 UTC and deletes jobs past their deadline, published or not.
+- **Nightly purge.** `purge_expired_jobs()` runs at 00:05 UTC and deletes jobs past their deadline (published or not), hidden dead or closed jobs after 3 days, and **auto-imported jobs that have been rejected for more than 30 days** (the clock is `rejected_at`, set when a job is rejected and cleared if it is approved). Jobs a person posted and an admin rejected are kept.
 - **Link check.** `check-listings` visits each job's link (`source_url`, or `application_url` for hand-posted jobs). It treats HTTP 404/410, a redirect to the site's homepage, a visible "listing has expired" notice, a past `validThrough` date, or a Workday posting that can no longer be applied to as gone. A blocked or timed-out request is "unknown" and never acted on.
-  - Pending jobs found gone are deleted.
+  - Pending and rejected jobs found gone are deleted.
   - Published jobs found gone are hidden at once (`job_status = 'filled'`) and deleted by the purge 3 days later, which leaves time for an admin to reactivate one that was flagged by mistake.
-  - Published jobs are rechecked every few days, pending jobs weekly. The link check is not yet on a schedule: run it by hand (below) or add a cron entry like the ingestion one.
+  - Published jobs are rechecked every 3 days, pending and rejected jobs weekly. A `pg_cron` entry (`check-listings`, every 2 hours) calls the function in small batches, least recently checked first, using the same `ingestion_settings` as the nightly import. You can also run it by hand (below).
 
 ### Running it locally
 
@@ -269,7 +269,7 @@ curl -s -X POST http://127.0.0.1:54321/functions/v1/check-listings \
 
 ### Production setup (one time)
 
-1. Apply the migrations (`npx supabase db push`): `job_ingestion`, `job_posted_at`, `schedule_ingestion`, `listing_liveness`, `expire_published_jobs`, `purge_expired_jobs`. These change the live database, so review them first.
+1. Apply the migrations (`npx supabase db push`): `job_ingestion`, `job_posted_at`, `schedule_ingestion`, `listing_liveness`, `expire_published_jobs`, `purge_expired_jobs`, `rejected_retention_and_link_check_schedule`. These change the live database, so review them first.
 2. Deploy the two functions (see [Edge Functions](#edge-functions)).
 3. Set `ANTHROPIC_API_KEY` as a Supabase secret (see [Environment Variables](#environment-variables)).
 4. Store the function URL and service role key for the nightly job:

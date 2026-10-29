@@ -61,7 +61,8 @@ You want:
   the story). If it is over 1,000, the backlog has not been cleaned up yet: run
   the link check and the AI re-score first (INGESTION.md, "Clearing a backlog").
 - **rejected:** the jobs the system set aside as clearly irrelevant. They are
-  kept, not deleted.
+  kept for 30 days (so the same job is not pulled in again tomorrow), then
+  deleted automatically.
 
 **Write the pending number on a sticky note.** You'll say it out loud twice.
 
@@ -165,10 +166,10 @@ opinion on energy policy."
 ML methods but the research questions are clinical rather than social."
 
 > "Here's what I want to be clear about. The system didn't delete anything for
-> being irrelevant. Jobs it judged clearly unrelated are marked rejected and
-> kept, so nothing is lost and the same job won't be pulled in again tomorrow.
-> The only things it deletes are postings that are already closed or dead links.
-> Everything in this queue is still a person's call."
+> being irrelevant right away. Jobs it judged clearly unrelated are marked
+> rejected and held for 30 days, so you can still bring one back, and then they
+> are cleaned up automatically. Closed postings and dead links are deleted
+> straight away. Everything in this queue is still a person's call."
 
 *Why this matters: it's the answer to "what if the AI throws away a good job?"
 Answering before it's asked is much stronger than answering after. In testing,
@@ -238,7 +239,14 @@ Point at the newly added posting (the one you just approved).
 *This before/after is what convinces people the approval gate is real. Everything
 else is supporting detail.*
 
-**Optional 4g — expiry.** If someone asks what happens when a job closes:
+**Optional 4g — bulk actions.** If someone asks how a person copes with a long
+queue: tick several cards (or "Select all shown" after filtering), and the bar at
+the bottom offers Approve and Reject. It asks for confirmation, says how many
+jobs it will change, and skips any that shouldn't be published (already
+approved, closed, or past their deadline). Don't confirm during the demo unless
+you want to change the numbers.
+
+**Optional 4h — expiry.** If someone asks what happens when a job closes:
 
 > "When a posting states a closing date, we store it. On that date the job
 > disappears from the public site by itself, because the database stops
@@ -307,8 +315,8 @@ Stop sharing, or switch back to the admin queue as a backdrop.
 
 **What isn't built yet:**
 - Nothing is deployed to production; this is all running on my laptop
-- The link check isn't on a schedule yet (the nightly import and the nightly
-  expiry cleanup are built)
+- (Scheduling is built for the import, the link check and the cleanup, but
+  none of it runs until it is deployed.)
 - About 80 university jobs can't be link-checked because their sites block the
   checker; they stay in the queue, unverified
 - Most postings state no closing date, so those rely on the link check
@@ -345,8 +353,8 @@ directly in SQL — the database forces it back to pending.
 Possible, so the ordering is a guide and not a gate. In testing, a model read a
 random sample of jobs the old keyword rules had scored low, and rated about 3
 in 100 as strong matches. That is why the model scores them now. Jobs it rates
-clearly irrelevant are set aside as rejected, not deleted, so they can be
-brought back. Everything above that line stays in the queue for a person.
+clearly irrelevant are set aside as rejected and kept for 30 days, so they can
+be brought back, then deleted automatically. Everything above that line stays in the queue for a person.
 
 **"What does it cost, and what if the AI is down?"**
 A small fraction of a cent per new job, with a monthly cap on the key. If the

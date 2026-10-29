@@ -261,7 +261,7 @@ UPDATE jobs SET approval_status = 'rejected'
 WHERE approval_status = 'pending' AND is_auto_imported AND relevance_score < 0.2;
 ```
 
-Rejected jobs stay in the table, so their URLs still block re-import.
+Rejected jobs stay in the table for 30 days, so their URLs still block re-import in the meantime. After that, the nightly purge deletes auto-imported rejected jobs (people's own posts are kept). If a deleted job is still in a feed, it is imported and scored again, which costs a fraction of a cent.
 
 ---
 
@@ -323,8 +323,8 @@ A source that starts failing shows up as `status = 'error'` with the message in
 | Step | When | Notes |
 |------|------|-------|
 | `ingest-jobs-daily` | 03:00 UTC | Fetch, score, insert as pending |
-| `purge-expired-jobs` | 00:05 UTC | Deletes jobs past their deadline, and hidden dead or closed jobs after 3 days |
-| `check-listings` | Manual for now | Not yet on a schedule; add a `pg_cron` entry like the ingestion one |
+| `purge-expired-jobs` | 00:05 UTC | Deletes jobs past their deadline, hidden dead or closed jobs after 3 days, and auto-imported jobs rejected for more than 30 days |
+| `check-listings` | Every 2 hours | Checks up to 60 due jobs per call: published every 3 days, pending and rejected every 7. Uses the same `ingestion_settings`; optional key `check_listings_url`. |
 
 ---
 
@@ -382,14 +382,14 @@ for hand-posted jobs) and classifies each one:
 | Result | Meaning | Action |
 |--------|---------|--------|
 | `live` | Page loads and looks open | Nothing |
-| `dead` | HTTP 404/410, or a redirect to the site's homepage | Pending: deleted. Published: hidden (`job_status = 'filled'`), deleted after 3 days |
+| `dead` | HTTP 404/410, or a redirect to the site's homepage | Pending or rejected: deleted. Published: hidden (`job_status = 'filled'`), deleted after 3 days |
 | `closed` | A past `validThrough` date, a visible "listing has expired" notice, a passed `application_deadline`, or a Workday posting with applications closed | Same as dead |
 | `unknown` | Blocked (403/429), server error, or timeout | **Never acted on** |
 
 Workday pages are JavaScript apps that return 200 for anything, so Workday jobs
 are checked through the same JSON endpoint the importer uses. The function never
 publishes anything; hiding a published job is the only public-facing change it
-makes. Published jobs are rechecked every 3 days, pending jobs weekly
+makes. Published jobs are rechecked every 3 days, pending and rejected jobs weekly
 (`publishedRecheckDays` and `recheckDays` in the request body). Each call checks
 the least recently checked jobs first and is gentle on the sites (two requests
 at a time with a short pause), so a large backlog takes a while.
@@ -405,7 +405,6 @@ Known gap: some Workday sites return 403 to the check, so those jobs stay
   investigated" below.
 - **Bulk actions.** No bulk approve/reject in the admin UI yet. Rejecting by
   score threshold is done with SQL (see "Clearing a backlog").
-- **Schedule the link check** alongside the nightly import.
 - **Admin "Inactive" button.** It offers a status the database does not allow
   (`job_status` accepts only `active` and `filled`).
 - **Deploy.** None of this is on production yet. It needs
@@ -440,6 +439,7 @@ Known gap: some Workday sites return 403 to the check, so those jobs stay
 | `20260806000000_listing_liveness` | `link_status`, `link_status_reason`, `link_checked_at` |
 | `20260807000000_expire_published_jobs` | Public read rule hides jobs after their deadline |
 | `20260808000000_purge_expired_jobs` | Nightly `purge_expired_jobs()` and its cron |
+| `20260809000000_rejected_retention_and_link_check_schedule` | `rejected_at` (30-day retention for rejected imports) and the 2-hourly link-check cron |
 
 ---
 
