@@ -2,8 +2,9 @@
 //
 // Re-checks stored jobs' source links and takes dead or closed postings out of
 // the review queue and off the public board.
-//   - Pending jobs that are dead or closed are deleted: a closed posting has
-//     no value to keep, and feeds only list open roles so it will not come back.
+//   - Pending and rejected jobs that are dead or closed are deleted: a closed
+//     posting has no value to keep, and feeds only list open roles so it will
+//     not come back.
 //   - Published jobs that are dead, closed, or past their stated deadline are
 //     set to job_status 'filled'. The public board only shows 'active' jobs,
 //     so they disappear from it at once. They are NOT deleted here: the
@@ -18,6 +19,7 @@
 // Invoke:
 //   curl -X POST "$SUPABASE_URL/functions/v1/check-listings" \
 //        -H "Authorization: Bearer $SERVICE_ROLE_KEY"
+// Order of work each call: published jobs, then pending, then rejected.
 // Optional body: {"limit": 100, "dryRun": true, "recheckDays": 7,
 //                 "publishedRecheckDays": 3}
 // Each call checks the least recently checked jobs first, so repeat the call
@@ -71,19 +73,20 @@ Deno.serve(async (req) => {
   const publishedDays = Number(body.publishedRecheckDays) || 3;
   const publishedCutoff = new Date(Date.now() - publishedDays * 86400000)
     .toISOString();
-  const due = (q: any, kind: 'published' | 'pending') =>
+  type Kind = 'published' | 'pending' | 'rejected';
+  const due = (q: any, kind: Kind) =>
     kind === 'published'
       ? q
         .eq('approval_status', 'approved')
         .eq('job_status', 'active')
         .or(`link_checked_at.is.null,link_checked_at.lt.${publishedCutoff}`)
       : q
-        .eq('approval_status', 'pending')
+        .eq('approval_status', kind)
         .or(`link_checked_at.is.null,link_checked_at.lt.${cutoff}`);
 
   const columns =
     'id, title, source_url, application_url, application_deadline, approval_status';
-  const fetchDue = async (kind: 'published' | 'pending', n: number) => {
+  const fetchDue = async (kind: Kind, n: number) => {
     if (n <= 0) return [];
     const { data, error } = await due(
       supabase
@@ -100,8 +103,11 @@ Deno.serve(async (req) => {
 
   let jobs: any[];
   try {
-    const published = await fetchDue('published', limit);
-    jobs = [...published, ...(await fetchDue('pending', limit - published.length))];
+    // Published jobs first (a dead public listing matters most), then the
+    // review queue, then rejected jobs.
+    jobs = await fetchDue('published', limit);
+    jobs = [...jobs, ...(await fetchDue('pending', limit - jobs.length))];
+    jobs = [...jobs, ...(await fetchDue('rejected', limit - jobs.length))];
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : String(error) }, 500);
   }
@@ -151,9 +157,9 @@ Deno.serve(async (req) => {
 
     if (!dryRun) {
       const gone = result.status === 'dead' || result.status === 'closed';
-      if (gone && job.approval_status === 'pending') {
+      if (gone && (job.approval_status === 'pending' || job.approval_status === 'rejected')) {
         const { error: deleteError } = await supabase.from('jobs').delete()
-          .eq('id', job.id).eq('approval_status', 'pending');
+          .eq('id', job.id).eq('approval_status', job.approval_status);
         if (deleteError) errors.push(`${job.title}: ${deleteError.message}`);
         else deleted++;
       } else if (gone && job.approval_status === 'approved') {
@@ -181,7 +187,7 @@ Deno.serve(async (req) => {
     await sleep(PAUSE_MS);
   });
 
-  const remainingOf = async (kind: 'published' | 'pending') => {
+  const remainingOf = async (kind: Kind) => {
     const { count } = await due(
       supabase.from('jobs').select('id', { count: 'exact', head: true })
         .or('source_url.not.is.null,application_url.not.is.null'),
@@ -189,7 +195,8 @@ Deno.serve(async (req) => {
     );
     return count ?? 0;
   };
-  const remaining = (await remainingOf('published')) + (await remainingOf('pending'));
+  const remaining = (await remainingOf('published')) +
+    (await remainingOf('pending')) + (await remainingOf('rejected'));
 
   return json({
     dryRun,
