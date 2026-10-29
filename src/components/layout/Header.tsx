@@ -24,8 +24,8 @@ const Header = () => {
   const { refreshPageData } = usePageRefresh();
 
   const handleSearch = () => {
-    refreshPageData('/jobs');
-    navigate('/jobs');
+    refreshPageData('/');
+    navigate('/');
   };
 
   const handleNavigation = (path: string) => {
@@ -74,7 +74,7 @@ const Header = () => {
       <div className="container mx-auto px-6">
         <div className="flex items-center justify-between h-[49px]">
           {/* Logo */}
-          <Link to="/jobs" className="flex items-center gap-3">
+          <Link to="/" className="flex items-center gap-3">
             <span className="font-bold tracking-widest text-white text-[15px]">ISCSS</span>
             <span className="hidden sm:block text-xs font-medium text-white/80">Jobs</span>
           </Link>
@@ -85,7 +85,7 @@ const Header = () => {
             <Button
               variant="ghost"
               onClick={handleSearch}
-              className={getActiveStyles('/jobs')}
+              className={getActiveStyles('/')}
             >
               <Search className="w-4 h-4" />
               Browse Jobs
@@ -166,7 +166,7 @@ const Header = () => {
               <Button
                 variant="ghost"
                 onClick={() => { handleSearch(); setIsMenuOpen(false); }}
-                className={getMobileActiveStyles('/jobs')}
+                className={getMobileActiveStyles('/')}
               >
                 <Search className="w-4 h-4" />
                 Browse Jobs

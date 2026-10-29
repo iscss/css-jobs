@@ -653,7 +653,7 @@ const JobPostingForm = () => {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => navigate('/jobs')}
+                onClick={() => navigate('/')}
               >
                 Cancel
               </Button>

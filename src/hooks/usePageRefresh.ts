@@ -6,13 +6,8 @@ export const usePageRefresh = () => {
   const refreshPageData = (page: string) => {
     switch (page) {
       case '/':
-      case '/home':
-        // Home page uses jobs data
-        queryClient.invalidateQueries({ queryKey: ['jobs'] });
-        break;
-        
       case '/jobs':
-        // Browse Jobs page uses jobs and related filters data
+        // The jobs list (served at '/') uses jobs and related filters data
         queryClient.invalidateQueries({ queryKey: ['jobs'] });
         queryClient.invalidateQueries({ queryKey: ['job-filters'] });
         queryClient.invalidateQueries({ queryKey: ['saved-jobs'] });
