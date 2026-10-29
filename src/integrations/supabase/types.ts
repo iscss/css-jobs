@@ -250,6 +250,10 @@ export type Database = {
           posted_by: string
           relevance_reasoning: string | null
           relevance_score: number | null
+          link_status: string | null
+          link_status_reason: string | null
+          link_checked_at: string | null
+          rejected_at: string | null
           requirements: string | null
           source: string | null
           source_job_id: string | null
@@ -292,6 +296,10 @@ export type Database = {
           posted_by: string
           relevance_reasoning?: string | null
           relevance_score?: number | null
+          link_status?: string | null
+          link_status_reason?: string | null
+          link_checked_at?: string | null
+          rejected_at?: string | null
           requirements?: string | null
           source?: string | null
           source_job_id?: string | null
@@ -334,6 +342,10 @@ export type Database = {
           posted_by?: string
           relevance_reasoning?: string | null
           relevance_score?: number | null
+          link_status?: string | null
+          link_status_reason?: string | null
+          link_checked_at?: string | null
+          rejected_at?: string | null
           requirements?: string | null
           source?: string | null
           source_job_id?: string | null

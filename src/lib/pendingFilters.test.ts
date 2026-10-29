@@ -120,7 +120,6 @@ describe('applyPendingFilters', () => {
 
     expect(applyPendingFilters(jobs, filters({ deadline: 'open' }))).toHaveLength(2);
     expect(applyPendingFilters(jobs, filters({ deadline: 'soon' }))).toHaveLength(1);
-    expect(applyPendingFilters(jobs, filters({ deadline: 'passed' }))).toHaveLength(1);
     expect(applyPendingFilters(jobs, filters({ deadline: 'has' }))).toHaveLength(3);
     expect(applyPendingFilters(jobs, filters({ deadline: 'none' }))).toHaveLength(1);
   });

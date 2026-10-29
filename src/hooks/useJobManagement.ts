@@ -5,16 +5,29 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useAdminCheck } from './useAdminCheck';
 
-export const useAllJobs = () => {
+// The API returns at most 1,000 rows per request. Narrowing by status in the
+// query (not just in the browser) keeps a large view, such as hundreds of
+// rejected jobs, from pushing the rest past that cap.
+export type JobListStatus =
+  | 'all'
+  | 'published'
+  | 'pending'
+  | 'rejected'
+  | 'draft'
+  | 'closed';
+
+export const useAllJobs = (status: JobListStatus = 'all') => {
   const { user } = useAuth();
   const { data: isAdmin } = useAdminCheck();
 
   return useQuery({
-    queryKey: ['all-jobs-admin'],
+    // Shares the 'all-jobs-admin' prefix, so every existing invalidation
+    // refreshes this list too.
+    queryKey: ['all-jobs-admin', 'list', status],
     queryFn: async () => {
       if (!user || !isAdmin) throw new Error('User must be authenticated admin');
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('jobs')
         .select(`
           *,
@@ -30,10 +43,98 @@ export const useAllJobs = () => {
         `)
         .order('created_at', { ascending: false });
 
+      switch (status) {
+        case 'published':
+          query = query.eq('is_published', true);
+          break;
+        case 'pending':
+        case 'rejected':
+          query = query.eq('approval_status', status);
+          break;
+        case 'draft':
+          query = query.or('approval_status.eq.draft,approval_status.is.null');
+          break;
+        case 'closed':
+          query = query.eq('job_status', 'filled');
+          break;
+      }
+
+      const { data, error } = await query;
+
       if (error) throw error;
       return data;
     },
     enabled: !!user && !!isAdmin,
+  });
+};
+
+// Bulk approve / reject. Runs as set-based updates (admins may update any job
+// under the existing RLS policy), in chunks so the id list stays a reasonable
+// size. Each update also repeats the "not already in that state" check, so a
+// job someone else changed in the meantime is left alone and not counted.
+export const useBulkJobAction = () => {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ ids, action }: { ids: string[]; action: 'approve' | 'reject' }) => {
+      if (!user) throw new Error('User must be authenticated');
+
+      const now = new Date().toISOString();
+      let changed = 0;
+
+      for (let i = 0; i < ids.length; i += 100) {
+        const chunk = ids.slice(i, i + 100);
+        const base = supabase.from('jobs');
+
+        const query =
+          action === 'approve'
+            ? base
+                .update({
+                  approval_status: 'approved',
+                  is_published: true,
+                  approved_at: now,
+                  approved_by_admin: user.id,
+                })
+                .in('id', chunk)
+                .neq('approval_status', 'approved')
+                .neq('job_status', 'filled')
+            : base
+                .update({
+                  approval_status: 'rejected',
+                  is_published: false,
+                  approved_by_admin: user.id,
+                })
+                .in('id', chunk)
+                .neq('approval_status', 'rejected');
+
+        const { data, error } = await query.select('id');
+        if (error) throw error;
+        changed += data?.length ?? 0;
+      }
+      return { changed, action };
+    },
+    onSuccess: ({ changed, action }) => {
+      queryClient.invalidateQueries({ queryKey: ['jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['all-jobs-admin'] });
+      queryClient.invalidateQueries({ queryKey: ['pending-jobs-admin'] });
+      toast({
+        title: action === 'approve' ? 'Jobs approved' : 'Jobs rejected',
+        description:
+          action === 'approve'
+            ? `${changed} job${changed === 1 ? '' : 's'} approved and published.`
+            : `${changed} job${changed === 1 ? '' : 's'} rejected.`,
+      });
+    },
+    onError: (error: unknown) => {
+      console.error('Bulk action failed:', error);
+      toast({
+        title: 'Bulk action failed',
+        description: 'Some jobs may not have been updated. Refresh and check before trying again.',
+        variant: 'destructive',
+      });
+    },
   });
 };
 

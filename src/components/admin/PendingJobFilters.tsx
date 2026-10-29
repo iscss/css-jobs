@@ -111,9 +111,6 @@ export function applyPendingFilters<T extends Job>(
       ) {
         return false;
       }
-      if (filters.deadline === 'passed' && (daysLeft === null || daysLeft >= 0)) {
-        return false;
-      }
     }
 
     return true;
@@ -255,7 +252,6 @@ const PendingJobFilters = ({
               <SelectItem value="all">Any deadline</SelectItem>
               <SelectItem value="open">Still open</SelectItem>
               <SelectItem value="soon">Closing in 30 days</SelectItem>
-              <SelectItem value="passed">Already closed</SelectItem>
               <SelectItem value="has">Has a deadline</SelectItem>
               <SelectItem value="none">No deadline listed</SelectItem>
             </SelectContent>

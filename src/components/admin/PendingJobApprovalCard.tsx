@@ -223,17 +223,15 @@ const PendingJobApprovalCard = ({ job }: PendingJobApprovalCardProps) => {
                         {formatAge(ageDays)}
                       </Badge>
                     )}
-                    {deadline && (
+                    {/* Closed postings are cleaned up automatically and are only
+                        shown under Job Management, so the queue only lists
+                        deadlines that are still ahead. */}
+                    {deadline && !deadlinePassed && (
                       <Badge
                         variant="outline"
-                        className={
-                          deadlinePassed
-                            ? 'border-red-300 text-red-700 bg-red-50'
-                            : 'border-green-300 text-green-700 bg-green-50'
-                        }
+                        className="border-green-300 text-green-700 bg-green-50"
                       >
-                        {deadlinePassed ? 'Closed ' : 'Closes '}
-                        {deadline}
+                        Closes {deadline}
                       </Badge>
                     )}
                     <Badge variant="outline" className="border-brand-navy/30 text-brand-navy bg-brand-surface">

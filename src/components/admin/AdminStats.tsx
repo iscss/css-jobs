@@ -3,12 +3,15 @@ import { useJobCounts } from "@/hooks/useJobManagement";
 import { useAdminApprovals } from "@/hooks/useAdminApprovals";
 import { Users, Briefcase, Clock, CheckCircle, XCircle, UserCheck } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { JobManagementFilters } from "@/components/admin/JobManagementFilters";
 
 interface AdminStatsProps {
   onTabChange?: (tab: string) => void;
+  /** Opens Job Management with these filters applied. */
+  onOpenJobs?: (filters: Partial<JobManagementFilters>) => void;
 }
 
-const AdminStats = ({ onTabChange }: AdminStatsProps) => {
+const AdminStats = ({ onTabChange, onOpenJobs }: AdminStatsProps) => {
   const { data: users, isLoading: usersLoading } = useAllUsers();
   const { data: jobCounts, isLoading: jobsLoading } = useJobCounts();
   const { data: pendingApprovals, isLoading: approvalsLoading } = useAdminApprovals();
@@ -74,7 +77,7 @@ const AdminStats = ({ onTabChange }: AdminStatsProps) => {
       icon: Briefcase,
       color: "text-brand-navy",
       bgColor: "bg-brand-surface",
-      onClick: () => onTabChange?.('jobs'),
+      onClick: () => onOpenJobs?.({ status: 'all', featured: false }),
       clickable: true,
     },
     {
@@ -83,7 +86,7 @@ const AdminStats = ({ onTabChange }: AdminStatsProps) => {
       icon: CheckCircle,
       color: "text-emerald-500",
       bgColor: "bg-emerald-50",
-      onClick: () => onTabChange?.('jobs'),
+      onClick: () => onOpenJobs?.({ status: 'published', featured: false }),
       clickable: true,
     },
     {
@@ -101,7 +104,7 @@ const AdminStats = ({ onTabChange }: AdminStatsProps) => {
       icon: XCircle,
       color: "text-yellow-500",
       bgColor: "bg-yellow-50",
-      onClick: () => onTabChange?.('jobs'),
+      onClick: () => onOpenJobs?.({ status: 'rejected', featured: false }),
       clickable: true,
     },
     {
@@ -110,7 +113,7 @@ const AdminStats = ({ onTabChange }: AdminStatsProps) => {
       icon: CheckCircle,
       color: "text-brand-navy",
       bgColor: "bg-brand-surface",
-      onClick: () => onTabChange?.('jobs'),
+      onClick: () => onOpenJobs?.({ status: 'all', featured: true }),
       clickable: true,
     },
   ];

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -29,7 +29,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { useAllJobs, useRetractJob, useToggleFeatured, useDeleteJob, useUpdateJobStatus } from '@/hooks/useJobManagement';
+import { useAllJobs, useJobCounts, useRetractJob, useToggleFeatured, useDeleteJob, useUpdateJobStatus } from '@/hooks/useJobManagement';
+import BulkActionBar from '@/components/admin/BulkActionBar';
+import { Checkbox } from '@/components/ui/checkbox';
+import JobManagementFiltersBar, {
+  applyJobFilters,
+  filtersAreDefault,
+  STATUS_LABELS,
+  type JobManagementFilters,
+} from '@/components/admin/JobManagementFilters';
 import { Briefcase, Eye, EyeOff, Star, StarOff, Trash2, MoreHorizontal, User, Building2, Calendar, MapPin, CheckCircle, XCircle, Mail, Send, Pause, RefreshCw } from 'lucide-react';
 import JobDetailsModal from '@/components/jobs/JobDetailsModal';
 import type { Tables } from '@/integrations/supabase/types';
@@ -42,8 +50,39 @@ type Job = Tables<'jobs'> & {
   job_tags: { id: string; tag: string; }[]
 };
 
-const JobManagementTable = () => {
-  const { data: allJobs, isLoading } = useAllJobs();
+interface JobManagementTableProps {
+  filters: JobManagementFilters;
+  onFiltersChange: (filters: JobManagementFilters) => void;
+}
+
+const JobManagementTable = ({ filters, onFiltersChange }: JobManagementTableProps) => {
+  const { data: allJobs, isLoading } = useAllJobs(filters.status);
+  const { data: jobCounts } = useJobCounts();
+  // The status is applied in the query; the rest (search, type, origin,
+  // featured, sort) runs here over the rows already loaded.
+  const visibleJobs = useMemo(
+    () => applyJobFilters((allJobs ?? []) as Job[], filters),
+    [allJobs, filters],
+  );
+
+  // Bulk selection. Only jobs currently shown count, and changing a filter
+  // starts a fresh selection, so a hidden job is never acted on by accident.
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const selectedJobs = useMemo(
+    () => visibleJobs.filter((j) => selectedIds.has(j.id)),
+    [visibleJobs, selectedIds],
+  );
+  const allSelected = visibleJobs.length > 0 && selectedJobs.length === visibleJobs.length;
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [filters]);
+  const toggleJob = (id: string, on: boolean) =>
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (on) next.add(id);
+      else next.delete(id);
+      return next;
+    });
   const retractJob = useRetractJob();
   const toggleFeatured = useToggleFeatured();
   const deleteJob = useDeleteJob();
@@ -275,14 +314,37 @@ const JobManagementTable = () => {
       <CardHeader className="pb-6">
         <CardTitle className="flex items-center gap-3 text-xl">
           <Briefcase className="w-6 h-6" />
-          All Job Posts ({allJobs?.length || 0})
+          {filters.status === 'all' ? 'All Job Posts' : `${STATUS_LABELS[filters.status]} Jobs`} ({visibleJobs.length})
         </CardTitle>
       </CardHeader>
+      <CardContent className="pt-0">
+        <JobManagementFiltersBar
+          filters={filters}
+          onChange={onFiltersChange}
+          counts={jobCounts}
+          shown={visibleJobs.length}
+          loaded={allJobs?.length ?? 0}
+        />
+        {(allJobs?.length ?? 0) >= 1000 && (
+          <p className="text-sm text-amber-700 mb-2">
+            Showing the newest 1,000. Narrow the filters to see older jobs.
+          </p>
+        )}
+      </CardContent>
       <CardContent className="p-0">
         <Table>
           <TableHeader>
             <TableRow className="border-b">
-              <TableHead className="pl-6 py-4 font-semibold">Job Details</TableHead>
+              <TableHead className="pl-6 py-4 w-10">
+                <Checkbox
+                  checked={allSelected ? true : selectedJobs.length > 0 ? 'indeterminate' : false}
+                  onCheckedChange={(v) =>
+                    setSelectedIds(v === true ? new Set(visibleJobs.map((j) => j.id)) : new Set())
+                  }
+                  aria-label="Select all shown jobs"
+                />
+              </TableHead>
+              <TableHead className="py-4 font-semibold">Job Details</TableHead>
               <TableHead className="py-4 font-semibold">Posted By</TableHead>
               <TableHead className="py-4 font-semibold">Type & Status</TableHead>
               <TableHead className="py-4 font-semibold">Posted Date</TableHead>
@@ -290,9 +352,31 @@ const JobManagementTable = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {allJobs?.sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime())?.map((job) => (
+            {visibleJobs.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={6} className="py-12 text-center text-muted-foreground">
+                  No jobs match these filters.
+                  {!filtersAreDefault(filters) && (
+                    <Button
+                      variant="link"
+                      onClick={() => onFiltersChange({ ...filters, search: '', jobType: 'all', origin: 'all', deadline: 'all', featured: false })}
+                    >
+                      Clear filters
+                    </Button>
+                  )}
+                </TableCell>
+              </TableRow>
+            )}
+            {visibleJobs.map((job) => (
               <TableRow key={job.id} className="hover:bg-muted/50 transition-colors">
-                <TableCell className="pl-6 py-6">
+                <TableCell className="pl-6 py-6 w-10 align-top">
+                  <Checkbox
+                    checked={selectedIds.has(job.id)}
+                    onCheckedChange={(v) => toggleJob(job.id, v === true)}
+                    aria-label={`Select ${job.title}`}
+                  />
+                </TableCell>
+                <TableCell className="py-6">
                   <div className="space-y-2">
                     <div className="flex items-start gap-3">
                       <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
@@ -352,10 +436,27 @@ const JobManagementTable = () => {
                             </Badge>
                           );
                         } else if (approvalStatus === 'rejected') {
+                          // Auto-imported jobs are deleted 30 days after they
+                          // were rejected; people's own posts are kept.
+                          const rejectedAt = (job as Job).rejected_at;
+                          const daysLeft =
+                            job.is_auto_imported && rejectedAt
+                              ? Math.max(
+                                  0,
+                                  30 - Math.floor((Date.now() - new Date(rejectedAt).getTime()) / 86400000),
+                                )
+                              : null;
                           return (
-                            <Badge variant="destructive" className="w-fit">
-                              Rejected
-                            </Badge>
+                            <>
+                              <Badge variant="destructive" className="w-fit">
+                                Rejected
+                              </Badge>
+                              {daysLeft !== null && (
+                                <span className="text-xs text-muted-foreground">
+                                  Deleted automatically in {daysLeft} {daysLeft === 1 ? 'day' : 'days'}
+                                </span>
+                              )}
+                            </>
                           );
                         } else {
                           return (
@@ -565,6 +666,11 @@ const JobManagementTable = () => {
         </Table>
       </CardContent>
     </Card>
+
+    <BulkActionBar
+      selectedJobs={selectedJobs}
+      onClear={() => setSelectedIds(new Set())}
+    />
 
     {selectedJob && (
       <JobDetailsModal

@@ -1,9 +1,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
-import { useToast } from "@/hooks/use-toast";
-import { Button } from "@/components/ui/button";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import PendingApprovalCard from "@/components/admin/PendingApprovalCard";
@@ -15,7 +12,13 @@ import PendingJobFilters, {
 import PendingJobApprovalCard from "@/components/admin/PendingJobApprovalCard";
 import UserManagementTable from "@/components/admin/UserManagementTable";
 import JobManagementTable from "@/components/admin/JobManagementTable";
+import {
+  EMPTY_JOB_FILTERS,
+  type JobManagementFilters,
+} from "@/components/admin/JobManagementFilters";
 import AdminStats from "@/components/admin/AdminStats";
+import BulkActionBar from "@/components/admin/BulkActionBar";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useAdminApprovals } from "@/hooks/useAdminApprovals";
 import { usePendingJobs } from "@/hooks/useJobManagement";
 import { useAdminCheck } from "@/hooks/useAdminCheck";
@@ -23,7 +26,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shield, Users, Clock, Briefcase, RefreshCw } from "lucide-react";
+import { Shield, Users, Clock, Briefcase } from "lucide-react";
 
 const Admin = () => {
   const { user, loading: authLoading } = useAuth();
@@ -39,11 +42,42 @@ const Admin = () => {
     () => applyPendingFilters(pendingJobs ?? [], pendingFilters),
     [pendingJobs, pendingFilters],
   );
+  // Bulk selection for the pending queue. Only jobs currently shown count, so
+  // a job hidden by a filter can never be approved by accident.
+  const [selectedPendingIds, setSelectedPendingIds] = useState<Set<string>>(new Set());
+  const selectedPendingJobs = useMemo(
+    () => visiblePendingJobs.filter((j) => selectedPendingIds.has(j.id)),
+    [visiblePendingJobs, selectedPendingIds],
+  );
+  const allPendingSelected =
+    visiblePendingJobs.length > 0 && selectedPendingJobs.length === visiblePendingJobs.length;
+  const togglePendingJob = (id: string, on: boolean) =>
+    setSelectedPendingIds((prev) => {
+      const next = new Set(prev);
+      if (on) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  const toggleAllPending = (on: boolean) =>
+    setSelectedPendingIds(on ? new Set(visiblePendingJobs.map((j) => j.id)) : new Set());
+  // Changing a filter starts a fresh selection.
+  useEffect(() => {
+    setSelectedPendingIds(new Set());
+  }, [pendingFilters]);
+
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('approvals');
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [jobFilters, setJobFilters] = useState<JobManagementFilters>(EMPTY_JOB_FILTERS);
+
+  // Clicking a dashboard card (Published, Rejected, ...) opens Job Management
+  // with that filter already selected, then brings the tabs into view.
+  const openJobs = (patch: Partial<JobManagementFilters>) => {
+    setJobFilters({ ...EMPTY_JOB_FILTERS, ...patch });
+    setActiveTab('jobs');
+    requestAnimationFrame(() =>
+      document.getElementById('admin-tabs')?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+    );
+  };
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -56,36 +90,6 @@ const Admin = () => {
       navigate('/');
     }
   }, [isAdmin, adminLoading, navigate]);
-
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    try {
-      // Invalidate all admin-related queries
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['admin-approvals'] }),
-        queryClient.invalidateQueries({ queryKey: ['pending-jobs-admin'] }),
-        queryClient.invalidateQueries({ queryKey: ['all-jobs-admin'] }),
-        queryClient.invalidateQueries({ queryKey: ['admin-user-profiles'] }),
-        queryClient.invalidateQueries({ queryKey: ['admin-stats'] })
-      ]);
-
-      // Keep spinning for visual effect, then show success toast
-      setTimeout(() => {
-        setIsRefreshing(false);
-        toast({
-          title: "Dashboard refreshed",
-          description: "All data has been updated successfully.",
-        });
-      }, 800);
-    } catch (error) {
-      setIsRefreshing(false);
-      toast({
-        title: "Refresh failed",
-        description: "There was an error refreshing the dashboard.",
-        variant: "destructive",
-      });
-    }
-  };
 
   if (authLoading || adminLoading) {
     return (
@@ -123,57 +127,18 @@ const Admin = () => {
                     Admin Dashboard
                   </h1>
                 </div>
-                <Button
-                  onClick={handleRefresh}
-                  disabled={isRefreshing}
-                  className={`
-                    relative overflow-hidden px-6 py-2 
-                    bg-brand-navy 
-                    hover:bg-brand-navy/90
-                    text-white font-medium rounded-xl
-                    shadow-lg hover:shadow-xl
-                    transform transition-all duration-300
-                    hover:scale-105 hover:-translate-y-0.5
-                    disabled:opacity-70 disabled:cursor-not-allowed
-                    disabled:transform-none disabled:hover:shadow-lg
-                    ${isRefreshing ? 'animate-pulse shadow-brand-navy/30' : ''}
-                  `}
-                >
-                  <div className="flex items-center gap-2 relative z-10">
-                    <RefreshCw
-                      className={`
-                        w-4 h-4 transition-all duration-500
-                        ${isRefreshing ? 'animate-spin text-white drop-shadow-sm' : 'text-white/90'}
-                      `}
-                    />
-                    <span className="transition-all duration-300">
-                      {isRefreshing ? 'Refreshing...' : 'Refresh'}
-                    </span>
-                  </div>
-
-                  {/* Animated background effects */}
-                  {isRefreshing && (
-                    <>
-                      <div className="absolute inset-0 bg-brand-surface-2 animate-pulse" />
-                      <div className="absolute -inset-1 bg-brand-surface-2 rounded-xl blur animate-ping" />
-                    </>
-                  )}
-                </Button>
               </div>
               <div className="space-y-2">
                 <p className="text-gray-600 text-lg">
                   Manage user approvals, permissions, and job posts
                 </p>
-                <p className="text-sm text-gray-500 italic">
-                  Use the refresh button above to get the most recent updates from users and jobs
-                </p>
               </div>
             </div>
           </div>
 
-          <AdminStats onTabChange={setActiveTab} />
+          <AdminStats onTabChange={setActiveTab} onOpenJobs={openJobs} />
 
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          <Tabs id="admin-tabs" value={activeTab} onValueChange={setActiveTab} className="space-y-4">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="approvals">
                 Pending Approvals
@@ -230,12 +195,33 @@ const Admin = () => {
                           resultCount={visiblePendingJobs.length}
                         />
                         {visiblePendingJobs.length > 0 ? (
-                          visiblePendingJobs.map((job) => (
-                            <PendingJobApprovalCard
-                              key={job.id}
-                              job={job}
+                          <>
+                            <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer w-fit">
+                              <Checkbox
+                                checked={allPendingSelected ? true : selectedPendingJobs.length > 0 ? 'indeterminate' : false}
+                                onCheckedChange={(v) => toggleAllPending(v === true)}
+                                aria-label="Select all shown jobs"
+                              />
+                              Select all {visiblePendingJobs.length} shown
+                            </label>
+                            {visiblePendingJobs.map((job) => (
+                              <div key={job.id} className="flex items-start gap-3">
+                                <Checkbox
+                                  className="mt-6"
+                                  checked={selectedPendingIds.has(job.id)}
+                                  onCheckedChange={(v) => togglePendingJob(job.id, v === true)}
+                                  aria-label={`Select ${job.title}`}
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <PendingJobApprovalCard job={job} />
+                                </div>
+                              </div>
+                            ))}
+                            <BulkActionBar
+                              selectedJobs={selectedPendingJobs}
+                              onClear={() => setSelectedPendingIds(new Set())}
                             />
-                          ))
+                          </>
                         ) : (
                           <div className="text-center py-6 bg-gray-50 rounded-lg border">
                             <Briefcase className="w-10 h-10 text-gray-400 mx-auto mb-2" />
@@ -312,7 +298,7 @@ const Admin = () => {
             </TabsContent>
 
             <TabsContent value="jobs">
-              <JobManagementTable />
+              <JobManagementTable filters={jobFilters} onFiltersChange={setJobFilters} />
             </TabsContent>
           </Tabs>
         </div>
