@@ -46,15 +46,6 @@ const About = () => {
       title: "",
       website: "https://css.seas.upenn.edu/caroline-rogers/"
     },
-    {
-      name: "Regina (Jeanne) Ruane",
-      role: "Lead",
-      photo: "/team/jeanne.jpg",
-      icon: <Users className="w-4 h-4" />,
-      affiliation: "University of Pennsylvania",
-      title: "",
-      website: "https://css.seas.upenn.edu/people/regina-jeanne-ruane/"
-    },
   ];
 
   return (
