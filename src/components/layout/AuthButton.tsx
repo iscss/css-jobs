@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronDown, LayoutDashboard, LogOut, User } from 'lucide-react';
+import { Briefcase, ChevronDown, LayoutDashboard, LogOut, User } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAdminCheck } from '@/hooks/useAdminCheck';
 import { useAdminApprovals } from '@/hooks/useAdminApprovals';
@@ -18,8 +18,10 @@ import {
 
 // Plain <button>s, not the shared Button: its default variant paints a
 // gradient background image that hides any background colour set on top of it.
-const barButton =
-  'flex items-center gap-2 h-8 px-3 text-xs font-medium rounded-md text-white border border-white/40 hover:bg-white/10 transition-colors';
+const signInButton =
+  'flex items-center gap-2 text-[13px] text-[#555] hover:text-brand-navy transition-colors';
+const accountButton =
+  'flex items-center gap-2 h-8 px-3 text-[13px] rounded-md text-brand-navy border border-[#d9deea] hover:bg-brand-surface transition-colors';
 
 interface AuthButtonProps {
   /** Lay the account links out as a plain list (used in the mobile menu). */
@@ -36,17 +38,16 @@ const AuthButton = ({ inline = false, onNavigate }: AuthButtonProps) => {
   const navigate = useNavigate();
 
   if (loading) {
-    return <div className="w-20 h-8 bg-white/20 animate-pulse rounded-md" />;
+    return <div className="w-20 h-8 bg-brand-surface-2 animate-pulse rounded-md" />;
   }
 
   if (!user) {
     return (
       <button
         type="button"
-        className={barButton}
+        className={signInButton}
         onClick={() => { navigate('/auth'); onNavigate?.(); }}
       >
-        <User className="w-4 h-4" />
         Sign in
       </button>
     );
@@ -77,9 +78,13 @@ const AuthButton = ({ inline = false, onNavigate }: AuthButtonProps) => {
 
   if (inline) {
     const row =
-      'flex w-full items-center gap-2 h-8 px-2 text-xs font-medium text-white/80 hover:text-white hover:bg-white/10 rounded-md';
+      'flex w-full items-center gap-2 h-8 px-2 text-xs font-medium text-[#555] hover:text-brand-navy hover:bg-brand-surface rounded-md';
     return (
       <div className="flex flex-col space-y-4">
+        <button type="button" className={row} onClick={() => go('/')}>
+          <Briefcase className="w-4 h-4" />
+          Job board
+        </button>
         {isAdmin && (
           <button type="button" className={row} onClick={() => go('/admin')}>
             <LayoutDashboard className="w-4 h-4" />
@@ -102,7 +107,7 @@ const AuthButton = ({ inline = false, onNavigate }: AuthButtonProps) => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button type="button" className={`${barButton} relative max-w-[220px]`}>
+        <button type="button" className={`${accountButton} relative max-w-[220px]`}>
           <User className="w-4 h-4 shrink-0" />
           <span className="truncate">{name}</span>
           <ChevronDown className="w-3 h-3 shrink-0" />
@@ -118,6 +123,10 @@ const AuthButton = ({ inline = false, onNavigate }: AuthButtonProps) => {
           {user.email}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        <DropdownMenuItem className="cursor-pointer" onSelect={() => go('/')}>
+          <Briefcase className="w-4 h-4 mr-2" />
+          Job board
+        </DropdownMenuItem>
         {isAdmin && (
           <DropdownMenuItem className="cursor-pointer" onSelect={() => go('/admin')}>
             <LayoutDashboard className="w-4 h-4 mr-2" />

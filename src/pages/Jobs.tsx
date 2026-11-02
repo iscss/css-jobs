@@ -7,10 +7,7 @@ import CompactJobCard from "@/components/jobs/CompactJobCard";
 import JobDetailsModal from "@/components/jobs/JobDetailsModal";
 import JobFilters from "@/components/jobs/JobFilters";
 import { useJobs } from "@/hooks/useJobs";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Search, X, Filter, Star, MapPin, Globe } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Tables } from '@/integrations/supabase/types';
 
 type Job = Tables<'jobs'> & {
@@ -22,6 +19,8 @@ const Jobs = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [filteredJobs, setFilteredJobs] = useState<Job[]>([]);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [sort, setSort] = useState<"newest" | "deadline">("newest");
+  const [heroSearch, setHeroSearch] = useState(searchParams.get("search") || "");
   const [filters, setFilters] = useState({
     search: searchParams.get("search") || "",
     types: [] as string[],
@@ -97,6 +96,10 @@ const Jobs = () => {
     }
   }, [searchParams]);
 
+  useEffect(() => {
+    setHeroSearch(filters.search);
+  }, [filters.search]);
+
   // Enhanced filter function with comprehensive search
   useEffect(() => {
     if (!jobs) return;
@@ -168,8 +171,17 @@ const Jobs = () => {
       });
     }
 
+    // The query already returns newest first, so only "deadline" re-orders.
+    if (sort === "deadline") {
+      filtered = [...filtered].sort((a, b) => {
+        if (!a.application_deadline) return 1;
+        if (!b.application_deadline) return -1;
+        return a.application_deadline.localeCompare(b.application_deadline);
+      });
+    }
+
     setFilteredJobs(filtered);
-  }, [jobs, filters]);
+  }, [jobs, filters, sort]);
 
   const handleFiltersChange = (newFilters: Partial<typeof filters>) => {
     setFilters(prev => ({ ...prev, ...newFilters }));
@@ -195,29 +207,17 @@ const Jobs = () => {
     setSearchParams({});
   };
 
-  const getRegionLabel = (regionValue: string) => {
-    const regions = {
-      "north-america": "North America",
-      "europe": "Europe",
-      "asia": "Asia",
-      "oceania": "Oceania",
-      "south-america": "South America",
-      "africa": "Africa"
-    };
-    return regions[regionValue] || regionValue;
+  const togglePill = (type: string) => {
+    setFilters(prev => ({
+      ...prev,
+      types: prev.types.includes(type) ? prev.types.filter(t => t !== type) : [...prev.types, type],
+    }));
   };
 
-  const getCountryLabel = (countryValue: string) => {
-    const countries = {
-      "us": "United States", "ca": "Canada", "uk": "United Kingdom",
-      "de": "Germany", "fr": "France", "nl": "Netherlands",
-      "ch": "Switzerland", "se": "Sweden", "dk": "Denmark",
-      "no": "Norway", "fi": "Finland", "it": "Italy", "es": "Spain",
-      "au": "Australia", "nz": "New Zealand", "jp": "Japan",
-      "sg": "Singapore", "kr": "South Korea", "cn": "China", "in": "India"
-    };
-    return countries[countryValue] || countryValue;
-  };
+  const pillTypes = ["PhD", "Postdoc", "Faculty", "Research Assistant"];
+  const pillBase = "rounded-full border border-brand-navy px-4 py-1 text-xs font-medium transition-colors";
+  const pillOn = "bg-brand-navy text-white";
+  const pillOff = "bg-transparent text-brand-navy hover:bg-brand-surface-2";
 
   if (error) {
     return (
@@ -243,153 +243,110 @@ const Jobs = () => {
         <Header />
 
         <main className="main-content">
-          <div className="container mx-auto px-4 py-8">
-            <div className="flex flex-col lg:flex-row gap-8">
+          {/* Hero band: headline, search and quick type filters */}
+          <section className="bg-brand-surface border-b border-[#e8eaf0]">
+            <div className="mx-auto max-w-[1440px] px-6 md:px-12 pt-9 pb-7">
+              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#888] mb-2">Job board</p>
+              <h1 className="text-3xl md:text-[34px] font-extrabold leading-tight text-brand-navy">
+                Find your next role in <span className="text-brand-teal">computational social science</span>
+              </h1>
+              <form
+                className="flex gap-2.5 mt-5 max-w-[760px]"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleFiltersChange({ search: heroSearch });
+                }}
+              >
+                <input
+                  value={heroSearch}
+                  onChange={(e) => setHeroSearch(e.target.value)}
+                  placeholder="Search by title, institution or keyword…"
+                  aria-label="Search jobs"
+                  className="flex-1 min-w-0 bg-white border border-[#d9deea] rounded-md px-3.5 py-[11px] text-[13px] text-slate-800 placeholder:text-[#999] focus:outline-none focus:ring-2 focus:ring-brand-navy/30"
+                />
+                <button type="submit" className="px-[18px] py-[9px] rounded bg-brand-navy text-white text-[13px] font-semibold hover:bg-brand-navy/90 transition-colors">
+                  Search
+                </button>
+              </form>
+              <div className="flex flex-wrap gap-2 mt-4">
+                <button
+                  type="button"
+                  className={`${pillBase} ${filters.types.length === 0 && !filters.remote ? pillOn : pillOff}`}
+                  onClick={() => setFilters(prev => ({ ...prev, types: [], remote: false }))}
+                >
+                  All
+                </button>
+                {pillTypes.map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    className={`${pillBase} ${filters.types.includes(type) ? pillOn : pillOff}`}
+                    onClick={() => togglePill(type)}
+                  >
+                    {type}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  className={`${pillBase} ${filters.remote ? pillOn : pillOff}`}
+                  onClick={() => setFilters(prev => ({ ...prev, remote: !prev.remote }))}
+                >
+                  Remote
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <div className="mx-auto max-w-[1440px] px-6 md:px-12 pt-[30px] pb-10">
+            <div className="flex flex-col lg:flex-row gap-[30px]">
               {/* Sidebar with filters */}
-              <aside className="lg:w-80">
-                <div className="sticky top-8">
+              <aside className="lg:w-[250px] lg:shrink-0">
+                <div className="lg:sticky lg:top-24">
                   <JobFilters onFiltersChange={handleFiltersChange} currentFilters={filters} />
                 </div>
               </aside>
 
               {/* Main content */}
-              <div className="flex-1">
-                {/* Enhanced header section */}
-                <div className="mb-8">
-                  <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
-                    <h1 className="text-4xl font-bold text-brand-navy mb-3">
-                      Browse All Positions
-                    </h1>
-                    <p className="text-gray-600 text-lg mb-4">
-                      {isLoading ? (
-                        "Loading opportunities..."
-                      ) : (
-                        `Discover ${filteredJobs.length} of ${jobs?.length || 0} research opportunities worldwide`
-                      )}
-                    </p>
-
-                    {/* Search query display and active filters */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between text-xs text-[#888] mb-3">
+                  <span>
+                    {isLoading
+                      ? "Loading positions…"
+                      : `${filteredJobs.length} position${filteredJobs.length === 1 ? "" : "s"}${hasActiveFilters ? ` of ${jobs?.length || 0}` : ""}`}
                     {hasActiveFilters && (
-                      <div className="mt-6 p-4 bg-brand-surface rounded-xl border border-brand-surface-2">
-                        <div className="flex flex-wrap items-center gap-3 mb-3">
-                          <div className="flex items-center gap-2 text-brand-navy font-medium">
-                            <Filter className="w-4 h-4" />
-                            <span>Active Filters:</span>
-                          </div>
-
-                          {filters.search && (
-                            <Badge className="bg-brand-surface-2 text-brand-navy hover:bg-brand-surface-2 flex items-center gap-2 px-3 py-1">
-                              <Search className="w-3 h-3" />
-                              "{filters.search}"
-                              <button
-                                onClick={clearSearch}
-                                className="ml-1 hover:bg-brand-navy/20 rounded-full p-0.5"
-                              >
-                                <X className="w-3 h-3" />
-                              </button>
-                            </Badge>
-                          )}
-
-                          {filters.types.map((type) => (
-                            <Badge key={type} className="bg-green-100 text-green-800 hover:bg-green-200 flex items-center gap-2 px-3 py-1">
-                              {type}
-                              <button
-                                onClick={() => setFilters(prev => ({ ...prev, types: prev.types.filter(t => t !== type) }))}
-                                className="ml-1 hover:bg-green-300 rounded-full p-0.5"
-                              >
-                                <X className="w-3 h-3" />
-                              </button>
-                            </Badge>
-                          ))}
-
-                          {filters.remote && (
-                            <Badge className="bg-brand-surface-2 text-brand-navy hover:bg-brand-surface-2 flex items-center gap-2 px-3 py-1">
-                              <Globe className="w-3 h-3" />
-                              Remote
-                              <button
-                                onClick={() => setFilters(prev => ({ ...prev, remote: false }))}
-                                className="ml-1 hover:bg-brand-navy/20 rounded-full p-0.5"
-                              >
-                                <X className="w-3 h-3" />
-                              </button>
-                            </Badge>
-                          )}
-
-                          {filters.featured && (
-                            <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200 flex items-center gap-2 px-3 py-1">
-                              <Star className="w-3 h-3" />
-                              Featured
-                              <button
-                                onClick={() => setFilters(prev => ({ ...prev, featured: false }))}
-                                className="ml-1 hover:bg-yellow-300 rounded-full p-0.5"
-                              >
-                                <X className="w-3 h-3" />
-                              </button>
-                            </Badge>
-                          )}
-
-                          {filters.region && filters.region !== "all" && (
-                            <Badge className="bg-brand-surface-2 text-brand-navy hover:bg-brand-surface-2 flex items-center gap-2 px-3 py-1">
-                              <MapPin className="w-3 h-3" />
-                              {getRegionLabel(filters.region)}
-                              <button
-                                onClick={() => setFilters(prev => ({ ...prev, region: "all" }))}
-                                className="ml-1 hover:bg-brand-navy/20 rounded-full p-0.5"
-                              >
-                                <X className="w-3 h-3" />
-                              </button>
-                            </Badge>
-                          )}
-
-                          {filters.country && filters.country !== "all" && (
-                            <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-200 flex items-center gap-2 px-3 py-1">
-                              <Globe className="w-3 h-3" />
-                              {getCountryLabel(filters.country)}
-                              <button
-                                onClick={() => setFilters(prev => ({ ...prev, country: "all" }))}
-                                className="ml-1 hover:bg-orange-300 rounded-full p-0.5"
-                              >
-                                <X className="w-3 h-3" />
-                              </button>
-                            </Badge>
-                          )}
-                        </div>
-
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={clearAllFilters}
-                          className="text-brand-navy border-brand-navy/30 hover:bg-brand-surface-2 hover:border-brand-navy/30"
-                        >
-                          Clear all filters
-                        </Button>
-                      </div>
+                      <button type="button" onClick={clearAllFilters} className="ml-3 text-brand-navy underline underline-offset-2 hover:no-underline">
+                        Clear filters
+                      </button>
                     )}
-                  </div>
+                  </span>
+                  <label className="flex items-center gap-1.5">
+                    Sort:
+                    <Select value={sort} onValueChange={(v) => setSort(v as "newest" | "deadline")}>
+                      <SelectTrigger className="h-7 w-auto gap-1 border-0 bg-transparent px-1 text-xs text-[#555] shadow-none focus:ring-0">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="newest">Newest</SelectItem>
+                        <SelectItem value="deadline">Deadline soonest</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </label>
                 </div>
 
                 {/* Jobs grid */}
                 {isLoading ? (
-                  <div className="grid gap-6 lg:grid-cols-2">
+                  <div className="grid gap-[18px] lg:grid-cols-2">
                     {Array.from({ length: 6 }).map((_, i) => (
-                      <div key={i} className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100">
-                        <div className="flex justify-between items-start mb-4">
-                          <div className="flex-1">
-                            <div className="h-6 bg-gray-200 rounded w-3/4 mb-2"></div>
-                            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-                          </div>
-                          <div className="h-8 bg-gray-200 rounded w-16"></div>
-                        </div>
-                        <div className="h-20 bg-gray-200 rounded mb-4"></div>
-                        <div className="flex justify-between items-center">
-                          <div className="h-4 bg-gray-200 rounded w-1/3"></div>
-                          <div className="h-8 bg-gray-200 rounded w-20"></div>
-                        </div>
+                      <div key={i} className="bg-white rounded-md p-6 border border-[#e3e7ea] border-l-4 border-l-[#e3e7ea] animate-pulse">
+                        <div className="h-4 bg-gray-200 rounded w-16 mb-3"></div>
+                        <div className="h-5 bg-gray-200 rounded w-3/4 mb-2"></div>
+                        <div className="h-4 bg-gray-200 rounded w-1/2 mb-4"></div>
+                        <div className="h-8 bg-gray-200 rounded"></div>
                       </div>
                     ))}
                   </div>
                 ) : filteredJobs.length > 0 ? (
-                  <div className="grid gap-6 lg:grid-cols-2">
+                  <div className="grid gap-[18px] lg:grid-cols-2">
                     {filteredJobs.map((job) => (
                       <CompactJobCard
                         key={job.id}
@@ -400,9 +357,8 @@ const Jobs = () => {
                   </div>
                 ) : (
                   <div className="text-center py-12">
-                    <div className="text-gray-400 text-6xl mb-4">📭</div>
                     <h3 className="text-lg font-semibold text-gray-700 mb-2">No jobs found</h3>
-                    <p className="text-gray-600 text-lg">Check back soon for new research opportunities.</p>
+                    <p className="text-sm text-gray-600">Try a different search, or check back soon for new opportunities.</p>
                   </div>
                 )}
               </div>
