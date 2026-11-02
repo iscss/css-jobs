@@ -456,6 +456,11 @@ const JobManagementTable = ({ filters, onFiltersChange }: JobManagementTableProp
                                   Deleted automatically in {daysLeft} {daysLeft === 1 ? 'day' : 'days'}
                                 </span>
                               )}
+                              {job.is_auto_imported && job.relevance_reasoning && (
+                                <span className="text-xs text-muted-foreground max-w-[260px]">
+                                  {job.relevance_reasoning}
+                                </span>
+                              )}
                             </>
                           );
                         } else {

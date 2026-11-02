@@ -300,7 +300,7 @@ const JobManagementFiltersBar = ({
             <SelectContent>
               <SelectItem value="newest">Newest first</SelectItem>
               <SelectItem value="oldest">Oldest first</SelectItem>
-              <SelectItem value="relevance">Highest match</SelectItem>
+              <SelectItem value="relevance">Most relevant</SelectItem>
               <SelectItem value="deadline">Closing soonest</SelectItem>
               <SelectItem value="title">Title A–Z</SelectItem>
             </SelectContent>

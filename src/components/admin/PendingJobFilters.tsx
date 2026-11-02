@@ -20,7 +20,8 @@ export interface PendingFilters {
   source: string;
   jobType: string;
   origin: string;
-  minScore: string;
+  /** AI verdict: 'all' | 'accept' | 'borderline'. */
+  verdict: string;
   maxAge: string;
   deadline: string;
   location: string;
@@ -31,7 +32,7 @@ export const EMPTY_PENDING_FILTERS: PendingFilters = {
   source: 'all',
   jobType: 'all',
   origin: 'all',
-  minScore: 'all',
+  verdict: 'all',
   maxAge: 'all',
   deadline: 'all',
   location: '',
@@ -52,7 +53,6 @@ export function applyPendingFilters<T extends Job>(
 ): T[] {
   const search = filters.search.trim().toLowerCase();
   const location = filters.location.trim().toLowerCase();
-  const minScore = filters.minScore === 'all' ? null : Number(filters.minScore);
   const maxAge = filters.maxAge === 'all' ? null : Number(filters.maxAge);
 
   return jobs.filter((job) => {
@@ -79,11 +79,8 @@ export function applyPendingFilters<T extends Job>(
     if (filters.origin === 'imported' && !job.is_auto_imported) return false;
     if (filters.origin === 'human' && job.is_auto_imported) return false;
 
-    if (minScore !== null) {
-      // An unscored job has no score to compare, so it cannot clear a
-      // minimum-score bar; excluding it keeps the filter honest.
-      if (job.relevance_score === null) return false;
-      if (Number(job.relevance_score) < minScore) return false;
+    if (filters.verdict !== 'all' && job.relevance_verdict !== filters.verdict) {
+      return false;
     }
 
     if (maxAge !== null) {
@@ -224,14 +221,12 @@ const PendingJobFilters = ({
             </SelectContent>
           </Select>
 
-          <Select value={filters.minScore} onValueChange={(v) => set({ minScore: v })}>
-            <SelectTrigger><SelectValue placeholder="Match" /></SelectTrigger>
+          <Select value={filters.verdict} onValueChange={(v) => set({ verdict: v })}>
+            <SelectTrigger><SelectValue placeholder="Relevance" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Any match</SelectItem>
-              <SelectItem value="0.75">75%+ (strong)</SelectItem>
-              <SelectItem value="0.5">50%+</SelectItem>
-              <SelectItem value="0.25">25%+</SelectItem>
-              <SelectItem value="0.05">Above zero</SelectItem>
+              <SelectItem value="all">Any relevance</SelectItem>
+              <SelectItem value="accept">AI: relevant</SelectItem>
+              <SelectItem value="borderline">AI: borderline</SelectItem>
             </SelectContent>
           </Select>
 

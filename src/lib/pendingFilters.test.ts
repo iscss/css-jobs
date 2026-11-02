@@ -77,21 +77,21 @@ describe('applyPendingFilters', () => {
     expect(applyPendingFilters(jobs, filters({ location: 'germany' }))).toHaveLength(1);
   });
 
-  it('filters by minimum relevance score', () => {
+  it('filters by AI verdict', () => {
     const jobs = [
-      job({ relevance_score: 0.9 }),
-      job({ relevance_score: 0.4 }),
-      job({ relevance_score: 0 }),
+      job({ relevance_verdict: 'accept' }),
+      job({ relevance_verdict: 'borderline' }),
+      job({ relevance_verdict: 'borderline' }),
+      job({ relevance_verdict: null }),
     ];
-    expect(applyPendingFilters(jobs, filters({ minScore: '0.5' }))).toHaveLength(1);
-    expect(applyPendingFilters(jobs, filters({ minScore: '0.05' }))).toHaveLength(2);
+    expect(applyPendingFilters(jobs, filters({ verdict: 'accept' }))).toHaveLength(1);
+    expect(applyPendingFilters(jobs, filters({ verdict: 'borderline' }))).toHaveLength(2);
+    expect(applyPendingFilters(jobs, EMPTY_PENDING_FILTERS)).toHaveLength(4);
   });
 
-  it('excludes unscored jobs from a minimum-score filter', () => {
-    // A job with no score cannot be shown to clear the bar.
-    const jobs = [job({ relevance_score: null })];
-    expect(applyPendingFilters(jobs, filters({ minScore: '0.5' }))).toHaveLength(0);
-    expect(applyPendingFilters(jobs, EMPTY_PENDING_FILTERS)).toHaveLength(1);
+  it('leaves jobs with no verdict out of a verdict filter', () => {
+    const jobs = [job({ relevance_verdict: null })];
+    expect(applyPendingFilters(jobs, filters({ verdict: 'accept' }))).toHaveLength(0);
   });
 
   it('filters by posting age', () => {
@@ -161,7 +161,7 @@ describe('countActiveFilters', () => {
 
   it('counts each changed filter once', () => {
     expect(
-      countActiveFilters(filters({ source: 'comses', minScore: '0.5', search: 'abm' })),
+      countActiveFilters(filters({ source: 'comses', verdict: 'accept', search: 'abm' })),
     ).toBe(3);
   });
 });
