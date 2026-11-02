@@ -39,3 +39,6 @@ verify_jwt = false
 
 [functions.check-listings]
 verify_jwt = false
+
+[functions.rescore-jobs]
+verify_jwt = false

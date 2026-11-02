@@ -37,6 +37,10 @@ export interface NormalizedJob {
   content_hash: string;
   relevance_score: number;
   relevance_reasoning: string;
+  /** AI verdict; null when the keyword scorer was used. */
+  relevance_verdict?: 'accept' | 'borderline' | 'reject' | null;
+  /** Only ever 'rejected': the insert trigger forces everything else to pending. */
+  approval_status?: 'rejected';
   is_auto_imported: true;
   posted_by: string;
   posted_at: string | null;
@@ -224,6 +228,7 @@ const METHOD_SIGNALS: [RegExp, number][] = [
   [/digital trace data|computational text analysis|text as data/i, 0.9],
   [/large language model|\bLLM\b|natural language processing|\bNLP\b/i, 0.6],
   [/network analysis|graph analysis/i, 0.6],
+  [/(online|digital|web) experiment/i, 0.6],
   [/machine learning|deep learning|data scien|statistical model|econometric/i, 0.45],
   [/quantitative method|computational method|simulation/i, 0.4],
 ];
@@ -352,6 +357,17 @@ export function scoreRelevance(
     score: Number(Math.max(0, Math.min(1, score)).toFixed(3)),
     reasoning: matched.join(', '),
   };
+}
+
+// Where a new import starts. Clear non-matches go straight to rejected (kept
+// 30 days, then purged, and visible in Job Management so an admin can restore
+// one). Anything doubtful stays pending for a person.
+export function autoRejects(job: {
+  relevance_reasoning: string;
+  relevance_verdict?: 'accept' | 'borderline' | 'reject' | null;
+}): boolean {
+  return job.relevance_verdict === 'reject' ||
+    job.relevance_reasoning.startsWith('excluded');
 }
 
 // Dedupe key for the same role syndicated across feeds under different URLs.

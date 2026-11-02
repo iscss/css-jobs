@@ -1,14 +1,18 @@
 // Automated job ingestion.
 //
 // Fetches each active source, normalizes listings, and inserts them as pending
-// jobs owned by the bot account. Nothing published here is publicly visible:
-// the trg_imported_jobs_pending trigger forces approval_status='pending' and
-// is_published=false, so an admin still approves every posting by hand.
+// (or rejected, for clear non-matches) jobs owned by the bot account. Nothing
+// imported is publicly visible: the trg_imported_jobs_pending trigger forces
+// is_published=false and allows only 'pending' or 'rejected', so an admin
+// still approves every posting by hand.
 //
 // Invoke manually:
 //   curl -X POST "$SUPABASE_URL/functions/v1/ingest-jobs" \
 //        -H "Authorization: Bearer $SERVICE_ROLE_KEY"
 // Optional body: {"source": "jobrxiv", "dryRun": true, "llm": false}
+//
+// Clear non-matches (AI verdict "reject", or a keyword-disqualified role) are
+// inserted as rejected, kept 30 days, then purged. Everything else is pending.
 //
 // If ANTHROPIC_API_KEY is set, new listings are scored by Claude Haiku
 // (ANTHROPIC_MODEL, default claude-haiku-5-5). Without a key, or with
@@ -18,6 +22,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.2';
 import Anthropic from 'npm:@anthropic-ai/sdk';
 import { ADAPTERS } from '../_shared/adapters.ts';
 import {
+  autoRejects,
   normalizeJob,
   SkippedJobError,
   StaleJobError,
@@ -61,6 +66,8 @@ interface SourceResult {
   stale: number;
   llmScored: number;
   llmFallback: number;
+  /** Inserted straight as rejected (AI verdict reject, or keyword-excluded). */
+  autoRejected: number;
   error?: string;
   samples?: { title: string; institution: string; score: number }[];
 }
@@ -150,6 +157,7 @@ async function runSource(
     stale: 0,
     llmScored: 0,
     llmFallback: 0,
+    autoRejected: 0,
   };
 
   try {
@@ -227,6 +235,7 @@ async function runSource(
         if (scored) {
           job.relevance_score = scored.score;
           job.relevance_reasoning = `AI: ${scored.reasoning}`;
+          job.relevance_verdict = scored.verdict;
           // Keep a regex-found deadline if there is one; otherwise store the
           // model's. The public site stops showing the job after this date.
           if (!job.application_deadline && scored.deadline) {
@@ -258,15 +267,20 @@ async function runSource(
         score: j.relevance_score,
       }));
 
+    if (dryRun) result.autoRejected += open.filter(autoRejects).length;
+
     if (!dryRun) {
       // Insert one at a time: a batch insert aborts wholesale on the first
       // duplicate, and duplicates are the expected steady state once a feed
       // has been ingested once.
       for (const job of open) {
+        const rejects = autoRejects(job);
+        if (rejects) job.approval_status = 'rejected';
         const { error } = await supabase.from('jobs').insert(job);
 
         if (!error) {
           result.inserted++;
+          if (rejects) result.autoRejected++;
         } else if (error.code === '23505') {
           result.duplicates++; // unique violation: already imported
         } else {

@@ -249,6 +249,7 @@ export type Database = {
           posted_at: string | null
           posted_by: string
           relevance_reasoning: string | null
+          relevance_verdict: string | null
           relevance_score: number | null
           link_status: string | null
           link_status_reason: string | null
@@ -295,6 +296,7 @@ export type Database = {
           posted_at: string | null
           posted_by: string
           relevance_reasoning?: string | null
+          relevance_verdict?: string | null
           relevance_score?: number | null
           link_status?: string | null
           link_status_reason?: string | null
@@ -341,6 +343,7 @@ export type Database = {
           posted_at?: string | null
           posted_by?: string
           relevance_reasoning?: string | null
+          relevance_verdict?: string | null
           relevance_score?: number | null
           link_status?: string | null
           link_status_reason?: string | null

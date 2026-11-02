@@ -4,6 +4,7 @@ import {
   stripHtml,
   mapJobType,
   scoreRelevance,
+  autoRejects,
   contentHash,
   normalizeJob,
   SkippedJobError,
@@ -363,5 +364,26 @@ describe('normalizeJob freshness', () => {
       { now },
     );
     expect(job.posted_at).toBe('2021-03-01');
+  });
+});
+
+describe('autoRejects', () => {
+  it('rejects an AI reject verdict', () => {
+    expect(autoRejects({ relevance_reasoning: 'AI: unrelated', relevance_verdict: 'reject' })).toBe(true);
+  });
+
+  it('rejects a keyword-disqualified role', () => {
+    expect(autoRejects({ relevance_reasoning: 'excluded: marketing', relevance_verdict: null })).toBe(true);
+  });
+
+  it.each(['accept', 'borderline', null, undefined] as const)(
+    'keeps verdict %s in the review queue',
+    (verdict) => {
+      expect(autoRejects({ relevance_reasoning: 'AI: fine', relevance_verdict: verdict })).toBe(false);
+    },
+  );
+
+  it('keeps a keyword-fallback low score pending (the cruder signal never rejects)', () => {
+    expect(autoRejects({ relevance_reasoning: 'only method signal: simulation' })).toBe(false);
   });
 });

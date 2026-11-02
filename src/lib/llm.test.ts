@@ -29,6 +29,7 @@ describe('parseScore', () => {
   it('reads a clean JSON reply', () => {
     expect(parseScore('{"score": 0.82, "reasoning": "Strong CSS fit."}')).toEqual({
       score: 0.82,
+      verdict: null,
       reasoning: 'Strong CSS fit.',
       deadline: null,
     });
@@ -57,6 +58,29 @@ describe('parseScore', () => {
   it('truncates long reasoning', () => {
     const r = parseScore(`{"score": 0.4, "reasoning": "${'a'.repeat(500)}"}`);
     expect(r?.reasoning.length).toBe(200);
+  });
+});
+
+describe('verdict', () => {
+  const reply = (verdict: unknown, score: number) =>
+    JSON.stringify({ verdict, score, reasoning: 'x' });
+
+  it.each(['accept', 'borderline', 'reject'])('reads %s', (v) => {
+    expect(parseScore(reply(v, 0.1))?.verdict).toBe(v === 'reject' ? 'reject' : v);
+  });
+
+  it('is case and whitespace tolerant', () => {
+    expect(parseScore(reply(' Reject ', 0.1))?.verdict).toBe('reject');
+  });
+
+  it.each(['maybe', 42, null, undefined])('ignores an unusable verdict %#', (v) => {
+    expect(parseScore(reply(v, 0.5))?.verdict).toBeNull();
+  });
+
+  it('does not trust a reject on a relevant score', () => {
+    expect(parseScore(reply('reject', 0.7))?.verdict).toBe('borderline');
+    expect(parseScore(reply('reject', 0.4))?.verdict).toBe('borderline');
+    expect(parseScore(reply('reject', 0.39))?.verdict).toBe('reject');
   });
 });
 
