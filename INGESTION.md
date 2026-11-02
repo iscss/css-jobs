@@ -7,8 +7,8 @@ Pulls academic job postings from external feeds into the admin approval queue.
 
 ## The safety guarantee
 
-Imported jobs are inserted with `approval_status = 'pending'` and
-`is_published = false`. The existing RLS policy
+Imported jobs are inserted as `pending` (or `rejected`, for clear non-matches;
+see "Verdicts" below) and always with `is_published = false`. The existing RLS policy
 
 ```sql
 CREATE POLICY "Anyone can view published jobs" ON public.jobs
@@ -17,7 +17,7 @@ CREATE POLICY "Anyone can view published jobs" ON public.jobs
 
 makes those rows unreadable to the public — hidden at the database layer, not
 by the UI. A database trigger (`trg_imported_jobs_pending`) forces
-pending/unpublished on every auto-imported insert, so even a bug in the
+unpublished and pending-or-rejected on every auto-imported insert, so even a bug in the
 ingestion code cannot publish a job. Verified: with 100 imported jobs in the
 database, an anonymous API request returns 0.
 
@@ -120,7 +120,7 @@ psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -c \
 ```
 job_sources → adapter → normalize → dedupe → keyword pre-filter → AI score
                                                                     ↓
-                                                          insert as pending
+                                       insert: pending, or rejected if verdict = reject
                                                                     ↓
                                           link check removes dead / closed jobs
                                                                     ↓
@@ -228,6 +228,16 @@ rather than treating as a failure.
 
 ### Relevance scoring
 
+The definition both scorers follow: *computational social science is using
+computation to measure and model human behavioral data, with computational
+methods (data science, network analysis, natural language processing,
+large-scale digital trace data analysis, machine learning, online or digital
+experiments) used to study social, political, economic or behavioral
+questions. A role needs both a computational method and a social or behavioral
+subject. Pure natural science, clinical, biomedical, administrative, sales or
+marketing roles are excluded.* It is written out in `SYSTEM_PROMPT` in
+`_shared/llm.ts`; the keyword lists in `_shared/ingest.ts` mirror it.
+
 Scoring runs in two steps. **It only orders the queue — a score never
 publishes anything.**
 
@@ -252,14 +262,35 @@ Settings (Supabase secrets, or `supabase/functions/.env` locally):
 (default 150). The cost is a small fraction of a cent per new job; check real
 spend on the Anthropic console.
 
-**Clearing a backlog.** To bring an old, noisy queue down to something
-reviewable: run the link check until `remaining` is 0, re-score what is left
-with the AI, then reject everything under a threshold (0.2 worked well):
+**Verdicts.** The AI returns a verdict with each score: `accept` (clear CSS fit),
+`borderline` (adjacent or unclear; the prompt says to choose this when unsure) or
+`reject` (clearly not CSS). It is stored in `jobs.relevance_verdict`. A `reject`
+verdict, or a role the keyword pre-filter disqualifies, is inserted straight as
+`rejected`; everything else is `pending`. A `reject` on a score of 0.4 or higher
+is not trusted and becomes `borderline`, and when the AI call fails the cruder
+keyword score never rejects on its own (only a keyword-disqualified role does).
+Auto-rejected jobs follow the normal 30-day retention, appear under Rejected in
+Job Management, and can be restored by an admin. The score still orders the
+queue; the verdict decides the starting status. The ingest response reports
+`autoRejected` per source.
 
-```sql
-UPDATE jobs SET approval_status = 'rejected'
-WHERE approval_status = 'pending' AND is_auto_imported AND relevance_score < 0.2;
+**Clearing a backlog / re-scoring.** To bring an old queue in line with the
+current prompt and rules, call the `rescore-jobs` function. It re-scores every
+auto-imported job that is still pending or rejected and files each one by its
+new verdict (reject -> rejected, accept / borderline -> pending, so a wrongly
+rejected job can come back). It skips published jobs and any job an admin acted
+on by hand, and leaves a job unchanged if the AI call fails. It works in pages
+of up to 200 and returns `next`; repeat with `"after": next` until it is null
+(add `"dryRun": true` to preview):
+
+```bash
+curl -s -X POST "http://127.0.0.1:54321/functions/v1/rescore-jobs" \
+  -H "Authorization: Bearer $SRK" -H "Content-Type: application/json" \
+  -d '{"limit":100}'
 ```
+
+Run the link check until `remaining` is 0 first, so dead and closed jobs are
+deleted instead of being scored. About 900 jobs cost a few cents.
 
 Rejected jobs stay in the table for 30 days, so their URLs still block re-import in the meantime. After that, the nightly purge deletes auto-imported rejected jobs (people's own posts are kept). If a deleted job is still in a feed, it is imported and scored again, which costs a fraction of a cent.
 
@@ -277,9 +308,9 @@ cron.job: ingest-jobs-daily   '0 3 * * *'   active
    -> net.http_post(.../functions/v1/ingest-jobs)
 ```
 
-**Scheduling covers fetching only.** Imported jobs still land as `pending`
-and still require an admin to approve them — the `trg_imported_jobs_pending`
-trigger is untouched, so automation can never publish to the public site.
+**Scheduling covers fetching only.** Imported jobs still land as `pending` (or
+`rejected`) and an admin still approves every one — the `trg_imported_jobs_pending`
+trigger forces them unpublished, so automation can never publish to the public site.
 
 ### Configuration
 
@@ -322,7 +353,7 @@ A source that starts failing shows up as `status = 'error'` with the message in
 
 | Step | When | Notes |
 |------|------|-------|
-| `ingest-jobs-daily` | 03:00 UTC | Fetch, score, insert as pending |
+| `ingest-jobs-daily` | 03:00 UTC | Fetch, score, insert as pending (or rejected for clear non-matches) |
 | `purge-expired-jobs` | 00:05 UTC | Deletes jobs past their deadline, hidden dead or closed jobs after 3 days, and auto-imported jobs rejected for more than 30 days |
 | `check-listings` | Every 2 hours | Checks up to 60 due jobs per call: published every 3 days, pending and rejected every 7. Uses the same `ingestion_settings`; optional key `check_listings_url`. |
 
@@ -433,6 +464,7 @@ Known gap: some Workday sites return 403 to the check, so those jobs stay
 
 | Migration | What it does |
 |-----------|--------------|
+| `20260810000000_ai_verdict_auto_reject` | `relevance_verdict` column; the insert guard allows `rejected` |
 | `20260803000000_job_ingestion` | Ingestion columns, `job_sources`, `scrape_runs`, the pending-only trigger, constraints |
 | `20260804000000_job_posted_at` | `posted_at` and freshness support |
 | `20260805000000_schedule_ingestion` | `ingestion_settings`, `run_job_ingestion()` and the 03:00 UTC cron |
