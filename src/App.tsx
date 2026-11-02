@@ -12,7 +12,6 @@ import ResetPassword from "./pages/ResetPassword";
 import PostJob from "./pages/PostJob";
 import Profile from "./pages/Profile";
 import Admin from "./pages/Admin";
-import About from "./pages/About";
 import EmailVerified from "./pages/EmailVerified";
 import Unsubscribe from "./pages/Unsubscribe";
 import NotFound from "./pages/NotFound";
@@ -51,7 +50,6 @@ const AppRoutes = () => {
         <Route path="/post-job" element={<PostJob />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/admin" element={<Admin />} />
-        <Route path="/about" element={<About />} />
         <Route path="/email-verified" element={<EmailVerified />} />
         <Route path="/unsubscribe" element={<Unsubscribe />} />
         <Route path="*" element={<NotFound />} />

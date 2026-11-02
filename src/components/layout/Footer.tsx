@@ -13,7 +13,6 @@ const Footer = () => {
 
         <nav className="flex items-center gap-5 text-[11px] text-[#555]">
           <Link to="/" className="hover:text-slate-800">Jobs</Link>
-          <Link to="/about" className="hover:text-slate-800">About</Link>
           <a href="https://events.iscss.org" target="_blank" rel="noopener noreferrer" className="hover:text-slate-800">CSS Events</a>
           <a href="https://iscss.org" target="_blank" rel="noopener noreferrer" className="hover:text-slate-800">iscss.org</a>
         </nav>
