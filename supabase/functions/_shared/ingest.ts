@@ -159,7 +159,17 @@ export function decodeEntities(text: string): string {
       NAMED_ENTITIES[name.toLowerCase()] ?? match);
 }
 
+const HAS_TAGS = /<\/?[a-z][^>]*>/i;
+
 export function stripHtml(html: string): string {
+  const once = stripHtmlOnce(html);
+  // Some feeds (CoMSES) escape their HTML twice, so tags and entities only
+  // appear after the first decode: "&lt;p&gt;It&amp;rsquo;s&lt;/p&gt;". Run
+  // again when tags show up, so they are not shown to readers as text.
+  return HAS_TAGS.test(once) ? stripHtmlOnce(once) : once;
+}
+
+function stripHtmlOnce(html: string): string {
   return decodeEntities(
     html
       .replace(/<script[\s\S]*?<\/script>/gi, ' ')
