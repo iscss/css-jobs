@@ -8,6 +8,7 @@ import { MapPin, Building2, Calendar, ExternalLink, Mail, User, DollarSign, Cloc
 import { useSaveJob, useUnsaveJob, useCheckSavedJob } from '@/hooks/useSavedJobs';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Tables } from '@/integrations/supabase/types';
+import LinkifiedText from './LinkifiedText';
 
 type Job = Tables<'jobs'> & {
   job_tags: { id: string; tag: string; }[]
@@ -93,7 +94,7 @@ const JobDetailsModal = ({ job, isOpen, onClose }: JobDetailsModalProps) => {
           <div>
             <h3 className="text-lg font-semibold mb-3">Description</h3>
             <div className="prose prose-sm max-w-none">
-              <p className="whitespace-pre-wrap text-gray-700">{job.description}</p>
+              <LinkifiedText text={job.description} className="whitespace-pre-wrap text-gray-700" />
             </div>
           </div>
 
@@ -102,7 +103,7 @@ const JobDetailsModal = ({ job, isOpen, onClose }: JobDetailsModalProps) => {
             <div>
               <h3 className="text-lg font-semibold mb-3">Requirements</h3>
               <div className="prose prose-sm max-w-none">
-                <p className="whitespace-pre-wrap text-gray-700">{job.requirements}</p>
+                <LinkifiedText text={job.requirements} className="whitespace-pre-wrap text-gray-700" />
               </div>
             </div>
           )}
@@ -191,6 +192,18 @@ const JobDetailsModal = ({ job, isOpen, onClose }: JobDetailsModalProps) => {
               </Button>
             )}
             
+            {!job.application_url && job.contact_email && (
+              <Button asChild>
+                <a
+                  href={`mailto:${job.contact_email}?subject=${encodeURIComponent(`Application for ${job.title}`)}`}
+                  className="flex items-center gap-2"
+                >
+                  <Mail className="w-4 h-4" />
+                  Apply by email
+                </a>
+              </Button>
+            )}
+
             {user && (
               <Button
                 variant="outline"
