@@ -41,6 +41,9 @@ interface EditJobModalProps {
   job: Job;
   isOpen: boolean;
   onClose: () => void;
+  /** An admin editing from Job Management. Allowed on pending jobs, and the
+   * job keeps its status: editing never unpublishes or re-queues it. */
+  adminMode?: boolean;
 }
 
 // Define constants outside component to avoid re-creating on each render
@@ -109,7 +112,7 @@ const countries = [
     { value: "et", label: "Ethiopia", region: "africa" }
   ];
 
-const EditJobModal = ({ job, isOpen, onClose }: EditJobModalProps) => {
+const EditJobModal = ({ job, isOpen, onClose, adminMode = false }: EditJobModalProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -161,7 +164,7 @@ const EditJobModal = ({ job, isOpen, onClose }: EditJobModalProps) => {
 
   const onSubmit = async (data: JobFormData, isDraft = false, submitForApproval = false) => {
     // Prevent editing jobs that are pending approval
-    if (job.approval_status === 'pending') {
+    if (job.approval_status === 'pending' && !adminMode) {
       toast({
         title: "Cannot edit job",
         description: "Jobs that are pending approval cannot be edited. Withdraw the job from review first.",
@@ -205,8 +208,9 @@ const EditJobModal = ({ job, isOpen, onClose }: EditJobModalProps) => {
           requirements: data.requirements,
           application_deadline: data.application_deadline || null,
           duration: data.duration,
-          application_url: data.application_url,
-          contact_email: data.contact_email,
+          // Blank means "none": the database only accepts NULL or a real address.
+          application_url: data.application_url?.trim() || null,
+          contact_email: data.contact_email?.trim() || null,
           pi_name: data.pi_name,
           funding_source: data.funding_source,
           is_remote: isRemote,
@@ -241,6 +245,7 @@ const EditJobModal = ({ job, isOpen, onClose }: EditJobModalProps) => {
       queryClient.invalidateQueries({ queryKey: ['user-jobs'] });
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
       queryClient.invalidateQueries({ queryKey: ['pending-jobs-admin'] });
+      queryClient.invalidateQueries({ queryKey: ['all-jobs-admin'] });
 
       // Show appropriate success message
       if (submitForApproval) {
