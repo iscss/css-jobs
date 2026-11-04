@@ -135,7 +135,7 @@ Get these from: [Supabase Dashboard](https://supabase.com/dashboard/project/vbek
 **Admin** (first one set in the database; then Grant Admin in User Management) **[updated]:**
 - All features
 - Approve/reject users and jobs (approving a job is one click; rejecting asks first)
-- Edit any job from Job Management (**Edit job**), including pending ones
+- Edit any job from Job Management (**Edit job**), including pending ones, and redo a job's organised sections with **Organise now**
 - Only admins can change `is_admin`, `is_approved_poster` and `can_publish_directly` (database trigger)
 - Feature jobs (badge in the jobs list)
 - Delete users/jobs
