@@ -18,6 +18,7 @@
 // (ANTHROPIC_MODEL, default claude-haiku-5-5). Without a key, or with
 // "llm": false, or if a call fails, the keyword score is used instead.
 
+import { isAuthorized } from '../_shared/auth.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.2';
 import Anthropic from 'npm:@anthropic-ai/sdk';
 import { ADAPTERS } from '../_shared/adapters.ts';
@@ -80,9 +81,13 @@ Deno.serve(async (req) => {
   // Service-role only: this function bypasses RLS, so it must never be
   // reachable with an anon key. verify_jwt is disabled in config.toml because
   // the caller is cron, not a signed-in user.
-  const auth = req.headers.get('Authorization') ?? '';
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-  if (!serviceKey || auth !== `Bearer ${serviceKey}`) {
+  if (
+    !isAuthorized(req.headers.get('Authorization'), {
+      serviceKey,
+      schedulerSecret: Deno.env.get('SCHEDULER_SECRET') ?? '',
+    })
+  ) {
     return json({ error: 'Unauthorized' }, 401);
   }
 

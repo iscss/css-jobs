@@ -28,6 +28,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.2';
 import { checkListing, type LinkStatus } from '../_shared/liveness.ts';
 import { mapWithConcurrency } from '../_shared/llm.ts';
+import { isAuthorized } from '../_shared/auth.ts';
 
 const CONCURRENCY = 2;
 const PAUSE_MS = 300; // be a polite guest on other people's sites
@@ -39,9 +40,13 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
 
-  const auth = req.headers.get('Authorization') ?? '';
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-  if (!serviceKey || auth !== `Bearer ${serviceKey}`) {
+  if (
+    !isAuthorized(req.headers.get('Authorization'), {
+      serviceKey,
+      schedulerSecret: Deno.env.get('SCHEDULER_SECRET') ?? '',
+    })
+  ) {
     return json({ error: 'Unauthorized' }, 401);
   }
 

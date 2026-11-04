@@ -16,6 +16,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.2';
 import Anthropic from 'npm:@anthropic-ai/sdk';
 import { autoRejects, scoreRelevance } from '../_shared/ingest.ts';
+import { isAuthorized } from '../_shared/auth.ts';
 import {
   DEFAULT_MODEL,
   mapWithConcurrency,
@@ -30,9 +31,13 @@ const MAX_LIMIT = 200;
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
 
-  const auth = req.headers.get('Authorization') ?? '';
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-  if (!serviceKey || auth !== `Bearer ${serviceKey}`) {
+  if (
+    !isAuthorized(req.headers.get('Authorization'), {
+      serviceKey,
+      schedulerSecret: Deno.env.get('SCHEDULER_SECRET') ?? '',
+    })
+  ) {
     return json({ error: 'Unauthorized' }, 401);
   }
 
