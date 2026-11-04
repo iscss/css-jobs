@@ -1,3 +1,4 @@
+import { roleBadgeClass, roleLabel } from '@/lib/roles';
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
@@ -138,8 +139,8 @@ const UserProfileModal = ({ user, isOpen, onClose }: UserProfileModalProps) => {
                         </div>
 
                         <div className="flex gap-2 flex-wrap">
-                            <Badge className={getUserTypeColor(user.user_type || 'job_seeker')}>
-                                {getUserTypeLabel(user.user_type || 'job_seeker')}
+                            <Badge className={roleBadgeClass(user)}>
+                                {roleLabel(user)}
                             </Badge>
                             {getApprovalStatusBadge()}
                         </div>

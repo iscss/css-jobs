@@ -120,7 +120,9 @@ Get these from: [Supabase Dashboard](https://supabase.com/dashboard/project/vbek
 
 ### User Roles & Permissions
 
-**Job Seeker** (auto-approved) **[updated]:**
+> **Roles are worked out from what an account can do, not from the stored `user_type`** (`src/lib/roles.ts`): Admin (`is_admin`), Job poster (`is_approved_poster`), Job poster awaiting approval (`user_type = 'job_poster'` but not approved yet), otherwise Member. An admin or approved poster whose stored type still says `job_seeker` is shown, counted and allowed accordingly. The profile page shows the role read-only; a Member can ask for posting access there. **[updated]**
+
+**Member** (formerly "Job Seeker"; auto-approved) **[updated]:**
 - Browsing and applying never needs an account: the board is public and Apply opens the employer's link
 - Sign-up no longer offers the job-seeker choice; it creates poster accounts only. Older seeker accounts keep working
 - Save jobs to bookmarks

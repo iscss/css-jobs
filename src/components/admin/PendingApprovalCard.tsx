@@ -47,7 +47,7 @@ const PendingApprovalCard = ({ profile }: PendingApprovalCardProps) => {
   const getUserTypeLabel = (type: string) => {
     switch (type) {
       case 'job_poster': return 'Job Poster';
-      case 'job_seeker': return 'Job Seeker';
+      case 'job_seeker': return 'Member';
       default: return type;
     }
   };

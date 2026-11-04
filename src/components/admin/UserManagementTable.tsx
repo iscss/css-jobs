@@ -269,8 +269,8 @@ const UserManagementTable = () => {
                       {user.approval_status === 'rejected' && (
                         <Badge variant="destructive" className="w-fit">Rejected</Badge>
                       )}
-                      {user.approval_status === 'approved' && !user.is_approved_poster && (
-                        <Badge variant="secondary" className="w-fit">Job Seeker</Badge>
+                      {user.approval_status === 'approved' && !user.is_approved_poster && !user.is_admin && (
+                        <Badge variant="secondary" className="w-fit">Member</Badge>
                       )}
                     </div>
                   </TableCell>

@@ -1,4 +1,5 @@
 
+import { canOpenPostPage } from '@/lib/roles';
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Menu, X, Plus } from 'lucide-react';
@@ -21,8 +22,9 @@ const Header = () => {
   const { data: userProfile } = useUserProfile();
   const { refreshPageData } = usePageRefresh();
 
-  // Check if user can post jobs (not a job-seeker)
-  const canPostJobs = user && userProfile?.user_type !== 'job_seeker';
+  // Admins and posters get the post form; plain members are asked to request access.
+  // While the profile is still loading, do not turn a signed-in user away.
+  const canPostJobs = user && (!userProfile || canOpenPostPage(userProfile));
 
   const handlePostJobClick = () => {
     if (canPostJobs) {

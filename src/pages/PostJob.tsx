@@ -1,4 +1,5 @@
 
+import { canOpenPostPage } from '@/lib/roles';
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "@/components/layout/Header";
@@ -13,14 +14,15 @@ const PostJob = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Redirect job seekers to their profile page
-    if (user && userProfile?.user_type === 'job_seeker') {
+    // Send plain members to their profile page, where they can ask for posting
+    // access. Admins and posters stay, whatever their stored account type says.
+    if (user && userProfile && !canOpenPostPage(userProfile)) {
       navigate('/profile', { replace: true });
     }
   }, [user, userProfile, navigate]);
 
-  // Don't render the form if user is a job seeker
-  if (user && userProfile?.user_type === 'job_seeker') {
+  // Don't render the form for a plain member
+  if (user && userProfile && !canOpenPostPage(userProfile)) {
     return null;
   }
 

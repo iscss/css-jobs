@@ -1,3 +1,4 @@
+import { accountRole } from '@/lib/roles';
 import { useAllUsers } from "@/hooks/useUserManagement";
 import { useJobCounts } from "@/hooks/useJobManagement";
 import { useAdminApprovals } from "@/hooks/useAdminApprovals";
@@ -16,8 +17,10 @@ const AdminStats = ({ onTabChange, onOpenJobs }: AdminStatsProps) => {
   const { data: jobCounts, isLoading: jobsLoading } = useJobCounts();
   const { data: pendingApprovals, isLoading: approvalsLoading } = useAdminApprovals();
 
-  const jobSeekers = users?.filter(user => user.user_type === 'job_seeker') || [];
-  const jobPosters = users?.filter(user => user.user_type === 'job_poster') || [];
+  // Counted by what an account can do, not by the stored sign-up type, so an
+  // admin or approved poster stored as "job_seeker" is not counted as a member.
+  const jobSeekers = users?.filter(user => accountRole(user) === 'member') || [];
+  const jobPosters = users?.filter(user => ['poster', 'pending_poster'].includes(accountRole(user))) || [];
   
   const approvedPosters = users?.filter(user => user.is_approved_poster) || [];
   const adminUsers = users?.filter(user => user.is_admin) || [];
@@ -33,7 +36,7 @@ const AdminStats = ({ onTabChange, onOpenJobs }: AdminStatsProps) => {
       clickable: true,
     },
     {
-      title: "Job Seekers",
+      title: "Members",
       value: usersLoading ? "..." : jobSeekers.length,
       icon: Users,
       color: "text-green-500",

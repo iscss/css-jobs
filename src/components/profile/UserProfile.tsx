@@ -6,11 +6,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserProfile, useUpdateUserProfile } from '@/hooks/useUserProfile';
 import { useToast } from '@/hooks/use-toast';
-import { UserCheck, Briefcase, Users, Clock, CheckCircle, XCircle, Globe, GraduationCap } from 'lucide-react';
+import { accountRole, roleBadgeClass, roleLabel } from '@/lib/roles';
+import { Users, Clock, CheckCircle, XCircle, Globe, GraduationCap } from 'lucide-react';
 
 interface ProfileFormData {
   full_name: string;
@@ -18,7 +18,6 @@ interface ProfileFormData {
   orcid_id: string;
   google_scholar_url: string;
   website_url: string;
-  user_type: string;
 }
 
 const UserProfile = () => {
@@ -27,8 +26,8 @@ const UserProfile = () => {
   const updateProfile = useUpdateUserProfile();
   const { toast } = useToast();
 
-  const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<ProfileFormData>();
-  const watchedUserType = watch('user_type');
+  const { register, handleSubmit, setValue, formState: { errors } } = useForm<ProfileFormData>();
+  const role = accountRole(profile);
 
   useEffect(() => {
     if (profile) {
@@ -37,7 +36,6 @@ const UserProfile = () => {
       setValue('orcid_id', profile.orcid_id || '');
       setValue('google_scholar_url', profile.google_scholar_url || '');
       setValue('website_url', profile.website_url || '');
-      setValue('user_type', profile.user_type || 'job_seeker');
     }
   }, [profile, setValue]);
 
@@ -54,30 +52,40 @@ const UserProfile = () => {
         updated_at: new Date().toISOString()
       };
 
-      // If user type changed and they want posting privileges, set status to pending
-      if (data.user_type !== profile?.user_type && data.user_type !== 'job_seeker') {
-        updateData.user_type = data.user_type;
-        updateData.approval_status = 'pending';
-        updateData.requested_at = new Date().toISOString();
-        updateData.is_approved_poster = false;
-      } else if (data.user_type === 'job_seeker') {
-        updateData.user_type = data.user_type;
-        updateData.approval_status = 'approved';
-        updateData.is_approved_poster = false;
-      }
-
+      // The account type is not edited here: it follows from what the account
+      // can do (see requestPostingAccess for asking to post jobs).
       await updateProfile.mutateAsync(updateData);
 
       toast({
         title: "Profile updated successfully!",
-        description: data.user_type !== 'job_seeker' && data.user_type !== profile?.user_type
-          ? "Your profile has been updated. Job posting privileges require admin approval."
-          : "Your profile information has been saved.",
+        description: "Your profile information has been saved.",
       });
     } catch (error) {
       toast({
         title: "Error updating profile",
         description: "There was an error updating your profile. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // A plain member asks to post jobs; an admin approves the request.
+  const requestPostingAccess = async () => {
+    try {
+      await updateProfile.mutateAsync({
+        user_type: 'job_poster',
+        approval_status: 'pending',
+        requested_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+      toast({
+        title: "Request sent",
+        description: "An admin will review your request to post jobs.",
+      });
+    } catch (error) {
+      toast({
+        title: "Could not send the request",
+        description: "Please try again.",
         variant: "destructive",
       });
     }
@@ -202,32 +210,20 @@ const UserProfile = () => {
             </div>
 
             <div className="space-y-3">
-              <Label>Account Type</Label>
-              <RadioGroup
-                value={watchedUserType || 'job_seeker'}
-                onValueChange={(value) => setValue('user_type', value)}
-              >
-                <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 transition-colors">
-                  <RadioGroupItem value="job_seeker" id="job_seeker_profile" />
-                  <Label htmlFor="job_seeker_profile" className="flex items-center gap-2 cursor-pointer flex-1">
-                    <UserCheck className="w-4 h-4 text-brand-navy" />
-                    <div>
-                      <div className="font-medium">Job Seeker</div>
-                      <div className="text-sm text-gray-500">Browse and apply to research positions</div>
-                    </div>
-                  </Label>
+              <Label>Account type</Label>
+              <div className="flex items-center gap-2">
+                <Badge className={roleBadgeClass(profile)}>{roleLabel(profile)}</Badge>
+              </div>
+              {role === 'member' && (
+                <div className="space-y-2">
+                  <p className="text-sm text-gray-600">
+                    You do not need an account to browse or apply for jobs. If you want to post jobs, ask for posting access and an admin will review it.
+                  </p>
+                  <Button type="button" variant="outline" onClick={requestPostingAccess} disabled={updateProfile.isPending}>
+                    Request job posting access
+                  </Button>
                 </div>
-                <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 transition-colors">
-                  <RadioGroupItem value="job_poster" id="job_poster_profile" />
-                  <Label htmlFor="job_poster_profile" className="flex items-center gap-2 cursor-pointer flex-1">
-                    <Briefcase className="w-4 h-4 text-green-600" />
-                    <div>
-                      <div className="font-medium">Job Poster</div>
-                      <div className="text-sm text-gray-500">Post research positions (requires admin approval)</div>
-                    </div>
-                  </Label>
-                </div>
-              </RadioGroup>
+              )}
             </div>
 
             <div className="bg-brand-surface p-4 rounded-lg space-y-3">
@@ -240,12 +236,17 @@ const UserProfile = () => {
                   <span className="font-medium text-brand-navy">Status:</span>
                   {getApprovalStatusBadge()}
                 </div>
-                {profile?.user_type !== 'job_seeker' && profile?.approval_status === 'pending' && (
+                {role === 'pending_poster' && profile?.approval_status === 'pending' && (
                   <p className="text-brand-navy mt-2">
                     Your request for job posting privileges is pending admin approval. You'll be notified once reviewed.
                   </p>
                 )}
-                {profile?.user_type !== 'job_seeker' && profile?.approval_status === 'approved' && (
+                {role === 'admin' && (
+                  <p className="text-green-700 mt-2">
+                    ✓ Administrator: you can publish jobs directly and manage users and jobs.
+                  </p>
+                )}
+                {role === 'poster' && (
                   <div className="space-y-2 mt-2">
                     {(profile as Record<string, unknown>).can_publish_directly ? (
                       <p className="text-green-700">
