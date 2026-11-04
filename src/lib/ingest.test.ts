@@ -39,6 +39,17 @@ describe('decodeEntities', () => {
 });
 
 describe('stripHtml', () => {
+  it('cleans HTML that a feed escaped twice', () => {
+    const out = stripHtml('&lt;p&gt;A team from Canada&lt;/p&gt;&lt;p&gt;Master&amp;rsquo;s and doctoral students&lt;/p&gt;');
+    expect(out).not.toMatch(/<|&lt;|&rsquo;|&amp;/);
+    expect(out).toContain('A team from Canada');
+    expect(out).toContain('Master’s and doctoral students');
+  });
+
+  it('does not strip twice when there are no leftover tags', () => {
+    expect(stripHtml('<p>R&amp;D and 5 &lt; 6</p>')).toBe('R&D and 5 < 6');
+  });
+
   it('removes markup while keeping readable text', () => {
     const out = stripHtml('<p>Hello</p><p>World</p>');
     expect(out).toContain('Hello');

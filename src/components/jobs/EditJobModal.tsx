@@ -1,3 +1,4 @@
+import { APPLY_METHOD_MESSAGE, hasApplyMethod } from '@/lib/applyMethod';
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
@@ -168,6 +169,17 @@ const EditJobModal = ({ job, isOpen, onClose, adminMode = false }: EditJobModalP
       toast({
         title: "Cannot edit job",
         description: "Jobs that are pending approval cannot be edited. Withdraw the job from review first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Saving anything but a draft needs a way to apply. Admins are exempt so they
+    // can fix other details on an older job that never had one.
+    if (!isDraft && !adminMode && !hasApplyMethod(data)) {
+      toast({
+        title: "How to apply is required",
+        description: APPLY_METHOD_MESSAGE,
         variant: "destructive",
       });
       return;
