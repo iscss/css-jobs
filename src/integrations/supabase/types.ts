@@ -651,6 +651,7 @@ export type Database = {
           matched_at: string
         }[]
       }
+      increment_approved_jobs_count: { Args: { user_id: string }; Returns: undefined }
       is_admin: { Args: { user_id?: string }; Returns: boolean }
       job_matches_alert: {
         Args: {

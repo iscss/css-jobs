@@ -327,6 +327,22 @@ INSERT INTO ingestion_settings (key, value) VALUES
 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
 ```
 
+**Which credential goes in `service_role_key`.** The three scheduled functions
+(`ingest-jobs`, `check-listings`, `rescore-jobs`) accept either the project's
+service role key or a `SCHEDULER_SECRET`, and the value stored in the
+`service_role_key` row is sent as the bearer token. On the production project
+the service key shown in the dashboard did not match the one the deployed
+function held (checked by comparing digests from `supabase secrets list`), so it
+returned 401. A dedicated secret avoids that and can be rotated on its own:
+
+```bash
+openssl rand -hex 32                                   # make the secret
+npx supabase secrets set SCHEDULER_SECRET=<secret> --remote=<project-ref>
+```
+
+Then put the same value in `ingestion_settings.service_role_key`. Values shorter
+than 32 characters are never accepted. See `supabase/functions/_shared/auth.ts`.
+
 ### Operating it
 
 ```sql
