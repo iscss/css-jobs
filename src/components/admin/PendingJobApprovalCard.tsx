@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -41,6 +41,7 @@ const PendingJobApprovalCard = ({ job }: PendingJobApprovalCardProps) => {
   const [approvalAction, setApprovalAction] = useState<'approve' | 'reject' | null>(null);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const inFlight = useRef(false);
 
   // Provenance for automatically imported postings. Admins need the link to
   // the original listing to judge whether an import is genuine.
@@ -87,17 +88,26 @@ const PendingJobApprovalCard = ({ job }: PendingJobApprovalCardProps) => {
     }
   };
 
+  // Approve is a single click. Reject still asks first.
   const handleJobApproval = (action: 'approve' | 'reject') => {
+    if (action === 'approve') {
+      void confirmJobApproval('approve');
+      return;
+    }
     setApprovalAction(action);
     setApprovalDialogOpen(true);
   };
 
-  const confirmJobApproval = async () => {
-    if (!approvalAction) return;
-    
+  const confirmJobApproval = async (chosen = approvalAction) => {
+    if (!chosen) return;
+    // Ignore a second click while the first is still running: approving also
+    // bumps the poster's approved-job count.
+    if (inFlight.current) return;
+    inFlight.current = true;
+
     setIsProcessing(true);
     try {
-      if (approvalAction === 'approve') {
+      if (chosen === 'approve') {
         // Approve the job and publish it
         const { error: jobError } = await supabase
           .from('jobs')
@@ -155,11 +165,12 @@ const PendingJobApprovalCard = ({ job }: PendingJobApprovalCardProps) => {
     } catch (error) {
       console.error('Error processing job approval:', error);
       toast({
-        title: `Error ${approvalAction === 'approve' ? 'approving' : 'rejecting'} job`,
-        description: `There was an error ${approvalAction === 'approve' ? 'approving' : 'rejecting'} the job. Please try again.`,
+        title: `Error ${chosen === 'approve' ? 'approving' : 'rejecting'} job`,
+        description: `There was an error ${chosen === 'approve' ? 'approving' : 'rejecting'} the job. Please try again.`,
         variant: "destructive",
       });
     } finally {
+      inFlight.current = false;
       setIsProcessing(false);
       setApprovalDialogOpen(false);
       setApprovalAction(null);
@@ -333,31 +344,19 @@ const PendingJobApprovalCard = ({ job }: PendingJobApprovalCardProps) => {
       <AlertDialog open={approvalDialogOpen} onOpenChange={setApprovalDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              {approvalAction === 'approve' ? 'Approve Job Post' : 'Reject Job Post'}
-            </AlertDialogTitle>
+            <AlertDialogTitle>Reject Job Post</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to {approvalAction} the job post "{job.title}"? 
-              {approvalAction === 'approve' 
-                ? ' This will publish the job to the job board and increment the user\'s approved job count.'
-                : ' This will reject the job and it will not be published.'
-              }
+              Are you sure you want to reject the job post "{job.title}"? This will reject the job and it will not be published.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isProcessing}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={confirmJobApproval}
+              onClick={() => confirmJobApproval()}
               disabled={isProcessing}
-              className={approvalAction === 'approve' 
-                ? "bg-green-600 text-white hover:bg-green-700" 
-                : "bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              }
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {isProcessing 
-                ? (approvalAction === 'approve' ? 'Approving...' : 'Rejecting...')
-                : (approvalAction === 'approve' ? 'Approve Job' : 'Reject Job')
-              }
+              {isProcessing ? 'Rejecting...' : 'Reject Job'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

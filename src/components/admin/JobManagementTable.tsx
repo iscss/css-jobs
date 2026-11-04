@@ -1,5 +1,5 @@
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -95,6 +95,7 @@ const JobManagementTable = ({ filters, onFiltersChange }: JobManagementTableProp
   const [jobToDelete, setJobToDelete] = useState<Job | null>(null);
   const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
   const [approvalAction, setApprovalAction] = useState<{ jobId: string; action: 'approve' | 'reject'; jobTitle: string } | null>(null);
+  const inFlight = useRef<Set<string>>(new Set());
   const [notificationSending, setNotificationSending] = useState<string | null>(null);
 
   const handleRetractJob = (jobId: string, currentStatus: boolean, postedBy: string) => {
@@ -125,19 +126,30 @@ const JobManagementTable = ({ filters, onFiltersChange }: JobManagementTableProp
     setDeleteDialogOpen(true);
   };
 
+  // Approve is a single click. Reject still asks first, since it is the
+  // action that is awkward to undo.
   const handleJobApproval = (jobId: string, action: 'approve' | 'reject', jobTitle: string) => {
-    setApprovalAction({ jobId, action, jobTitle });
+    const next = { jobId, action, jobTitle };
+    if (action === 'approve') {
+      void confirmJobApproval(next);
+      return;
+    }
+    setApprovalAction(next);
     setApprovalDialogOpen(true);
   };
 
-  const confirmJobApproval = async () => {
-    if (!approvalAction) return;
+  const confirmJobApproval = async (pending = approvalAction) => {
+    if (!pending) return;
+    // Ignore a second click while the first is still being processed: the
+    // approve function also bumps the poster's approved-job count.
+    if (inFlight.current.has(pending.jobId)) return;
+    inFlight.current.add(pending.jobId);
 
     try {
-      if (approvalAction.action === 'approve') {
+      if (pending.action === 'approve') {
         // Call our database function to approve job and update user counter
         const { error } = await supabase.rpc('approve_job_and_update_counter', {
-          job_id: approvalAction.jobId,
+          job_id: pending.jobId,
           admin_id: user?.id
         });
 
@@ -156,7 +168,7 @@ const JobManagementTable = ({ filters, onFiltersChange }: JobManagementTableProp
             approved_at: new Date().toISOString(),
             approved_by_admin: user?.id
           })
-          .eq('id', approvalAction.jobId);
+          .eq('id', pending.jobId);
 
         if (error) throw error;
 
@@ -167,7 +179,7 @@ const JobManagementTable = ({ filters, onFiltersChange }: JobManagementTableProp
       }
 
       // Get the job data to find the posted_by user ID
-      const jobToApprove = allJobs?.find(job => job.id === approvalAction.jobId);
+      const jobToApprove = allJobs?.find(job => job.id === pending.jobId);
 
       // Invalidate queries to refresh data
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
@@ -181,11 +193,12 @@ const JobManagementTable = ({ filters, onFiltersChange }: JobManagementTableProp
     } catch (error) {
       console.error('Error processing job approval:', error);
       toast({
-        title: `Error ${approvalAction.action === 'approve' ? 'approving' : 'rejecting'} job`,
-        description: `There was an error ${approvalAction.action === 'approve' ? 'approving' : 'rejecting'} the job. Please try again.`,
+        title: `Error ${pending.action === 'approve' ? 'approving' : 'rejecting'} job`,
+        description: `There was an error ${pending.action === 'approve' ? 'approving' : 'rejecting'} the job. Please try again.`,
         variant: "destructive",
       });
     } finally {
+      inFlight.current.delete(pending.jobId);
       setApprovalDialogOpen(false);
       setApprovalAction(null);
     }
@@ -710,27 +723,18 @@ const JobManagementTable = ({ filters, onFiltersChange }: JobManagementTableProp
     <AlertDialog open={approvalDialogOpen} onOpenChange={setApprovalDialogOpen}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>
-            {approvalAction?.action === 'approve' ? 'Approve Job Post' : 'Reject Job Post'}
-          </AlertDialogTitle>
+          <AlertDialogTitle>Reject Job Post</AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to {approvalAction?.action} the job post "{approvalAction?.jobTitle}"? 
-            {approvalAction?.action === 'approve' 
-              ? ' This will publish the job to the job board and increment the user\'s approved job count.'
-              : ' This will reject the job and it will not be published.'
-            }
+            Are you sure you want to reject the job post "{approvalAction?.jobTitle}"? This will reject the job and it will not be published.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction
-            onClick={confirmJobApproval}
-            className={approvalAction?.action === 'approve' 
-              ? "bg-green-600 text-white hover:bg-green-700" 
-              : "bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            }
+            onClick={() => confirmJobApproval()}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            {approvalAction?.action === 'approve' ? 'Approve Job' : 'Reject Job'}
+            Reject Job
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
