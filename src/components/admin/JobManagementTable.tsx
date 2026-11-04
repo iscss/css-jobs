@@ -161,15 +161,8 @@ const JobManagementTable = ({ filters, onFiltersChange }: JobManagementTableProp
 
         if (error) throw error;
 
-        // Hand-posted jobs count toward the poster's approved total. Imported
-        // jobs have no poster. A failure here must not undo the approval.
-        const posterId = allJobs?.find(job => job.id === pending.jobId)?.posted_by;
-        if (posterId) {
-          const { error: counterError } = await supabase.rpc('increment_approved_jobs_count', {
-            user_id: posterId
-          });
-          if (counterError) console.warn('Failed to increment approved jobs count:', counterError);
-        }
+        // The poster's approved-job count (and direct-publish after 3) is kept by
+        // the track_job_approval trigger on this update. Do not add it again here.
 
         toast({
           title: "Job Approved",
