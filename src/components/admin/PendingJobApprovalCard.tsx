@@ -121,15 +121,9 @@ const PendingJobApprovalCard = ({ job }: PendingJobApprovalCardProps) => {
 
         if (jobError) throw jobError;
 
-        // Increment the user's approved jobs count
-        const { error: counterError } = await supabase.rpc('increment_approved_jobs_count', {
-          user_id: job.posted_by
-        });
-
-        // Log but don't fail if counter update fails
-        if (counterError) {
-          console.warn('Failed to increment approved jobs count:', counterError);
-        }
+        // The poster's approved-job count (and direct-publish after 3) is kept by
+        // the track_job_approval trigger on this update. Do not add it again here:
+        // that counted every approval twice.
 
         toast({
           title: "Job Approved",

@@ -159,6 +159,7 @@ WHERE email = 'new-admin@example.com';
 | `delete-user` | Admin user deletion (cascades profile + auth, CORS-restricted to `jobs.iscss.org`) |
 | `unsubscribe` | Email opt-out via tokenized link |
 | `ingest-jobs` | Fetches new postings from the sources, scores them, inserts them as pending. Service-role only. |
+| `structure-jobs` | Organises published jobs into labelled sections and key fields (every 15 minutes, or per job from Job Management). Service-role or scheduler-secret only. |
 | `check-listings` | Re-checks stored jobs' links and removes dead or closed ones. Service-role only. |
 
 Deploy:

@@ -38,8 +38,9 @@ import JobManagementFiltersBar, {
   STATUS_LABELS,
   type JobManagementFilters,
 } from '@/components/admin/JobManagementFilters';
-import { Briefcase, Eye, EyeOff, Star, StarOff, Trash2, MoreHorizontal, User, Building2, Calendar, MapPin, CheckCircle, XCircle, Mail, Send, Pause, RefreshCw } from 'lucide-react';
+import { Briefcase, Eye, EyeOff, Star, StarOff, Trash2, MoreHorizontal, User, Building2, Calendar, MapPin, CheckCircle, XCircle, Mail, Send, Pause, RefreshCw, Pencil, Sparkles } from 'lucide-react';
 import JobDetailsModal from '@/components/jobs/JobDetailsModal';
+import EditJobModal from '@/components/jobs/EditJobModal';
 import type { Tables } from '@/integrations/supabase/types';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -91,6 +92,7 @@ const JobManagementTable = ({ filters, onFiltersChange }: JobManagementTableProp
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [editingJob, setEditingJob] = useState<Job | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [jobToDelete, setJobToDelete] = useState<Job | null>(null);
   const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
@@ -128,6 +130,28 @@ const JobManagementTable = ({ filters, onFiltersChange }: JobManagementTableProp
 
   // Approve is a single click. Reject still asks first, since it is the
   // action that is awkward to undo.
+  // Ask the database to have the organiser redo one job now, rather than
+  // waiting for the next 15-minute sweep.
+  const handleOrganise = async (jobId: string, jobTitle: string) => {
+    const { error } = await supabase.rpc('structure_job_now', { p_job_id: jobId });
+    if (error) {
+      toast({
+        title: 'Could not organise the job',
+        description: error.message,
+        variant: 'destructive',
+      });
+      return;
+    }
+    toast({
+      title: 'Organising job',
+      description: `"${jobTitle}" will update in a few seconds.`,
+    });
+    setTimeout(() => {
+      queryClient.invalidateQueries({ queryKey: ['jobs'] });
+      queryClient.invalidateQueries({ queryKey: ['all-jobs-admin'] });
+    }, 8000);
+  };
+
   const handleJobApproval = (jobId: string, action: 'approve' | 'reject', jobTitle: string) => {
     const next = { jobId, action, jobTitle };
     if (action === 'approve') {
@@ -161,15 +185,8 @@ const JobManagementTable = ({ filters, onFiltersChange }: JobManagementTableProp
 
         if (error) throw error;
 
-        // Hand-posted jobs count toward the poster's approved total. Imported
-        // jobs have no poster. A failure here must not undo the approval.
-        const posterId = allJobs?.find(job => job.id === pending.jobId)?.posted_by;
-        if (posterId) {
-          const { error: counterError } = await supabase.rpc('increment_approved_jobs_count', {
-            user_id: posterId
-          });
-          if (counterError) console.warn('Failed to increment approved jobs count:', counterError);
-        }
+        // The poster's approved-job count (and direct-publish after 3) is kept by
+        // the track_job_approval trigger on this update. Do not add it again here.
 
         toast({
           title: "Job Approved",
@@ -566,6 +583,24 @@ const JobManagementTable = ({ filters, onFiltersChange }: JobManagementTableProp
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-48">
+                        {/* Any job can be edited, e.g. to add a missing apply link. */}
+                        <DropdownMenuItem
+                          onClick={() => setEditingJob(job as Job)}
+                          className="cursor-pointer"
+                        >
+                          <Pencil className="w-4 h-4 mr-2" />
+                          Edit job
+                        </DropdownMenuItem>
+                        {job.is_published && (job as Record<string, unknown>).approval_status === 'approved' && (
+                          <DropdownMenuItem
+                            onClick={() => handleOrganise(job.id, job.title)}
+                            className="cursor-pointer"
+                          >
+                            <Sparkles className="w-4 h-4 mr-2" />
+                            Organise now
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuSeparator />
                         {/* For pending jobs: Only show Approve & Reject */}
                         {(job as Record<string, unknown>).approval_status === 'pending' && (
                           <>
@@ -711,6 +746,15 @@ const JobManagementTable = ({ filters, onFiltersChange }: JobManagementTableProp
         job={selectedJob}
         isOpen={!!selectedJob}
         onClose={() => setSelectedJob(null)}
+      />
+    )}
+
+    {editingJob && (
+      <EditJobModal
+        job={editingJob}
+        isOpen={!!editingJob}
+        onClose={() => setEditingJob(null)}
+        adminMode
       />
     )}
 

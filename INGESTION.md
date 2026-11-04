@@ -423,6 +423,40 @@ found.
 
 ---
 
+## Organised job text
+
+Published jobs are organised into labelled sections (Overview, Responsibilities,
+Qualifications, Compensation and benefits, How to apply, About the employer,
+Other) plus pay range, application link, deadline and location. The original
+description is never changed; the job popup shows the organised copy when there
+is one, with a "Show original posting" toggle.
+
+- **Which jobs:** any job that is approved, published and active and has no
+  organised copy yet. This is by state, not by AI verdict, so a job an admin
+  approves after the AI rejected it is covered, as are hand-posted jobs and bulk
+  approvals. Rejected and pending jobs are not organised.
+- **How:** the `structure-jobs` function runs every 15 minutes (cron job
+  `structure-jobs`) for up to 20 jobs; a run with nothing to do costs nothing.
+  Admins can use **Organise now** in Job Management for one job.
+- **The model only points at text.** It returns exact quotes and where each
+  section starts. `_shared/structure.ts` checks every quote against the posting
+  and slices the original text, so a pay figure, link or date that the posting
+  does not contain is dropped, and no wording changes. Matching ignores case,
+  spacing and punctuation, but keeps a currency sign. Thinking is off for this
+  call: it only copies, and hidden thinking used up the output budget.
+- **Cost:** measured at about $0.0004 per job on Claude Haiku 5.5 (about 2,500
+  tokens in, 300 out) in a 50-job trial.
+- **Failures:** a job the model could not read gets `structure_failed_at` and is
+  tried again after 6 hours. Editing a job's description clears its organised
+  copy (database trigger), so it is redone.
+- **Storage:** `jobs.structured` (jsonb), `structured_at`, `structure_failed_at`
+  (migration `20260813000000`). To deploy: apply the migration, then
+  `supabase functions deploy structure-jobs --no-verify-jwt`. It uses the same
+  `ANTHROPIC_API_KEY`, `SCHEDULER_SECRET` and `ingestion_settings` as the other
+  functions.
+
+---
+
 ## Listing liveness
 
 `check-listings` re-checks stored jobs' links (`source_url`, or `application_url`

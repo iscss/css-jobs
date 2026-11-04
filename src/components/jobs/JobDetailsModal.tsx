@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,8 @@ import { MapPin, Building2, Calendar, ExternalLink, Mail, User, DollarSign, Cloc
 import { useSaveJob, useUnsaveJob, useCheckSavedJob } from '@/hooks/useSavedJobs';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Tables } from '@/integrations/supabase/types';
+import LinkifiedText from './LinkifiedText';
+import { parseStructured } from '@/lib/structured';
 
 type Job = Tables<'jobs'> & {
   job_tags: { id: string; tag: string; }[]
@@ -24,8 +26,12 @@ const JobDetailsModal = ({ job, isOpen, onClose }: JobDetailsModalProps) => {
   const { data: isSaved } = useCheckSavedJob(job?.id || '');
   const saveJob = useSaveJob();
   const unsaveJob = useUnsaveJob();
+  const [showOriginal, setShowOriginal] = useState(false);
 
   if (!job) return null;
+
+  // The organised copy, when the AI sweep has made one; otherwise the original.
+  const organised = parseStructured(job.structured);
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'Not specified';
@@ -89,20 +95,50 @@ const JobDetailsModal = ({ job, isOpen, onClose }: JobDetailsModalProps) => {
 
           <Separator />
 
-          {/* Description */}
-          <div>
-            <h3 className="text-lg font-semibold mb-3">Description</h3>
-            <div className="prose prose-sm max-w-none">
-              <p className="whitespace-pre-wrap text-gray-700">{job.description}</p>
+          {/* Description: organised into sections when available, with a way back to the original */}
+          {organised && !showOriginal ? (
+            <div className="space-y-5">
+              {organised.pay_range && (
+                <div className="flex items-start gap-3">
+                  <DollarSign className="w-5 h-5 text-gray-400 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-gray-900">Pay</p>
+                    <p className="text-gray-700">{organised.pay_range}</p>
+                  </div>
+                </div>
+              )}
+              {organised.sections.map((section, i) => (
+                <div key={i}>
+                  <h3 className="text-lg font-semibold mb-3">{section.heading}</h3>
+                  <div className="prose prose-sm max-w-none">
+                    <LinkifiedText text={section.text} className="whitespace-pre-wrap text-gray-700" />
+                  </div>
+                </div>
+              ))}
+              <Button variant="ghost" size="sm" className="px-0 text-gray-500" onClick={() => setShowOriginal(true)}>
+                Show original posting
+              </Button>
             </div>
-          </div>
+          ) : (
+            <div>
+              <h3 className="text-lg font-semibold mb-3">Description</h3>
+              <div className="prose prose-sm max-w-none">
+                <LinkifiedText text={job.description} className="whitespace-pre-wrap text-gray-700" />
+              </div>
+              {organised && (
+                <Button variant="ghost" size="sm" className="px-0 mt-2 text-gray-500" onClick={() => setShowOriginal(false)}>
+                  Show organised view
+                </Button>
+              )}
+            </div>
+          )}
 
           {/* Requirements */}
           {job.requirements && (
             <div>
               <h3 className="text-lg font-semibold mb-3">Requirements</h3>
               <div className="prose prose-sm max-w-none">
-                <p className="whitespace-pre-wrap text-gray-700">{job.requirements}</p>
+                <LinkifiedText text={job.requirements} className="whitespace-pre-wrap text-gray-700" />
               </div>
             </div>
           )}
@@ -191,6 +227,32 @@ const JobDetailsModal = ({ job, isOpen, onClose }: JobDetailsModalProps) => {
               </Button>
             )}
             
+            {!job.application_url && organised?.application_link && (
+              <Button asChild>
+                <a
+                  href={organised.application_link}
+                  target="_blank"
+                  rel="noopener noreferrer nofollow"
+                  className="flex items-center gap-2"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  Apply (link from the posting)
+                </a>
+              </Button>
+            )}
+
+            {!job.application_url && job.contact_email && (
+              <Button asChild>
+                <a
+                  href={`mailto:${job.contact_email}?subject=${encodeURIComponent(`Application for ${job.title}`)}`}
+                  className="flex items-center gap-2"
+                >
+                  <Mail className="w-4 h-4" />
+                  Apply by email
+                </a>
+              </Button>
+            )}
+
             {user && (
               <Button
                 variant="outline"

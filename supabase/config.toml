@@ -42,3 +42,6 @@ verify_jwt = false
 
 [functions.rescore-jobs]
 verify_jwt = false
+
+[functions.structure-jobs]
+verify_jwt = false
