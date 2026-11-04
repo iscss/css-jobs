@@ -46,22 +46,6 @@ const UserProfileModal = ({ user, isOpen, onClose }: UserProfileModalProps) => {
         });
     };
 
-    const getUserTypeColor = (type: string) => {
-        switch (type) {
-            case 'job_poster': return 'bg-green-100 text-green-800';
-            case 'job_seeker': return 'bg-brand-surface-2 text-brand-navy';
-            default: return 'bg-gray-100 text-gray-800';
-        }
-    };
-
-    const getUserTypeLabel = (type: string) => {
-        switch (type) {
-            case 'job_poster': return 'Job Poster';
-            case 'job_seeker': return 'Job Seeker';
-            default: return type;
-        }
-    };
-
     const getApprovalStatusBadge = () => {
         switch (user.approval_status) {
             case 'approved':

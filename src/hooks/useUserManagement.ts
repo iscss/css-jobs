@@ -47,7 +47,7 @@ export const useUpdateUserPermissions = () => {
       const action = variables.updates.is_admin !== undefined
         ? (variables.updates.is_admin ? 'granted admin' : 'revoked admin')
         : variables.updates.is_approved_poster !== undefined
-        ? (variables.updates.is_approved_poster ? 'granted job poster' : 'changed to job seeker')
+        ? (variables.updates.is_approved_poster ? 'granted job poster' : 'removed job poster')
         : 'updated';
 
       toast({

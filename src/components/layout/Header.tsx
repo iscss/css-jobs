@@ -30,6 +30,9 @@ const Header = () => {
     if (canPostJobs) {
       refreshPageData('/post-job');
       navigate('/post-job');
+    } else if (user) {
+      // Signed in but not a poster: their profile settings, where they can ask for access
+      navigate('/profile?tab=profile-settings');
     } else {
       setShowPostJobModal(true);
     }

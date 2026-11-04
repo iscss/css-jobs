@@ -1,4 +1,5 @@
 
+import { canOpenPostPage } from '@/lib/roles';
 import { Button } from "@/components/ui/button";
 import { Search, Briefcase, Users, TrendingUp, Sparkles, ArrowRight } from "lucide-react";
 import { useState } from "react";
@@ -26,9 +27,9 @@ const HeroSection = () => {
       return;
     }
 
-    if (userProfile.user_type === 'job_seeker') {
-      // Scenario 2: Job seeker - redirect to profile settings
-      navigate('/profile?tab=profile');
+    if (!canOpenPostPage(userProfile)) {
+      // Scenario 2: plain member - their profile settings, where they can ask for posting access
+      navigate('/profile?tab=profile-settings');
       return;
     }
 
