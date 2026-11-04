@@ -147,13 +147,29 @@ const JobManagementTable = ({ filters, onFiltersChange }: JobManagementTableProp
 
     try {
       if (pending.action === 'approve') {
-        // Call our database function to approve job and update user counter
-        const { error } = await supabase.rpc('approve_job_and_update_counter', {
-          job_id: pending.jobId,
-          admin_id: user?.id
-        });
+        // Approve and publish. (The approve_job_and_update_counter function the
+        // old code called is defined in no migration and does not exist.)
+        const { error } = await supabase
+          .from('jobs')
+          .update({
+            approval_status: 'approved',
+            is_published: true,
+            approved_at: new Date().toISOString(),
+            approved_by_admin: user?.id
+          })
+          .eq('id', pending.jobId);
 
         if (error) throw error;
+
+        // Hand-posted jobs count toward the poster's approved total. Imported
+        // jobs have no poster. A failure here must not undo the approval.
+        const posterId = allJobs?.find(job => job.id === pending.jobId)?.posted_by;
+        if (posterId) {
+          const { error: counterError } = await supabase.rpc('increment_approved_jobs_count', {
+            user_id: posterId
+          });
+          if (counterError) console.warn('Failed to increment approved jobs count:', counterError);
+        }
 
         toast({
           title: "Job Approved",
