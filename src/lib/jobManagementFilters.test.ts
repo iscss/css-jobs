@@ -21,7 +21,7 @@ const job = (over: Partial<J>): J =>
     job_status: 'active',
     is_featured: false,
     is_auto_imported: true,
-    relevance_score: null,
+    relevance_verdict: null,
     application_deadline: null,
     created_at: '2026-10-01T00:00:00Z',
     ...over,
@@ -112,16 +112,16 @@ describe('deadline filter', () => {
 });
 
 describe('sorting', () => {
-  const a = job({ title: 'B role', created_at: '2026-10-02T00:00:00Z', relevance_score: 0.4, application_deadline: '2026-12-01' });
-  const b = job({ title: 'A role', created_at: '2026-10-03T00:00:00Z', relevance_score: 0.9, application_deadline: '2026-11-01' });
-  const c = job({ title: 'C role', created_at: '2026-10-01T00:00:00Z', relevance_score: null, application_deadline: null });
+  const a = job({ title: 'B role', created_at: '2026-10-02T00:00:00Z', relevance_verdict: 'borderline', application_deadline: '2026-12-01' });
+  const b = job({ title: 'A role', created_at: '2026-10-03T00:00:00Z', relevance_verdict: 'accept', application_deadline: '2026-11-01' });
+  const c = job({ title: 'C role', created_at: '2026-10-01T00:00:00Z', relevance_verdict: null, application_deadline: null });
 
   it('newest and oldest', () => {
     expect(ids(applyJobFilters([a, b, c], f({ sort: 'newest' })))).toEqual([b.id, a.id, c.id]);
     expect(ids(applyJobFilters([a, b, c], f({ sort: 'oldest' })))).toEqual([c.id, a.id, b.id]);
   });
 
-  it('highest match puts unscored jobs last', () => {
+  it('most relevant puts accepts first and jobs with no verdict last', () => {
     expect(ids(applyJobFilters([a, b, c], f({ sort: 'relevance' })))).toEqual([b.id, a.id, c.id]);
   });
 

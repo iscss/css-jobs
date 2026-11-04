@@ -69,7 +69,7 @@ interface SourceResult {
   /** Inserted straight as rejected (AI verdict reject, or keyword-excluded). */
   autoRejected: number;
   error?: string;
-  samples?: { title: string; institution: string; score: number }[];
+  samples?: { title: string; institution: string; verdict: string | null }[];
 }
 
 Deno.serve(async (req) => {
@@ -233,7 +233,6 @@ async function runSource(
       await mapWithConcurrency(candidates, LLM_CONCURRENCY, async (job) => {
         const scored = await scoreWithLlm(llm.client, job, llm.model);
         if (scored) {
-          job.relevance_score = scored.score;
           job.relevance_reasoning = `AI: ${scored.reasoning}`;
           job.relevance_verdict = scored.verdict;
           // Keep a regex-found deadline if there is one; otherwise store the
@@ -258,13 +257,18 @@ async function runSource(
       return true;
     });
 
+    const rank = (v: string | null | undefined) =>
+      v === 'accept' ? 0 : v === 'borderline' ? 1 : v ? 3 : 2;
     result.samples = [...open]
-      .sort((a, b) => b.relevance_score - a.relevance_score)
+      .sort((a, b) =>
+        rank(a.relevance_verdict) - rank(b.relevance_verdict) ||
+        b.relevance_score - a.relevance_score
+      )
       .slice(0, 5)
       .map((j) => ({
         title: j.title,
         institution: j.institution,
-        score: j.relevance_score,
+        verdict: j.relevance_verdict ?? null,
       }));
 
     if (dryRun) result.autoRejected += open.filter(autoRejects).length;

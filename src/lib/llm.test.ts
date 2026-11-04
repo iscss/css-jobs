@@ -27,28 +27,28 @@ const clientReturning = (text: string, stop_reason = 'end_turn'): MessagesClient
 
 describe('parseScore', () => {
   it('reads a clean JSON reply', () => {
-    expect(parseScore('{"score": 0.82, "reasoning": "Strong CSS fit."}')).toEqual({
-      score: 0.82,
-      verdict: null,
+    expect(parseScore('{"verdict": "accept", "reasoning": "Strong CSS fit."}')).toEqual({
+      verdict: 'accept',
       reasoning: 'Strong CSS fit.',
       deadline: null,
     });
   });
 
   it('extracts JSON wrapped in prose or code fences', () => {
-    const r = parseScore('Here you go:\n```json\n{"score": 0.5, "reasoning": "ok"}\n```');
-    expect(r?.score).toBe(0.5);
+    const r = parseScore('Here you go:\n```json\n{"verdict": "borderline", "reasoning": "ok"}\n```');
+    expect(r?.verdict).toBe('borderline');
   });
 
-  it('clamps out-of-range scores into 0-1', () => {
-    expect(parseScore('{"score": 7, "reasoning": "x"}')?.score).toBe(1);
-    expect(parseScore('{"score": -2, "reasoning": "x"}')?.score).toBe(0);
+  it('ignores a stray score field', () => {
+    const r = parseScore('{"verdict": "accept", "score": 0.9, "reasoning": "x"}');
+    expect(r).not.toHaveProperty('score');
   });
 
   it.each([
     'no json here',
-    '{"score": "high", "reasoning": "x"}',
-    '{"score": 0.5}',
+    '{"verdict": "accept"}',
+    '{"reasoning": "x"}',
+    '{"score": 0.9, "reasoning": "x"}',
     '{not json}',
     '',
   ])('rejects malformed reply %#', (text) => {
@@ -56,31 +56,24 @@ describe('parseScore', () => {
   });
 
   it('truncates long reasoning', () => {
-    const r = parseScore(`{"score": 0.4, "reasoning": "${'a'.repeat(500)}"}`);
+    const r = parseScore(`{"verdict": "accept", "reasoning": "${'a'.repeat(500)}"}`);
     expect(r?.reasoning.length).toBe(200);
   });
 });
 
 describe('verdict', () => {
-  const reply = (verdict: unknown, score: number) =>
-    JSON.stringify({ verdict, score, reasoning: 'x' });
+  const reply = (verdict: unknown) => JSON.stringify({ verdict, reasoning: 'x' });
 
   it.each(['accept', 'borderline', 'reject'])('reads %s', (v) => {
-    expect(parseScore(reply(v, 0.1))?.verdict).toBe(v === 'reject' ? 'reject' : v);
+    expect(parseScore(reply(v))?.verdict).toBe(v);
   });
 
   it('is case and whitespace tolerant', () => {
-    expect(parseScore(reply(' Reject ', 0.1))?.verdict).toBe('reject');
+    expect(parseScore(reply(' Reject '))?.verdict).toBe('reject');
   });
 
-  it.each(['maybe', 42, null, undefined])('ignores an unusable verdict %#', (v) => {
-    expect(parseScore(reply(v, 0.5))?.verdict).toBeNull();
-  });
-
-  it('does not trust a reject on a relevant score', () => {
-    expect(parseScore(reply('reject', 0.7))?.verdict).toBe('borderline');
-    expect(parseScore(reply('reject', 0.4))?.verdict).toBe('borderline');
-    expect(parseScore(reply('reject', 0.39))?.verdict).toBe('reject');
+  it.each(['maybe', 42, null, undefined])('treats an unusable verdict %# as no result', (v) => {
+    expect(parseScore(reply(v))).toBeNull();
   });
 });
 
@@ -88,7 +81,7 @@ describe('deadline', () => {
   const today = '2026-10-26';
 
   it('keeps a valid future date', () => {
-    const r = parseScore('{"score": 0.5, "reasoning": "x", "deadline": "2026-11-15"}', today);
+    const r = parseScore('{"verdict": "accept", "reasoning": "x", "deadline": "2026-11-15"}', today);
     expect(r?.deadline).toBe('2026-11-15');
   });
 
@@ -146,15 +139,22 @@ describe('buildPrompt', () => {
 });
 
 describe('scoreWithLlm', () => {
-  it('returns the score and usage on success', async () => {
-    const client = clientReturning('{"score": 0.9, "reasoning": "Core CSS."}');
+  it('returns the verdict and usage on success', async () => {
+    const client = clientReturning('{"verdict": "accept", "reasoning": "Core CSS."}');
     const r = await scoreWithLlm(client, job);
-    expect(r?.score).toBe(0.9);
+    expect(r?.verdict).toBe('accept');
     expect(r?.usage?.input_tokens).toBe(400);
   });
 
+  it('asks for labels only, with no numeric scale in the prompt', async () => {
+    const client = clientReturning('{"verdict": "accept", "reasoning": "x"}');
+    await scoreWithLlm(client, job);
+    const params = (client.messages.create as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(params.system).not.toMatch(/\bscore\b|Scale:|\b0\.\d/i);
+  });
+
   it('sends the default Haiku model, low effort and no sampling params', async () => {
-    const client = clientReturning('{"score": 0.1, "reasoning": "x"}');
+    const client = clientReturning('{"verdict": "reject", "reasoning": "x"}');
     await scoreWithLlm(client, job);
     const params = (client.messages.create as ReturnType<typeof vi.fn>).mock.calls[0][0];
     expect(params.model).toBe('claude-haiku-5-5');

@@ -129,6 +129,10 @@ export function applyJobFilters<T extends Job>(
     return true;
   });
 
+  const verdictRank = (j: T) =>
+    j.relevance_verdict === 'accept' ? 0
+      : j.relevance_verdict === 'borderline' ? 1
+      : j.relevance_verdict ? 3 : 2;
   const byNewest = (a: T, b: T) => time(b.created_at) - time(a.created_at);
 
   return [...filtered].sort((a, b) => {
@@ -136,10 +140,9 @@ export function applyJobFilters<T extends Job>(
       case 'oldest':
         return time(a.created_at) - time(b.created_at);
       case 'relevance': {
-        // Jobs with no score (hand-posted) sort after scored ones.
-        const sa = a.relevance_score ?? -1;
-        const sb = b.relevance_score ?? -1;
-        return sb - sa || byNewest(a, b);
+        // Accepts first, then borderlines; jobs with no verdict (hand-posted
+        // or keyword-only) sort after those, rejects last.
+        return verdictRank(a) - verdictRank(b) || byNewest(a, b);
       }
       case 'deadline': {
         // Closing soonest first; jobs with no deadline go last.

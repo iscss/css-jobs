@@ -112,7 +112,7 @@ Deno.serve(async (req) => {
       verdict = scored.verdict;
       reasoning = `AI: ${scored.reasoning}`;
       update = {
-        relevance_score: scored.score,
+        relevance_score: keyword.score,
         relevance_reasoning: reasoning,
         relevance_verdict: verdict,
       };

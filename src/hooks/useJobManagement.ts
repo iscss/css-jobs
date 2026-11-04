@@ -197,11 +197,11 @@ export const usePendingJobs = () => {
         `)
         .eq('approval_status', 'pending')
         // Human submissions first (they are never auto-imported), then the
-        // most likely CSS imports, newest first within the same score. Nothing
-        // is filtered out - the long tail of low-scoring imports stays in the
-        // queue, just further down.
+        // AI accepts, then borderlines (alphabetical order is the wanted
+        // order), newest first within the same verdict. Nothing is filtered
+        // out: imports without a verdict stay in the queue, just further down.
         .order('is_auto_imported', { ascending: true })
-        .order('relevance_score', { ascending: false, nullsFirst: false })
+        .order('relevance_verdict', { ascending: true, nullsFirst: false })
         .order('posted_at', { ascending: false, nullsFirst: false })
         .order('updated_at', { ascending: true }); // Oldest submissions first
 
