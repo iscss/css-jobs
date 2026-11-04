@@ -118,7 +118,7 @@ psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -c \
 ## How it works
 
 ```
-job_sources → adapter → normalize → dedupe → keyword pre-filter → AI score
+job_sources → adapter → normalize → dedupe → keyword pre-filter → AI verdict
                                                                     ↓
                                        insert: pending, or rejected if verdict = reject
                                                                     ↓
@@ -489,17 +489,22 @@ the full weekly window.
 ---
 
 ## Not yet done
-- **More sources.** jobRxiv, CoMSES and nine Workday university sites are wired
-  up (CMU's Workday search currently returns HTTP 422). See "Sources
-  investigated" below.
-- **Bulk actions.** No bulk approve/reject in the admin UI yet. Rejecting by
-  score threshold is done with SQL (see "Clearing a backlog").
+- **jobRxiv on production.** It returns HTTP 403 to requests from Supabase's
+  servers (Cloudflare). The same feed works from other networks. Ask jobRxiv to
+  allow `CSSJobsBot`, or fetch it from somewhere else and insert the jobs.
+- **Carnegie Mellon.** Its Workday search returns HTTP 422 on every run, so it is
+  left out of the seed migration.
+- **More sources.** jobRxiv, CoMSES and eight Workday university sites are wired
+  up. See "Sources investigated" below.
 - **Admin "Inactive" button.** It offers a status the database does not allow
   (`job_status` accepts only `active` and `filled`).
-- **Deploy.** None of this is on production yet. It needs
-  `npx supabase db push` for the migrations, `npx supabase functions deploy
-  ingest-jobs --no-verify-jwt` and `check-listings --no-verify-jwt`, and the
-  `ANTHROPIC_API_KEY` secret (see the README).
+- **A database rule for "how to apply".** The posting and edit forms require an
+  application link or a contact email, but the database does not, because older
+  jobs have neither.
+
+Done since the first version: bulk approve and reject, deployment to production,
+the AI verdict, link-check fixes for Workday and rate limits, the organiser,
+admin Edit job, and the security trigger on profile columns.
 
 ---
 
@@ -508,8 +513,8 @@ the full weekly window.
 | Source | Status | Notes |
 |--------|--------|-------|
 | **CoMSES Net** | ✅ Working | RSS feed with no structured institution or location fields; institution is recovered from the text. Lists old postings, so it has a 180-day window. |
-| **Workday university sites** | ✅ Working | UChicago, Wisconsin, OSU, UW, Cornell, UMD, Brown, UVA via the public JSON search. CMU currently returns HTTP 422. |
-| **jobRxiv** | ✅ Working | `https://jobrxiv.org/?feed=job_feed` — real RSS with structured `job_listing:location`, `job_listing:job_type`, `job_listing:company`. `posts_per_page=100` works; `paged` does not. |
+| **Workday university sites** | ✅ Working | UChicago, Wisconsin, OSU, UW, Cornell, UMD, Brown, UVA via the public JSON search. CMU returns HTTP 422. UW links use `wdN.myworkdaysite.com`, with the tenant in the path. A removed posting answers 404, or 403 for some tenants. |
+| **jobRxiv** | ⚠️ Works locally, blocked (HTTP 403) from Supabase's servers | `https://jobrxiv.org/?feed=job_feed` — real RSS with structured `job_listing:location`, `job_listing:job_type`, `job_listing:company`. `posts_per_page=100` works; `paged` does not. It also rate-limits (HTTP 429) if hit quickly. |
 | Euraxess | ❌ No read API | Its XML guidelines are for *submitting* jobs to Euraxess. No RSS or JSON export. Would require HTML scraping. |
 | HigherEdJobs | ❌ Blocked | Documented category feeds (Sociology `catID=93`, CS `102`, PolSci `90`) return an Imperva/Incapsula bot-protection page instead of RSS. |
 | jobs.ac.uk | ⚠️ Feeds moved | `/feeds` 404s and `?format=rss` returns HTML. `robots.txt` is permissive and a sitemap exists (`sitemap0.xml`, ~8k URLs), so a sitemap-based adapter is possible but needs per-page HTML parsing. |
@@ -530,6 +535,12 @@ the full weekly window.
 | `20260807000000_expire_published_jobs` | Public read rule hides jobs after their deadline |
 | `20260808000000_purge_expired_jobs` | Nightly `purge_expired_jobs()` and its cron |
 | `20260809000000_rejected_retention_and_link_check_schedule` | `rejected_at` (30-day retention for rejected imports) and the 2-hourly link-check cron |
+| `20260811000000_protect_privileged_profile_columns` | Trigger so non-admins cannot change `is_admin`, `is_approved_poster`, `can_publish_directly` or `approved_jobs_count` |
+| `20260812000000_seed_job_sources` | The CoMSES and Workday sources (CMU left out); safe to run twice |
+| `20260813000000_structured_job_content` | `structured`, `structured_at`, `structure_failed_at`, the reset trigger, the 15-minute organiser cron and `structure_job_now()` for admins |
+| `20260814000000_clean_comses_html` | One-time clean-up of CoMSES descriptions that still hold HTML tags |
+
+The migrations were applied to production with `psql`; see `README.md`.
 
 ---
 
@@ -550,6 +561,14 @@ does not match production.
    lacked `SELECT`/`INSERT`/`UPDATE`/`DELETE` grants for `anon`,
    `authenticated`, and `service_role`; production got them via the dashboard.
    Granted explicitly so a fresh database works.
+
+4. **`approve_job_and_update_counter`** — the Job Management Approve button called
+   this function, but it is defined in no migration and exists in no database
+   (local, review or production), so it always failed. Approve now updates the job
+   directly and relies on the `track_job_approval` trigger for the poster's count.
+5. **Migration history.** Production records only `20260305000000` from this repo,
+   plus three CSS Events migrations, so `supabase db push` refuses to run there.
+6. **Production `ping` function** exists in production only.
 
 **Still unreconciled** (production has these, no migration does): the
 `email_queue` columns `failed_at`, `failure_reason`, `retry_count`,

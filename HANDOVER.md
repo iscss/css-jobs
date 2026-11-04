@@ -4,7 +4,7 @@
 
 > **Update (October 2026):** Automated job ingestion was added after this document was written: jobs are imported nightly from external feeds, checked for dead links, scored for relevance by an AI model, and queued for admin approval; expired jobs are hidden and deleted automatically. The home page was also removed (`/` now redirects to `/jobs`). Sections below that are affected are marked **[updated]**. For the full picture, see `README.md` ("Automated Job Ingestion") and `INGESTION.md`.
 
-**Last Updated:** December 2025 (ingestion notes added October 2026)
+**Last Updated:** December 2025 (ingestion notes added October 2026; production deployment and admin updates November 2026)
 **Production URL:** https://css-jobs.andersgiovanni.com [now https://jobs.iscss.org]
 **Status:** Production-ready, actively maintained
 
@@ -120,8 +120,9 @@ Get these from: [Supabase Dashboard](https://supabase.com/dashboard/project/vbek
 
 ### User Roles & Permissions
 
-**Job Seeker** (auto-approved):
-- Browse published jobs
+**Job Seeker** (auto-approved) **[updated]:**
+- Browsing and applying never needs an account: the board is public and Apply opens the employer's link
+- Sign-up no longer offers the job-seeker choice; it creates poster accounts only. Older seeker accounts keep working
 - Save jobs to bookmarks
 - Create alerts (when enabled)
 
@@ -131,9 +132,11 @@ Get these from: [Supabase Dashboard](https://supabase.com/dashboard/project/vbek
 - Manage own job posts
 - After 3 approved jobs → auto-publish future posts
 
-**Admin** (manually set in database):
+**Admin** (first one set in the database; then Grant Admin in User Management) **[updated]:**
 - All features
-- Approve/reject users and jobs
+- Approve/reject users and jobs (approving a job is one click; rejecting asks first)
+- Edit any job from Job Management (**Edit job**), including pending ones
+- Only admins can change `is_admin`, `is_approved_poster` and `can_publish_directly` (database trigger)
 - Feature jobs (badge in the jobs list)
 - Delete users/jobs
 - Access admin dashboard at `/admin`
@@ -146,7 +149,9 @@ Get these from: [Supabase Dashboard](https://supabase.com/dashboard/project/vbek
 3. Admin reviews → approval_status='approved', is_published=true
 4. Job visible on /jobs page
 
-(After 3 approved jobs, poster can publish directly)
+(After 3 approved jobs, poster can publish directly. The count is kept by the
+`track_job_approval` database trigger. A job must have an application link or a
+contact email to be submitted; a draft may be saved without one.)
 ```
 
 **Imported jobs [updated]:**
@@ -161,6 +166,9 @@ Get these from: [Supabase Dashboard](https://supabase.com/dashboard/project/vbek
    days after rejection.
 5. Published jobs found dead or closed are hidden (job_status='filled') and
    deleted 3 days later, which leaves time to reactivate a wrong flag
+6. A published job is organised into labelled sections by the `structure-jobs`
+   function (every 15 minutes), whatever the AI verdict was. The original text
+   is kept and shown on request
 ```
 
 ---
@@ -242,7 +250,7 @@ WHERE email = 'your-email@example.com';
 ### Current Setup
 
 **Frontend:** Vercel (auto-deploys from `main` branch)
-**Backend:** Supabase Cloud (project ID: vbekddjiflstedhvrhwt)
+**Backend:** Supabase Cloud, project `ukkqeczgommifgecyrez` (shared with CSS Events). `vbekddjiflstedhvrhwt` in `supabase/config.toml` is only the local development stack's name
 
 ### Deploy Changes
 
@@ -258,11 +266,12 @@ npx supabase migration new add_feature_name
 
 # Edit: supabase/migrations/YYYYMMDDHHMMSS_add_feature_name.sql
 
-# Apply to production
-npx supabase db push --linked
+# Apply to production: use psql, NOT `db push` (production's migration history
+# does not match this repo; see README.md, Deployment > Database)
+psql "<session pooler string>" -v ON_ERROR_STOP=1 --single-transaction -f supabase/migrations/<file>.sql
 
-# Regenerate TypeScript types
-npx supabase gen types typescript --project-id vbekddjiflstedhvrhwt > src/integrations/supabase/types.ts
+# TypeScript types are edited by hand: regenerating would drop production-only
+# columns (see INGESTION.md, Schema drift)
 ```
 
 **Edge Functions:**
@@ -277,21 +286,30 @@ supabase functions deploy delete-user
 # so the built-in JWT check is off [updated]
 supabase functions deploy ingest-jobs --no-verify-jwt
 supabase functions deploy check-listings --no-verify-jwt
+supabase functions deploy rescore-jobs --no-verify-jwt
+supabase functions deploy structure-jobs --no-verify-jwt
 ```
+Name functions explicitly: a bare `supabase functions deploy` redeploys all of them, including `delete-user` and `unsubscribe`.
 
-The AI scoring needs `ANTHROPIC_API_KEY` as a Supabase secret (`supabase secrets set ANTHROPIC_API_KEY=...`). See `README.md` for the full production setup. **[updated]**
+The AI steps need `ANTHROPIC_API_KEY` as a Supabase secret, and the scheduler needs `SCHEDULER_SECRET` (`supabase secrets set ...`). See `README.md` for the full production setup. **[updated]**
 
 ---
 
 ## Common Tasks
 
-### Add a New Admin
+### Add a New Admin **[updated]**
+
+Admin → User Management → the user's menu → **Grant Admin**. The very first admin
+must be set in SQL:
 
 ```sql
 UPDATE user_profiles
 SET is_admin = true
 WHERE email = 'new-admin@example.com';
 ```
+
+Review the admin list now and then (Admin → User Management): an admin can do
+anything, including deleting users.
 
 ### Feature a Job **[updated]**
 
@@ -324,12 +342,23 @@ This loads 10,500+ university domains. Users with these email addresses will be 
 
 ## Known Issues & Future Work
 
-### Ingestion: not yet deployed to production **[updated]**
+### Ingestion: deployed to production **[updated]**
 
-- The migrations, the two ingestion functions and the `ANTHROPIC_API_KEY` secret are not applied to production yet (see `README.md`, "Production setup").
-- The link check (`check-listings`) is scheduled every 2 hours by `pg_cron`, but, like the nightly import, only runs once deployed and configured (see `README.md`).
-- About 80 university jobs cannot be link-checked because their sites return HTTP 403; they stay unverified.
-- The admin "Inactive" job status button offers a value the database does not allow (`job_status` accepts only `active` and `filled`).
+- Deployed on 2026-11-04: migrations through `20260814000000`, the four functions
+  (`ingest-jobs`, `check-listings`, `rescore-jobs`, `structure-jobs`), and the
+  `ANTHROPIC_API_KEY` and `SCHEDULER_SECRET` secrets. Schedules: link check every
+  2 hours, import 03:00 UTC, purge 00:05 UTC, organiser every 15 minutes.
+- **jobRxiv returns HTTP 403 from Supabase's servers**, so the largest source is
+  not imported on production. Ask jobRxiv to allow `CSSJobsBot`, or load its jobs
+  from another network. Carnegie Mellon's Workday search returns HTTP 422.
+- The `pg_cron` log only shows that the SQL ran. Confirm by looking for new rows in
+  `scrape_runs` each morning.
+- Production's migration history does not match this repo, so `supabase db push`
+  does not work; use `psql` (see `README.md`).
+- Job Management's old Approve & Publish called a database function
+  (`approve_job_and_update_counter`) that exists in no migration; it now updates
+  the job directly. The admin "Inactive" job status button still offers a value the
+  database does not allow (`job_status` accepts only `active` and `filled`).
 
 ### Infrastructure Ready But Disabled
 
