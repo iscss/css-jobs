@@ -32,7 +32,13 @@ const CLOSED_PHRASES: RegExp[] = [
   /no longer accepting applications/i,
   /(job|position|vacancy|posting) (is )?no longer available/i,
   /applications? (for this (job|position|vacancy) )?(are|is|have) (now )?closed/i,
+  /this (job|position|vacancy|listing|posting) (was|has been) (removed|deleted|withdrawn|taken down)/i,
+  /(job|position|vacancy|posting|listing) (is )?no longer (open|active|posted|exists?)/i,
+  /(job|position|vacancy|posting|listing) (could not|cannot|can.t|was not|wasn.t) be found/i,
+  /the (page|job|position|posting|listing) you (are looking for|were looking for|requested) (does not|doesn.t|is no longer)/i,
 ];
+
+
 
 function visibleText(html: string): string {
   return html
@@ -104,6 +110,16 @@ export function classifyPage(input: {
     if (hit) return { status: 'closed', reason: `page says: "${hit[0]}"` };
   }
 
+  // A future closing date in the page's own metadata is positive evidence the
+  // posting is open, even if the visible text is sparse.
+  if (closes) return { status: 'live', reason: 'ok' };
+
+  // No readable text at all: a JavaScript shell (Workday and similar) that
+  // returns 200 for removed postings too, so it proves nothing either way.
+  if (text.trim().length === 0) {
+    return { status: 'unknown', reason: 'page has no readable text (needs JavaScript)' };
+  }
+
   return { status: 'live', reason: 'ok' };
 }
 
@@ -113,6 +129,16 @@ export function classifyPage(input: {
 // Job JSON:
 //   https://<host>/wday/cxs/<tenant>/<site>/job/<location>/<slug>
 export function workdayJsonUrl(url: string): string | null {
+  // University of Washington style: the tenant is in the path, not the host.
+  //   https://wd5.myworkdaysite.com/recruiting/<tenant>/<site>/job/<location>/<slug>
+  const shared = url.match(
+    /^(https:\/\/[^/]*myworkdaysite\.com)\/(?:[a-z]{2}-[A-Z]{2}\/)?recruiting\/([^/]+)\/([^/]+)(\/job\/.+)$/,
+  );
+  if (shared) {
+    const [, origin, tenant, site, rest] = shared;
+    return `${origin}/wday/cxs/${tenant}/${site}${rest}`;
+  }
+
   const match = url.match(
     /^(https:\/\/([^./]+)\.[^/]*myworkdayjobs\.com)\/(?:[a-z]{2}-[A-Z]{2}\/)?([^/]+)(\/job\/.+)$/,
   );
@@ -139,6 +165,69 @@ export function classifyWorkday(
   return { status: 'live', reason: 'ok' };
 }
 
+// Workday answers 403 "permission denied" for a posting that has been taken
+// down, but 403 can also mean we are blocked. So a 403 only counts as removal
+// when the tenant's own job search no longer lists the requisition.
+//   JSON url:   https://<host>/wday/cxs/<tenant>/<site>/job/<location>/<slug>
+//   Search url: https://<host>/wday/cxs/<tenant>/<site>/jobs
+export function workdaySearchTarget(
+  jsonUrl: string,
+): { searchUrl: string; requisition: string } | null {
+  const match = jsonUrl.match(/^(.*\/wday\/cxs\/[^/]+\/[^/]+)\/job\/.+_([A-Za-z0-9-]+)$/);
+  if (!match) return null;
+  return { searchUrl: `${match[1]}/jobs`, requisition: match[2] };
+}
+
+async function workdayRemoved(
+  jsonUrl: string,
+  fetchFn: FetchFn,
+): Promise<LinkCheck> {
+  const target = workdaySearchTarget(jsonUrl);
+  if (!target) return { status: 'unknown', reason: 'HTTP 403' };
+  const response = await fetchFn(target.searchUrl, {
+    method: 'POST',
+    headers: {
+      'User-Agent': USER_AGENT,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({
+      appliedFacets: {},
+      limit: 20,
+      offset: 0,
+      searchText: target.requisition,
+    }),
+    signal: AbortSignal.timeout(15000),
+  });
+  if (response.status !== 200) return { status: 'unknown', reason: 'HTTP 403' };
+  const result = (await response.json()) as {
+    total?: number;
+    jobPostings?: { externalPath?: string }[];
+  } | null;
+  if (!result || typeof result.total !== 'number') {
+    return { status: 'unknown', reason: 'HTTP 403' };
+  }
+  const listed = (result.jobPostings ?? []).some((p) =>
+    (p.externalPath ?? '').includes(target.requisition)
+  );
+  return listed
+    ? { status: 'unknown', reason: 'HTTP 403' }
+    : { status: 'dead', reason: 'no longer listed by Workday' };
+}
+
+// One polite retry when a site rate-limits us, so a busy moment does not leave
+// a posting unchecked for a week.
+async function fetchWithRetry(
+  fetchFn: FetchFn,
+  url: string,
+  init: Record<string, unknown>,
+): Promise<Awaited<ReturnType<FetchFn>>> {
+  const response = await fetchFn(url, init);
+  if (response.status !== 429) return response;
+  await new Promise((resolve) => setTimeout(resolve, 4000));
+  return fetchFn(url, init);
+}
+
 export async function checkListing(
   url: string,
   fetchFn: FetchFn = fetch as unknown as FetchFn,
@@ -151,6 +240,7 @@ export async function checkListing(
         headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
         signal: AbortSignal.timeout(15000),
       });
+      if (response.status === 403) return await workdayRemoved(workday, fetchFn);
       let json: unknown = null;
       if (response.status === 200) {
         try {
@@ -162,7 +252,7 @@ export async function checkListing(
       return classifyWorkday(response.status, json);
     }
 
-    const response = await fetchFn(url, {
+    const response = await fetchWithRetry(fetchFn, url, {
       headers: { 'User-Agent': USER_AGENT, Accept: 'text/html' },
       redirect: 'follow',
       signal: AbortSignal.timeout(15000),

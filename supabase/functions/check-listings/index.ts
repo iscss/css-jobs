@@ -73,16 +73,23 @@ Deno.serve(async (req) => {
   const publishedDays = Number(body.publishedRecheckDays) || 3;
   const publishedCutoff = new Date(Date.now() - publishedDays * 86400000)
     .toISOString();
+  // A link we could not read (rate limited, blocked) is tried again after a
+  // day, not left for the full weekly window.
+  const unknownCutoff = new Date(Date.now() - 86400000).toISOString();
   type Kind = 'published' | 'pending' | 'rejected';
   const due = (q: any, kind: Kind) =>
     kind === 'published'
       ? q
         .eq('approval_status', 'approved')
         .eq('job_status', 'active')
-        .or(`link_checked_at.is.null,link_checked_at.lt.${publishedCutoff}`)
+        .or(
+          `link_checked_at.is.null,link_checked_at.lt.${publishedCutoff},and(link_status.eq.unknown,link_checked_at.lt.${unknownCutoff})`,
+        )
       : q
         .eq('approval_status', kind)
-        .or(`link_checked_at.is.null,link_checked_at.lt.${cutoff}`);
+        .or(
+          `link_checked_at.is.null,link_checked_at.lt.${cutoff},and(link_status.eq.unknown,link_checked_at.lt.${unknownCutoff})`,
+        );
 
   const columns =
     'id, title, source_url, application_url, application_deadline, approval_status';
