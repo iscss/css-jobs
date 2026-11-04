@@ -238,40 +238,42 @@ subject. Pure natural science, clinical, biomedical, administrative, sales or
 marketing roles are excluded.* It is written out in `SYSTEM_PROMPT` in
 `_shared/llm.ts`; the keyword lists in `_shared/ingest.ts` mirror it.
 
-Scoring runs in two steps. **It only orders the queue — a score never
-publishes anything.**
+Relevance runs in two steps. **It only files and orders the queue — nothing is
+published without an admin.**
 
 1. **Keyword pre-filter (free).** `scoreRelevance()` in `_shared/ingest.ts`
    scores obviously unrelated roles (clinical, lab, marketing, administrative)
    as 0. Those skip the AI step. On a random sample, the AI agreed with this
    filter on 98 of 99 jobs.
-2. **AI score.** For everything else, `scoreWithLlm()` in `_shared/llm.ts` asks
-   an Anthropic Haiku model for a 0-1 CSS relevance score, a one-sentence
-   reason, and the application closing date if the posting states one. The
-   reason is shown as "AI: ..." in the admin tooltip. Only new jobs are scored:
+2. **AI verdict.** For everything else, `scoreWithLlm()` in `_shared/llm.ts` asks
+   an Anthropic Haiku model to apply the definition and return a verdict
+   (accept, borderline or reject, no numeric score), a one-sentence reason, and
+   the application closing date if the posting states one. The reason is shown
+   as "AI: ..." in the admin tooltip. Only new jobs are checked:
    jobs already in the database are dropped first, so repeat runs cost almost
    nothing.
 
 Keyword scoring still runs for every job and is the **fallback** if the AI is
-unavailable (no key, API error, refusal, or an unreadable reply). The keyword
-scoring tables missed real CSS roles in testing (about 3% of its low scores
-were rated 0.5 or higher by the AI), so they are only a safety net.
+unavailable (no key, API error, refusal, or a reply without a valid verdict).
+The keyword scoring tables missed real CSS roles in testing, so they are only a
+safety net; the job then has no verdict and stays pending.
 
 Settings (Supabase secrets, or `supabase/functions/.env` locally):
 `ANTHROPIC_API_KEY`, optional `ANTHROPIC_MODEL`, and `MAX_LLM_PER_RUN`
 (default 150). The cost is a small fraction of a cent per new job; check real
 spend on the Anthropic console.
 
-**Verdicts.** The AI returns a verdict with each score: `accept` (clear CSS fit),
+**Verdicts.** The AI returns one verdict per job: `accept` (clear CSS fit),
 `borderline` (adjacent or unclear; the prompt says to choose this when unsure) or
 `reject` (clearly not CSS). It is stored in `jobs.relevance_verdict`. A `reject`
 verdict, or a role the keyword pre-filter disqualifies, is inserted straight as
-`rejected`; everything else is `pending`. A `reject` on a score of 0.4 or higher
-is not trusted and becomes `borderline`, and when the AI call fails the cruder
-keyword score never rejects on its own (only a keyword-disqualified role does).
+`rejected`; everything else is `pending`. When the AI call fails, the cruder
+keyword check never rejects on its own (only a keyword-disqualified role does).
 Auto-rejected jobs follow the normal 30-day retention, appear under Rejected in
-Job Management, and can be restored by an admin. The score still orders the
-queue; the verdict decides the starting status. The ingest response reports
+Job Management, and can be restored by an admin. The queue is ordered by
+verdict (accept, then borderline, then jobs with no verdict), newest first
+within each; the verdict also decides the starting status. `relevance_score`
+now holds only the keyword score and is not used for ordering. The ingest response reports
 `autoRejected` per source.
 
 **Clearing a backlog / re-scoring.** To bring an old queue in line with the
@@ -418,15 +420,21 @@ for hand-posted jobs) and classifies each one:
 | `unknown` | Blocked (403/429), server error, or timeout | **Never acted on** |
 
 Workday pages are JavaScript apps that return 200 for anything, so Workday jobs
-are checked through the same JSON endpoint the importer uses. The function never
+are checked through the same JSON endpoint the importer uses. This covers both
+`<tenant>.wdN.myworkdayjobs.com` links and `wdN.myworkdaysite.com/recruiting/...`
+links (University of Washington). A Workday **403** means the posting was taken
+down, but can also mean we are blocked, so it only counts as `dead` when the
+tenant's own job search no longer lists the requisition; otherwise it stays
+`unknown`. A page with no readable text at all is a JavaScript shell and is
+`unknown`, not `live`. A 429 (rate limited) is retried once after a few seconds. The function never
 publishes anything; hiding a published job is the only public-facing change it
 makes. Published jobs are rechecked every 3 days, pending and rejected jobs weekly
 (`publishedRecheckDays` and `recheckDays` in the request body). Each call checks
 the least recently checked jobs first and is gentle on the sites (two requests
 at a time with a short pause), so a large backlog takes a while.
 
-Known gap: some Workday sites return 403 to the check, so those jobs stay
-`unknown`.
+A job whose link was `unknown` is tried again after a day rather than waiting for
+the full weekly window.
 
 ---
 

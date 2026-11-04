@@ -155,7 +155,7 @@ Get these from: [Supabase Dashboard](https://supabase.com/dashboard/project/vbek
 1. Nightly import inserts job → approval_status='pending', is_published=false
    (a database trigger forces this; the code cannot publish)
 2. Link check deletes it if the posting is dead or closed
-3. Admin reviews the queue (sorted by AI relevance score) → approved / rejected
+3. Admin reviews the queue (sorted by AI verdict) → approved / rejected
 4. Job visible on /jobs until its application_deadline, then hidden by the
    database and deleted by the nightly purge. Rejected imports are deleted 30
    days after rejection.

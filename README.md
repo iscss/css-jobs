@@ -229,9 +229,9 @@ sources -> fetch -> clean up -> remove repeats -> keyword pre-filter -> AI score
 3. **Clean up.** HTML is stripped, fields are trimmed to the database limits, job type and posting date are parsed, and stale or malformed listings are skipped.
 4. **Remove repeats.** By title + institution hash, and by `source_url`, before any paid scoring.
 5. **Keyword pre-filter.** A short disqualifier list (clinical, lab, marketing and similar roles) scores obvious non-CSS jobs 0 for free, so they skip the model.
-6. **AI score.** The Anthropic Haiku model reads each remaining posting and returns a 0-1 CSS relevance score, a one-sentence reason (shown as "AI: ..." in the admin tooltip), and the application closing date if the posting states one. If the API is unavailable, the job keeps its keyword score and ingestion continues.
+6. **AI verdict.** The Anthropic Haiku model reads each remaining posting and returns a verdict (accept, borderline or reject, no numeric score), a one-sentence reason (shown as "AI: ..." in the admin tooltip), and the application closing date if the posting states one. If the API is unavailable, the job keeps its keyword check, has no verdict, and ingestion continues.
 7. **Insert as pending.** The `trg_imported_jobs_pending` trigger forces every imported job to `pending` and unpublished, so a bug in the code cannot publish anything.
-8. **Admin review.** The `/admin` queue is sorted by score. Scores only order the queue.
+8. **Admin review.** The `/admin` queue is sorted by verdict (accept first, then borderline). The verdict only orders and files the queue; an admin approves every job.
 
 ### Safety guarantee
 
