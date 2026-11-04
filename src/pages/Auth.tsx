@@ -1,3 +1,4 @@
+import { isExistingAccountResponse } from '@/lib/signup';
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -109,7 +110,7 @@ const Auth = () => {
         const sanitizedWebsite = websiteUrl ? sanitizeUrl(websiteUrl) : null;
 
         // Pass all user data in signup metadata so the trigger can handle it properly
-        ({ error } = await supabase.auth.signUp({
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email: sanitizedEmail,
           password,
           options: {
@@ -121,8 +122,21 @@ const Auth = () => {
               website_url: sanitizedWebsite
             }
           }
-        }));
-        
+        });
+        error = signUpError;
+
+        // Second line of defence after the check above: Supabase reports an
+        // existing account as a success that creates nothing.
+        if (!error && isExistingAccountResponse(signUpData.user)) {
+          toast({
+            title: "Email already registered",
+            description: "An account with this email already exists. Please sign in instead.",
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
+
         if (!error) {
 
           toast({
