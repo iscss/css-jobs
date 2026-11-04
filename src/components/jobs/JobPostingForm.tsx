@@ -1,3 +1,4 @@
+import { APPLY_METHOD_MESSAGE, hasApplyMethod } from '@/lib/applyMethod';
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
@@ -129,6 +130,19 @@ const JobPostingForm = () => {
       // Focus and scroll to job type field
       jobTypeRef.current?.focus();
       jobTypeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
+    // A job that is submitted or published must say how to apply. A draft may
+    // be saved without it.
+    if (!isDraft && !hasApplyMethod(data)) {
+      toast({
+        title: "How to apply is required",
+        description: APPLY_METHOD_MESSAGE,
+        variant: "destructive",
+      });
+      setFocus('application_url');
+      document.getElementById('application_url')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
 
@@ -564,6 +578,9 @@ const JobPostingForm = () => {
 
               <div className="space-y-2">
                 <Label htmlFor="application_url">Application URL</Label>
+                <p className="text-xs text-gray-500">
+                  Give an application URL, a contact email, or both. One of them is required to submit.
+                </p>
                 <Input
                   id="application_url"
                   type="url"
