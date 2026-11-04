@@ -7,12 +7,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { sanitizeInput, sanitizeEmail, sanitizeUrl } from '@/lib/sanitize';
-import { UserCheck, Briefcase, Users, Globe, GraduationCap, Check, X, AlertCircle } from 'lucide-react';
+import { Users, Globe, GraduationCap, Check, X, AlertCircle } from 'lucide-react';
 import Header from '@/components/layout/Header';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
@@ -41,7 +40,8 @@ const Auth = () => {
   const [fullName, setFullName] = useState('');
   const [googleScholarUrl, setGoogleScholarUrl] = useState('');
   const [websiteUrl, setWebsiteUrl] = useState('');
-  const [userType, setUserType] = useState('job_seeker');
+  // Sign-up is for people who post jobs. Job seekers never need an account.
+  const userType = 'job_poster';
   const [loading, setLoading] = useState(false);
   const { signUp, signIn, user } = useAuth();
   const navigate = useNavigate();
@@ -129,9 +129,7 @@ const Auth = () => {
 
           toast({
             title: "Account created successfully!",
-            description: userType === 'job_seeker'
-              ? "Welcome! Please check your email to verify your account, then you can browse and save job positions."
-              : "Your account has been created. Please verify your email and wait for admin approval for job posting privileges.",
+            description: "Your account has been created. Please verify your email and wait for admin approval for job posting privileges.",
           });
 
           // Redirect user after successful signup
@@ -199,7 +197,7 @@ const Auth = () => {
             </CardTitle>
             <CardDescription className="text-center">
               {isSignUp
-                ? 'Join the CSS Jobs community'
+                ? 'Create an account to post jobs on CSS Jobs'
                 : 'Welcome back to CSS Jobs'
               }
             </CardDescription>
@@ -248,40 +246,13 @@ const Auth = () => {
                     />
                   </div>
 
-                  <div className="space-y-3">
-                    <Label>I am here to:</Label>
-                    <RadioGroup value={userType} onValueChange={setUserType}>
-                      <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 transition-colors">
-                        <RadioGroupItem value="job_seeker" id="job_seeker" />
-                        <Label htmlFor="job_seeker" className="flex items-center gap-2 cursor-pointer flex-1">
-                          <UserCheck className="w-4 h-4 text-brand-navy" />
-                          <div>
-                            <div className="font-medium">Look for jobs</div>
-                            <div className="text-sm text-gray-500">Browse and apply to research positions</div>
-                          </div>
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 transition-colors">
-                        <RadioGroupItem value="job_poster" id="job_poster" />
-                        <Label htmlFor="job_poster" className="flex items-center gap-2 cursor-pointer flex-1">
-                          <Briefcase className="w-4 h-4 text-green-600" />
-                          <div>
-                            <div className="font-medium">Post jobs</div>
-                            <div className="text-sm text-gray-500">Requires admin approval</div>
-                          </div>
-                        </Label>
-                      </div>
-                    </RadioGroup>
-                  </div>
-
-                  {userType === 'job_poster' && (
-                    <Alert className="border-brand-surface-2 bg-brand-surface">
-                      <AlertCircle className="h-4 w-4 text-brand-navy" />
-                      <AlertDescription className="text-brand-navy text-sm">
-                        Institution/University emails will be automatically accepted. If you do not have a University affiliated email address, please note that it will need to go through manual review and approval.
-                      </AlertDescription>
-                    </Alert>
-                  )}
+                  <Alert className="border-brand-surface-2 bg-brand-surface">
+                    <AlertCircle className="h-4 w-4 text-brand-navy" />
+                    <AlertDescription className="text-brand-navy text-sm">
+                      Accounts are for people who post jobs. You don't need an account to browse or apply for jobs.
+                      Institution/University emails will be automatically accepted. If you do not have a University affiliated email address, please note that it will need to go through manual review and approval.
+                    </AlertDescription>
+                  </Alert>
                 </>
               )}
 
