@@ -228,6 +228,27 @@ async function fetchWithRetry(
   return fetchFn(url, init);
 }
 
+export type LinkAction = 'delete' | 'hide' | 'record';
+
+/**
+ * What the link check does with a job whose page was checked.
+ *  - Not gone: only record the result.
+ *  - Published and gone: hide it (reversible; the purge deletes it 3 days later).
+ *  - Imported, pending or rejected, and gone: delete it. Nobody posted it.
+ *  - A person's own submission that is gone: keep it and record the result. A typo
+ *    in the link or a page that is not live yet should not make a posting vanish
+ *    without the poster or an admin knowing.
+ */
+export function linkCheckAction(
+  job: { approval_status: string | null; is_auto_imported: boolean | null },
+  status: LinkStatus,
+): LinkAction {
+  if (status !== 'dead' && status !== 'closed') return 'record';
+  if (job.approval_status === 'approved') return 'hide';
+  const queued = job.approval_status === 'pending' || job.approval_status === 'rejected';
+  return queued && job.is_auto_imported === true ? 'delete' : 'record';
+}
+
 export async function checkListing(
   url: string,
   fetchFn: FetchFn = fetch as unknown as FetchFn,

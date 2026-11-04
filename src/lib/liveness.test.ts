@@ -5,6 +5,7 @@ import {
   classifyWorkday,
   workdayJsonUrl,
   workdaySearchTarget,
+  linkCheckAction,
 } from '../../supabase/functions/_shared/liveness';
 
 const now = new Date('2026-10-26T00:00:00Z');
@@ -209,5 +210,35 @@ describe('checkListing: Workday 403 and rate limits', () => {
     const r = await pending;
     vi.useRealTimers();
     expect(r.status).toBe('unknown');
+  });
+});
+
+describe('linkCheckAction', () => {
+  const imported = { is_auto_imported: true };
+  const byPerson = { is_auto_imported: false };
+
+  it.each(['dead', 'closed'] as const)('deletes an imported pending or rejected job that is %s', (status) => {
+    expect(linkCheckAction({ approval_status: 'pending', ...imported }, status)).toBe('delete');
+    expect(linkCheckAction({ approval_status: 'rejected', ...imported }, status)).toBe('delete');
+  });
+
+  it.each(['dead', 'closed'] as const)('keeps a person\'s own pending or rejected submission that is %s', (status) => {
+    expect(linkCheckAction({ approval_status: 'pending', ...byPerson }, status)).toBe('record');
+    expect(linkCheckAction({ approval_status: 'rejected', ...byPerson }, status)).toBe('record');
+    expect(linkCheckAction({ approval_status: 'draft', ...byPerson }, status)).toBe('record');
+  });
+
+  it.each(['dead', 'closed'] as const)('hides a published job that is %s, whoever posted it', (status) => {
+    expect(linkCheckAction({ approval_status: 'approved', ...imported }, status)).toBe('hide');
+    expect(linkCheckAction({ approval_status: 'approved', ...byPerson }, status)).toBe('hide');
+  });
+
+  it.each(['live', 'unknown'] as const)('only records a %s result', (status) => {
+    expect(linkCheckAction({ approval_status: 'pending', ...imported }, status)).toBe('record');
+    expect(linkCheckAction({ approval_status: 'approved', ...imported }, status)).toBe('record');
+  });
+
+  it('treats a missing flag as not imported', () => {
+    expect(linkCheckAction({ approval_status: 'pending', is_auto_imported: null }, 'dead')).toBe('record');
   });
 });

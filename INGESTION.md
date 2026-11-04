@@ -465,7 +465,7 @@ for hand-posted jobs) and classifies each one:
 | Result | Meaning | Action |
 |--------|---------|--------|
 | `live` | Page loads and looks open | Nothing |
-| `dead` | HTTP 404/410, or a redirect to the site's homepage | Pending or rejected: deleted. Published: hidden (`job_status = 'filled'`), deleted after 3 days |
+| `dead` | HTTP 404/410, or a redirect to the site's homepage | Imported pending or rejected: deleted. A person's own submission: kept, result recorded. Published: hidden (`job_status = 'filled'`), deleted after 3 days |
 | `closed` | A past `validThrough` date, a visible "listing has expired" notice, a passed `application_deadline`, or a Workday posting with applications closed | Same as dead |
 | `unknown` | Blocked (403/429), server error, or timeout | **Never acted on** |
 
@@ -539,6 +539,7 @@ admin Edit job, and the security trigger on profile columns.
 | `20260812000000_seed_job_sources` | The CoMSES and Workday sources (CMU left out); safe to run twice |
 | `20260813000000_structured_job_content` | `structured`, `structured_at`, `structure_failed_at`, the reset trigger, the 15-minute organiser cron and `structure_job_now()` for admins |
 | `20260814000000_clean_comses_html` | One-time clean-up of CoMSES descriptions that still hold HTML tags |
+| `20260815000000_close_profile_email_leak` | Drops the policy that let anyone read every profile (emails included); adds `email_is_registered()` for the sign-up form |
 
 The migrations were applied to production with `psql`; see `README.md`.
 

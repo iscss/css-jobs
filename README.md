@@ -289,7 +289,7 @@ Posting text comes from third parties, so the scoring prompt treats it as data a
 - **Closing date.** When a posting states one, it is stored in `application_deadline`. The public read rule hides a job after that date (a job stays visible through the deadline day, UTC), with no polling.
 - **Nightly purge.** `purge_expired_jobs()` runs at 00:05 UTC and deletes jobs past their deadline (published or not), hidden dead or closed jobs after 3 days, and **auto-imported jobs that have been rejected for more than 30 days** (the clock is `rejected_at`, set when a job is rejected and cleared if it is approved). Jobs a person posted and an admin rejected are kept.
 - **Link check.** `check-listings` visits each job's link (`source_url`, or `application_url` for hand-posted jobs). It treats HTTP 404/410, a redirect to the site's homepage, a visible "listing has expired" notice, a past `validThrough` date, or a Workday posting that can no longer be applied to as gone. A blocked or timed-out request is "unknown" and never acted on.
-  - Pending and rejected jobs found gone are deleted.
+  - Imported pending and rejected jobs found gone are deleted. A job a person posted is never deleted by the link check: the result is recorded on the job so an admin can see it.
   - Published jobs found gone are hidden at once (`job_status = 'filled'`) and deleted by the purge 3 days later, which leaves time for an admin to reactivate one that was flagged by mistake.
   - Published jobs are rechecked every 3 days, pending and rejected jobs weekly. A `pg_cron` entry (`check-listings`, every 2 hours) calls the function in small batches, least recently checked first, using the same `ingestion_settings` as the nightly import. You can also run it by hand (below).
 
@@ -317,7 +317,7 @@ curl -s -X POST http://127.0.0.1:54321/functions/v1/check-listings \
 Done for production (`ukkqeczgommifgecyrez`) on 2026-11-04. To repeat it, or set up
 another project:
 
-1. **Apply the migrations** with `psql` (not `db push`; see [Deployment](#deployment)). These change the live database, so review them first. Files `20260803000000` to `20260814000000`, in order.
+1. **Apply the migrations** with `psql` (not `db push`; see [Deployment](#deployment)). These change the live database, so review them first. Files `20260803000000` to `20260815000000`, in order.
 2. **Deploy the functions** (see [Edge Functions](#edge-functions)).
 3. **Set the secrets:** `ANTHROPIC_API_KEY`, and a `SCHEDULER_SECRET` made with `openssl rand -hex 32`. Make the Anthropic key from an ISCSS-owned Console account, with a spend limit, and keep a separate key for development.
 4. **Tell the scheduler where to call.** Put the same `SCHEDULER_SECRET` value in `ingestion_settings`:
@@ -414,6 +414,7 @@ Note: basic account emails (signup confirmation, password reset) already work �
 - **Content Security Policy** headers in `vercel.json` and `vite.config.ts`
 - **Edge function security** — JWT verification, admin-only, self-deletion prevention, CORS origin checks
 - **Ingestion endpoints** — `ingest-jobs`, `check-listings`, `rescore-jobs` and `structure-jobs` accept only the service role key or `SCHEDULER_SECRET`, compared in constant time and never under 32 characters (the anon key is rejected); imported jobs are forced to `pending` by a database trigger
+- **Profiles are private** — the public API returns no profile rows to anonymous visitors (migration `20260815000000` dropped a `USING (true)` policy that exposed every user's email, name and admin flag). The sign-up form asks `email_is_registered(email)`, which answers yes or no for one address. A signed-in user reads only their own profile; admins read all
 - **Privilege columns** — a trigger stops non-admins changing `is_admin`, `is_approved_poster`, `can_publish_directly` and `approved_jobs_count`, including by deleting and re-inserting their own profile
 - **Organised job text** — the AI never writes text shown to applicants: every quote is checked against the original posting, links must be `http(s)`, and the stored JSON is validated before the page shows it
 - **Secrets** — `ANTHROPIC_API_KEY` is a Supabase secret; `supabase/functions/.env` is gitignored

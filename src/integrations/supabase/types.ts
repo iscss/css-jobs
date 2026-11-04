@@ -661,6 +661,7 @@ export type Database = {
         }[]
       }
       increment_approved_jobs_count: { Args: { user_id: string }; Returns: undefined }
+      email_is_registered: { Args: { p_email: string }; Returns: boolean }
       is_admin: { Args: { user_id?: string }; Returns: boolean }
       structure_job_now: { Args: { p_job_id: string }; Returns: number }
       job_matches_alert: {

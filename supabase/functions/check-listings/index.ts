@@ -2,9 +2,10 @@
 //
 // Re-checks stored jobs' source links and takes dead or closed postings out of
 // the review queue and off the public board.
-//   - Pending and rejected jobs that are dead or closed are deleted: a closed
-//     posting has no value to keep, and feeds only list open roles so it will
-//     not come back.
+//   - Imported pending and rejected jobs that are dead or closed are deleted: a
+//     closed posting has no value to keep, and feeds only list open roles so it
+//     will not come back. A job a person posted is never deleted here: the
+//     result is recorded on it so an admin can see it (see linkCheckAction).
 //   - Published jobs that are dead, closed, or past their stated deadline are
 //     set to job_status 'filled'. The public board only shows 'active' jobs,
 //     so they disappear from it at once. They are NOT deleted here: the
@@ -26,7 +27,7 @@
 // until "remaining" is 0.
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.2';
-import { checkListing, type LinkStatus } from '../_shared/liveness.ts';
+import { checkListing, linkCheckAction, type LinkStatus } from '../_shared/liveness.ts';
 import { mapWithConcurrency } from '../_shared/llm.ts';
 import { isAuthorized } from '../_shared/auth.ts';
 
@@ -97,7 +98,7 @@ Deno.serve(async (req) => {
         );
 
   const columns =
-    'id, title, source_url, application_url, application_deadline, approval_status';
+    'id, title, source_url, application_url, application_deadline, approval_status, is_auto_imported';
   const fetchDue = async (kind: Kind, n: number) => {
     if (n <= 0) return [];
     const { data, error } = await due(
@@ -168,13 +169,13 @@ Deno.serve(async (req) => {
     }
 
     if (!dryRun) {
-      const gone = result.status === 'dead' || result.status === 'closed';
-      if (gone && (job.approval_status === 'pending' || job.approval_status === 'rejected')) {
+      const action = linkCheckAction(job, result.status);
+      if (action === 'delete') {
         const { error: deleteError } = await supabase.from('jobs').delete()
           .eq('id', job.id).eq('approval_status', job.approval_status);
         if (deleteError) errors.push(`${job.title}: ${deleteError.message}`);
         else deleted++;
-      } else if (gone && job.approval_status === 'approved') {
+      } else if (action === 'hide') {
         const { error: updateError } = await supabase.from('jobs').update({
           job_status: 'filled',
           status_updated_at: new Date().toISOString(),
