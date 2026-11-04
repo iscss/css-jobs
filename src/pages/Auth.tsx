@@ -87,14 +87,12 @@ const Auth = () => {
     try {
       let error;
       if (isSignUp) {
-        // Check if email already exists
-        const { data: existingUser } = await supabase
-          .from('user_profiles')
-          .select('email')
-          .eq('email', email)
-          .single();
+        // Check if email already exists. This is a yes/no function: the profiles
+        // table is not readable without signing in.
+        const { data: alreadyRegistered } = await supabase
+          .rpc('email_is_registered', { p_email: email });
 
-        if (existingUser) {
+        if (alreadyRegistered) {
           toast({
             title: "Email already registered",
             description: "An account with this email already exists. Please sign in instead.",
