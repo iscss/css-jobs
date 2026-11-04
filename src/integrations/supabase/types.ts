@@ -250,6 +250,9 @@ export type Database = {
           posted_by: string
           relevance_reasoning: string | null
           relevance_verdict: string | null
+          structure_failed_at: string | null
+          structured: Json | null
+          structured_at: string | null
           relevance_score: number | null
           link_status: string | null
           link_status_reason: string | null
@@ -297,6 +300,9 @@ export type Database = {
           posted_by: string
           relevance_reasoning?: string | null
           relevance_verdict?: string | null
+          structure_failed_at?: string | null
+          structured?: Json | null
+          structured_at?: string | null
           relevance_score?: number | null
           link_status?: string | null
           link_status_reason?: string | null
@@ -344,6 +350,9 @@ export type Database = {
           posted_by?: string
           relevance_reasoning?: string | null
           relevance_verdict?: string | null
+          structure_failed_at?: string | null
+          structured?: Json | null
+          structured_at?: string | null
           relevance_score?: number | null
           link_status?: string | null
           link_status_reason?: string | null
@@ -653,6 +662,7 @@ export type Database = {
       }
       increment_approved_jobs_count: { Args: { user_id: string }; Returns: undefined }
       is_admin: { Args: { user_id?: string }; Returns: boolean }
+      structure_job_now: { Args: { p_job_id: string }; Returns: number }
       job_matches_alert: {
         Args: {
           alert_row: Database["public"]["Tables"]["job_alerts"]["Row"]
