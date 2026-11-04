@@ -333,6 +333,37 @@ ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
 5. **First import**, one source at a time with the AI off, then the link check, then the AI vetting (hard checks before the AI): call `ingest-jobs` with `{"source": "<slug>", "llm": false}` for each source, `check-listings` until `remaining` is 0, then `rescore-jobs` in pages until `next` is null. A single call over all sources can hit the function time limit.
 6. **Check the schedule really ran.** The `pg_cron` log only says the SQL ran. Look for new rows in `scrape_runs` after 03:00 UTC, and for the `structure-jobs` and `check-listings` effects.
 
+### Operating production
+
+**Routine checks** (run in the Supabase SQL Editor; the `pg_cron` log only shows that the SQL ran, so look at what it produced):
+
+```sql
+-- Did the nightly import run? (rows after 03:00 UTC; jobRxiv errors with 403)
+select source_slug, status, inserted_count, started_at from scrape_runs order by started_at desc limit 12;
+-- Are the schedules active, and when did each last run?
+select j.jobname, j.schedule, j.active,
+       (select max(d.start_time) from cron.job_run_details d where d.jobid = j.jobid) as last_run
+from cron.job j order by 1;
+-- Is the organiser keeping up?
+select count(*) filter (where structured_at is not null) as organised,
+       count(*) filter (where structure_failed_at is not null) as failed from jobs
+where is_published and approval_status = 'approved';
+-- What the scheduler's web calls returned (200 is good; 401 means a key mismatch)
+select status_code, count(*) from net._http_response where created > now() - interval '24 hours' group by 1;
+```
+
+**Pause or resume a schedule:** `update cron.job set active = false where jobname = 'ingest-jobs-daily';` (also `check-listings`, `purge-expired-jobs`, `structure-jobs`). Set it back to `true` to resume.
+
+**Rotate the scheduler secret:** make a new value with `openssl rand -hex 32`, then set it in both places in one sitting: `supabase secrets set SCHEDULER_SECRET=<new>` and `update ingestion_settings set value = '<new>' where key = 'service_role_key';`. Test with a dry run (see Production setup, step 4). Between the two changes the scheduled calls get 401, which is harmless.
+
+**Rotate the Anthropic key:** create a new key in the Console, run `supabase secrets set ANTHROPIC_API_KEY=<new>`, then delete the old key. Never paste a key into chat, issues or commits.
+
+**If something looks wrong:**
+- No new `scrape_runs` rows: check `net._http_response` for 401 (secret mismatch) or errors, and that `ingestion_settings` has both rows.
+- Jobs imported with no verdict: the AI call failed (key or credits). Fix it, then run `rescore-jobs`.
+- A job shows no organised sections: it may be too new (the sweep runs every 15 minutes) or have `structure_failed_at` set (it retries after 6 hours). Use **Organise now** in Job Management.
+- A good job was removed by the link check: published jobs are hidden for 3 days before deletion, so reactivate it in Job Management.
+
 ### Tests and cost
 
 - `npx vitest run` covers the pure logic (feed parsing, normalization, scoring parser, deadline handling, link classification) with the network mocked.

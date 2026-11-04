@@ -1,5 +1,13 @@
 # Demo Script — Automated Job Ingestion
 
+> **Status note (November 2026):** this script was written before the production
+> launch. Production has been live since 2026-11-04 (see `README.md`, "Production
+> setup" and "Operating production"). The AI no longer gives a numeric score: it
+> gives a verdict (accept, borderline or reject) and a one-sentence reason, so the
+> lines below about percentages and scores are out of date. The "what isn't built
+> yet" list has been updated. Use this as a rehearsal script on a local copy, not
+> as a description of production.
+
 **Runtime:** ~8 minutes. **Setup:** ~5 minutes before anyone is watching.
 
 The one thing to land: *jobs arrive automatically, bad ones are filtered out
@@ -307,19 +315,19 @@ Stop sharing, or switch back to the admin queue as a backdrop.
 
 **What works now:**
 - Automatic import from jobRxiv, CoMSES Net and several university career sites
-  (Workday), deduplicated, with an AI relevance score and a plain-language reason
+  (Workday), deduplicated, with an AI verdict and a plain-language reason
 - Dead and closed postings are found and removed automatically
 - Closing dates are stored, and jobs leave the public site on their own date
 - Human approval enforced by the database, not just the interface
 - New sources can be added with a single database row if an adapter fits
 
 **What isn't built yet:**
-- Nothing is deployed to production; this is all running on my laptop
-- (Scheduling is built for the import, the link check and the cleanup, but
-  none of it runs until it is deployed.)
-- About 80 university jobs can't be link-checked because their sites block the
-  checker; they stay in the queue, unverified
+- jobRxiv, the largest source, refuses requests from the production servers
+  (HTTP 403), so it is not imported there yet
+- Carnegie Mellon's job search returns an error, so it is left out
 - Most postings state no closing date, so those rely on the link check
+- (Production is deployed and scheduled: import, link check, cleanup and the
+  job organiser all run on their own. This script describes the original demo.)
 
 **On sources — be straight about this:**
 > "I checked several. jobRxiv, CoMSES and the Workday university sites work well.
