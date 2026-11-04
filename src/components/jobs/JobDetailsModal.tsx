@@ -77,7 +77,7 @@ const JobDetailsModal = ({ job, isOpen, onClose }: JobDetailsModalProps) => {
 
           {/* Job Type and Tags */}
           <div className="flex flex-wrap gap-2">
-            <Badge variant="default" className="bg-indigo-100 text-indigo-800">
+            <Badge variant="default" className="bg-brand-surface-2 text-brand-navy">
               {job.job_type}
             </Badge>
             {job.job_tags.map((tag) => (
@@ -165,7 +165,7 @@ const JobDetailsModal = ({ job, isOpen, onClose }: JobDetailsModalProps) => {
                     <p className="font-medium text-gray-900">Contact Email</p>
                     <a 
                       href={`mailto:${job.contact_email}`}
-                      className="text-indigo-600 hover:text-indigo-800 transition-colors"
+                      className="text-brand-navy hover:text-brand-navy transition-colors"
                     >
                       {job.contact_email}
                     </a>

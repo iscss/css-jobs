@@ -45,3 +45,6 @@ running_notes.md
 *_notes.md
 TODO.md
 .notes/
+
+# Supabase CLI local state
+supabase/.branches/

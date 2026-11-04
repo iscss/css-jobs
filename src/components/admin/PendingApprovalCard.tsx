@@ -39,7 +39,7 @@ const PendingApprovalCard = ({ profile }: PendingApprovalCardProps) => {
   const getUserTypeColor = (type: string) => {
     switch (type) {
       case 'job_poster': return 'bg-green-100 text-green-800';
-      case 'job_seeker': return 'bg-blue-100 text-blue-800';
+      case 'job_seeker': return 'bg-brand-surface-2 text-brand-navy';
       default: return 'bg-gray-100 text-gray-800';
     }
   };

@@ -187,15 +187,15 @@ const MyJobPosts = () => {
               disabled={isRefreshing}
               className={`
                 relative overflow-hidden px-4 py-2
-                bg-gradient-to-r from-blue-500 to-cyan-600
-                hover:from-blue-600 hover:to-cyan-700
+                bg-brand-navy
+                hover:bg-brand-navy/90
                 text-white text-sm font-medium rounded-lg
                 shadow-md hover:shadow-lg
                 transform transition-all duration-300
                 hover:scale-105 hover:-translate-y-0.5
                 disabled:opacity-70 disabled:cursor-not-allowed
                 disabled:transform-none
-                ${isRefreshing ? 'animate-pulse shadow-blue-500/30' : ''}
+                ${isRefreshing ? 'animate-pulse shadow-brand-navy/30' : ''}
               `}
             >
               <div className="flex items-center gap-2 relative z-10">
@@ -213,8 +213,8 @@ const MyJobPosts = () => {
               {/* Cool animated effects for profile refresh */}
               {isRefreshing && (
                 <>
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 to-cyan-500/20 animate-pulse" />
-                  <div className="absolute -inset-0.5 bg-blue-500/10 rounded-lg blur animate-pulse" />
+                  <div className="absolute inset-0 bg-brand-surface-2 animate-pulse" />
+                  <div className="absolute -inset-0.5 bg-brand-navy/10 rounded-lg blur animate-pulse" />
                 </>
               )}
             </Button>
@@ -295,7 +295,7 @@ const MyJobPosts = () => {
                           );
                         } else {
                           return (
-                            <Badge variant="outline" className="border-blue-300 text-blue-700 bg-blue-50">
+                            <Badge variant="outline" className="border-brand-navy/30 text-brand-navy bg-brand-surface">
                               <Eye className="w-3 h-3 mr-1" />
                               Active
                             </Badge>
@@ -404,7 +404,7 @@ const MyJobPosts = () => {
                                       <DropdownMenuItem
                                         onClick={() => handlePublishOrSubmit(job as Job)}
                                         disabled={retractJob.isPending}
-                                        className="cursor-pointer text-blue-600 focus:text-blue-600"
+                                        className="cursor-pointer text-brand-navy focus:text-brand-navy"
                                       >
                                         <Eye className="w-4 h-4 mr-2" />
                                         {approvalStatus === 'rejected' ? 'Resubmit Job' : 'Publish Job'}
@@ -413,7 +413,7 @@ const MyJobPosts = () => {
                                       <DropdownMenuItem
                                         onClick={() => handlePublishOrSubmit(job as Job)}
                                         disabled={retractJob.isPending}
-                                        className="cursor-pointer text-blue-600 focus:text-blue-600"
+                                        className="cursor-pointer text-brand-navy focus:text-brand-navy"
                                       >
                                         <Send className="w-4 h-4 mr-2" />
                                         {approvalStatus === 'rejected' ? 'Resubmit for Approval' : 'Submit for Approval'}

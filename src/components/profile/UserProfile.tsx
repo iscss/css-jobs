@@ -210,7 +210,7 @@ const UserProfile = () => {
                 <div className="flex items-center space-x-3 p-3 border rounded-lg hover:bg-gray-50 transition-colors">
                   <RadioGroupItem value="job_seeker" id="job_seeker_profile" />
                   <Label htmlFor="job_seeker_profile" className="flex items-center gap-2 cursor-pointer flex-1">
-                    <UserCheck className="w-4 h-4 text-blue-600" />
+                    <UserCheck className="w-4 h-4 text-brand-navy" />
                     <div>
                       <div className="font-medium">Job Seeker</div>
                       <div className="text-sm text-gray-500">Browse and apply to research positions</div>
@@ -230,18 +230,18 @@ const UserProfile = () => {
               </RadioGroup>
             </div>
 
-            <div className="bg-blue-50 p-4 rounded-lg space-y-3">
-              <h3 className="font-semibold text-blue-900 mb-2">Account Information</h3>
+            <div className="bg-brand-surface p-4 rounded-lg space-y-3">
+              <h3 className="font-semibold text-brand-navy mb-2">Account Information</h3>
               <div className="space-y-2 text-sm">
-                <p className="text-blue-800">
+                <p className="text-brand-navy">
                   <span className="font-medium">Email:</span> {user?.email}
                 </p>
                 <div className="flex items-center gap-2">
-                  <span className="font-medium text-blue-800">Status:</span>
+                  <span className="font-medium text-brand-navy">Status:</span>
                   {getApprovalStatusBadge()}
                 </div>
                 {profile?.user_type !== 'job_seeker' && profile?.approval_status === 'pending' && (
-                  <p className="text-blue-600 mt-2">
+                  <p className="text-brand-navy mt-2">
                     Your request for job posting privileges is pending admin approval. You'll be notified once reviewed.
                   </p>
                 )}

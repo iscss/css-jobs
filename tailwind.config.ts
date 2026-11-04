@@ -64,6 +64,15 @@ export default {
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
 				},
+				brand: {
+					navy: 'hsl(var(--brand-navy))',
+					gold: 'hsl(var(--brand-gold))',
+					teal: 'hsl(var(--brand-teal))',
+					'teal-dark': 'hsl(var(--brand-teal-dark))',
+					'teal-tint': 'hsl(var(--brand-teal-tint))',
+					surface: 'hsl(var(--brand-surface))',
+					'surface-2': 'hsl(var(--brand-surface-2))'
+				},
 				// Modern color palette
 				slate: {
 					50: '#f8fafc',

@@ -32,12 +32,12 @@ const JobCard = ({ job }: JobCardProps) => {
 
   const getTypeColor = (type: string) => {
     switch (type.toLowerCase()) {
-      case 'phd': return 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-blue-200';
-      case 'postdoc': return 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-emerald-200';
-      case 'faculty': return 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-purple-200';
-      case 'ra': return 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-orange-200';
-      case 'internship': return 'bg-gradient-to-r from-pink-500 to-pink-600 text-white shadow-pink-200';
-      default: return 'bg-gradient-to-r from-slate-500 to-slate-600 text-white shadow-slate-200';
+      case 'phd': return 'bg-brand-navy text-white';
+      case 'postdoc': return 'bg-brand-teal-dark text-white';
+      case 'faculty': return 'bg-brand-gold text-brand-navy';
+      case 'ra': return 'bg-slate-600 text-white';
+      case 'internship': return 'bg-brand-teal text-white';
+      default: return 'bg-slate-500 text-white';
     }
   };
 
@@ -80,7 +80,7 @@ const JobCard = ({ job }: JobCardProps) => {
       )}
 
       {/* Decorative gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-indigo-50/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+      <div className="absolute inset-0 bg-brand-surface/40 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
 
       <CardHeader className="pb-4 relative">
         <div className="flex items-start justify-between">
@@ -96,13 +96,13 @@ const JobCard = ({ job }: JobCardProps) => {
                 </Badge>
               )}
             </div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-4 hover:text-indigo-600 transition-colors cursor-pointer leading-tight">
+            <h3 className="text-2xl font-bold text-gray-900 mb-4 hover:text-brand-navy transition-colors cursor-pointer leading-tight">
               {job.title}
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600 mb-4">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-indigo-100 rounded-lg">
-                  <Building className="h-4 w-4 text-indigo-600" />
+                <div className="p-2 bg-brand-surface-2 rounded-lg">
+                  <Building className="h-4 w-4 text-brand-navy" />
                 </div>
                 <div>
                   <div className="font-semibold text-gray-900">{job.institution}</div>
@@ -125,8 +125,8 @@ const JobCard = ({ job }: JobCardProps) => {
               )}
               {job.pi_name && (
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-purple-100 rounded-lg">
-                    <User className="h-4 w-4 text-purple-600" />
+                  <div className="p-2 bg-brand-surface-2 rounded-lg">
+                    <User className="h-4 w-4 text-brand-navy" />
                   </div>
                   <span className="text-gray-700"><span className="font-medium">PI:</span> {job.pi_name}</span>
                 </div>
@@ -140,8 +140,8 @@ const JobCard = ({ job }: JobCardProps) => {
         {/* Description */}
         <div className="bg-gradient-to-br from-slate-50 via-white to-gray-50 rounded-xl p-6 border border-gray-100 shadow-sm">
           <h4 className="font-bold text-gray-900 mb-3 flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <FileText className="h-4 w-4 text-blue-600" />
+            <div className="p-2 bg-brand-surface-2 rounded-lg">
+              <FileText className="h-4 w-4 text-brand-navy" />
             </div>
             Position Description
           </h4>
@@ -150,7 +150,7 @@ const JobCard = ({ job }: JobCardProps) => {
             {job.description.length > 300 && (
               <button
                 onClick={() => setShowFullDescription(!showFullDescription)}
-                className="text-indigo-600 hover:text-indigo-800 ml-2 font-semibold transition-colors underline"
+                className="text-brand-navy hover:text-brand-navy ml-2 font-semibold transition-colors underline"
               >
                 {showFullDescription ? "Show less" : "Read more"}
               </button>
@@ -160,10 +160,10 @@ const JobCard = ({ job }: JobCardProps) => {
 
         {/* Requirements */}
         {job.requirements && (
-          <div className="bg-gradient-to-br from-blue-50 via-white to-indigo-50 rounded-xl p-6 border border-blue-100 shadow-sm">
+          <div className="bg-brand-surface rounded-xl p-6 border border-brand-surface-2 shadow-sm">
             <h4 className="font-bold text-gray-900 mb-3 flex items-center gap-3">
-              <div className="p-2 bg-indigo-100 rounded-lg">
-                <User className="h-4 w-4 text-indigo-600" />
+              <div className="p-2 bg-brand-surface-2 rounded-lg">
+                <User className="h-4 w-4 text-brand-navy" />
               </div>
               Requirements & Qualifications
             </h4>
@@ -172,7 +172,7 @@ const JobCard = ({ job }: JobCardProps) => {
               {job.requirements.length > 200 && (
                 <button
                   onClick={() => setShowFullDescription(!showFullDescription)}
-                  className="text-blue-600 hover:text-blue-800 ml-2 font-semibold transition-colors underline"
+                  className="text-brand-navy hover:text-brand-navy ml-2 font-semibold transition-colors underline"
                 >
                   {showFullDescription ? "Show less" : "Read more"}
                 </button>
@@ -219,7 +219,7 @@ const JobCard = ({ job }: JobCardProps) => {
           {(job.application_url || job.contact_email) && (
             <Button 
               onClick={handleApply}
-              className="bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 hover:from-indigo-700 hover:to-purple-700 text-white font-bold px-8 py-3 shadow-xl hover:shadow-2xl transition-all duration-300 flex items-center gap-3"
+              className="bg-brand-navy hover:bg-brand-navy/90 text-white font-bold px-8 py-3 shadow-xl hover:shadow-2xl transition-all duration-300 flex items-center gap-3"
             >
               <ExternalLink className="h-5 w-5" />
               Apply Now

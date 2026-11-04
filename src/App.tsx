@@ -4,7 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
+import LegacyJobsRedirect from "./components/LegacyJobsRedirect";
 import Jobs from "./pages/Jobs";
 import Auth from "./pages/Auth";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -12,7 +12,6 @@ import ResetPassword from "./pages/ResetPassword";
 import PostJob from "./pages/PostJob";
 import Profile from "./pages/Profile";
 import Admin from "./pages/Admin";
-import About from "./pages/About";
 import EmailVerified from "./pages/EmailVerified";
 import Unsubscribe from "./pages/Unsubscribe";
 import NotFound from "./pages/NotFound";
@@ -43,15 +42,14 @@ const AppRoutes = () => {
     <BrowserRouter>
       <EmailVerificationHandler />
       <Routes>
-        <Route path="/" element={<Index />} />
-        <Route path="/jobs" element={<Jobs />} />
+        <Route path="/" element={<Jobs />} />
+        <Route path="/jobs" element={<LegacyJobsRedirect />} />
         <Route path="/auth" element={<Auth />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/post-job" element={<PostJob />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/admin" element={<Admin />} />
-        <Route path="/about" element={<About />} />
         <Route path="/email-verified" element={<EmailVerified />} />
         <Route path="/unsubscribe" element={<Unsubscribe />} />
         <Route path="*" element={<NotFound />} />

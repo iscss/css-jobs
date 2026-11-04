@@ -8,28 +8,28 @@ const StatsSection = () => {
       label: "Job Listings",
       description: "Active opportunities across all career stages",
       icon: TrendingUp,
-      gradient: "from-blue-500 to-cyan-500"
+      gradient: "from-brand-navy to-brand-navy"
     },
     {
       number: "150+",
       label: "Universities",
       description: "Top academic institutions worldwide",
       icon: Building2,
-      gradient: "from-purple-500 to-pink-500"
+      gradient: "from-brand-teal-dark to-brand-teal"
     },
     {
       number: "50+",
       label: "Countries",
       description: "Global reach and opportunities",
       icon: Globe,
-      gradient: "from-green-500 to-emerald-500"
+      gradient: "from-brand-navy to-brand-teal-dark"
     },
     {
       number: "10k+",
       label: "Researchers",
       description: "Active community members",
       icon: Users,
-      gradient: "from-orange-500 to-red-500"
+      gradient: "from-brand-gold to-brand-gold"
     }
   ];
 
@@ -55,7 +55,7 @@ const StatsSection = () => {
                   <div className={`w-16 h-16 bg-gradient-to-r ${stat.gradient} rounded-2xl flex items-center justify-center mx-auto shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-110`}>
                     <IconComponent className="w-8 h-8 text-white" />
                   </div>
-                  <div className="absolute -inset-1 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 rounded-2xl blur opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <div className="absolute -inset-1 bg-brand-surface-2 rounded-2xl blur opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 </div>
                 
                 <div className="text-4xl lg:text-5xl font-bold text-slate-800 mb-2 group-hover:text-gradient-primary transition-all duration-300">

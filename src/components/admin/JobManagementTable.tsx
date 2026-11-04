@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -29,7 +29,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { useAllJobs, useRetractJob, useToggleFeatured, useDeleteJob, useUpdateJobStatus } from '@/hooks/useJobManagement';
+import { useAllJobs, useJobCounts, useRetractJob, useToggleFeatured, useDeleteJob, useUpdateJobStatus } from '@/hooks/useJobManagement';
+import BulkActionBar from '@/components/admin/BulkActionBar';
+import { Checkbox } from '@/components/ui/checkbox';
+import JobManagementFiltersBar, {
+  applyJobFilters,
+  filtersAreDefault,
+  STATUS_LABELS,
+  type JobManagementFilters,
+} from '@/components/admin/JobManagementFilters';
 import { Briefcase, Eye, EyeOff, Star, StarOff, Trash2, MoreHorizontal, User, Building2, Calendar, MapPin, CheckCircle, XCircle, Mail, Send, Pause, RefreshCw } from 'lucide-react';
 import JobDetailsModal from '@/components/jobs/JobDetailsModal';
 import type { Tables } from '@/integrations/supabase/types';
@@ -42,8 +50,39 @@ type Job = Tables<'jobs'> & {
   job_tags: { id: string; tag: string; }[]
 };
 
-const JobManagementTable = () => {
-  const { data: allJobs, isLoading } = useAllJobs();
+interface JobManagementTableProps {
+  filters: JobManagementFilters;
+  onFiltersChange: (filters: JobManagementFilters) => void;
+}
+
+const JobManagementTable = ({ filters, onFiltersChange }: JobManagementTableProps) => {
+  const { data: allJobs, isLoading } = useAllJobs(filters.status);
+  const { data: jobCounts } = useJobCounts();
+  // The status is applied in the query; the rest (search, type, origin,
+  // featured, sort) runs here over the rows already loaded.
+  const visibleJobs = useMemo(
+    () => applyJobFilters((allJobs ?? []) as Job[], filters),
+    [allJobs, filters],
+  );
+
+  // Bulk selection. Only jobs currently shown count, and changing a filter
+  // starts a fresh selection, so a hidden job is never acted on by accident.
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const selectedJobs = useMemo(
+    () => visibleJobs.filter((j) => selectedIds.has(j.id)),
+    [visibleJobs, selectedIds],
+  );
+  const allSelected = visibleJobs.length > 0 && selectedJobs.length === visibleJobs.length;
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [filters]);
+  const toggleJob = (id: string, on: boolean) =>
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (on) next.add(id);
+      else next.delete(id);
+      return next;
+    });
   const retractJob = useRetractJob();
   const toggleFeatured = useToggleFeatured();
   const deleteJob = useDeleteJob();
@@ -56,6 +95,7 @@ const JobManagementTable = () => {
   const [jobToDelete, setJobToDelete] = useState<Job | null>(null);
   const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
   const [approvalAction, setApprovalAction] = useState<{ jobId: string; action: 'approve' | 'reject'; jobTitle: string } | null>(null);
+  const inFlight = useRef<Set<string>>(new Set());
   const [notificationSending, setNotificationSending] = useState<string | null>(null);
 
   const handleRetractJob = (jobId: string, currentStatus: boolean, postedBy: string) => {
@@ -86,19 +126,30 @@ const JobManagementTable = () => {
     setDeleteDialogOpen(true);
   };
 
+  // Approve is a single click. Reject still asks first, since it is the
+  // action that is awkward to undo.
   const handleJobApproval = (jobId: string, action: 'approve' | 'reject', jobTitle: string) => {
-    setApprovalAction({ jobId, action, jobTitle });
+    const next = { jobId, action, jobTitle };
+    if (action === 'approve') {
+      void confirmJobApproval(next);
+      return;
+    }
+    setApprovalAction(next);
     setApprovalDialogOpen(true);
   };
 
-  const confirmJobApproval = async () => {
-    if (!approvalAction) return;
+  const confirmJobApproval = async (pending = approvalAction) => {
+    if (!pending) return;
+    // Ignore a second click while the first is still being processed: the
+    // approve function also bumps the poster's approved-job count.
+    if (inFlight.current.has(pending.jobId)) return;
+    inFlight.current.add(pending.jobId);
 
     try {
-      if (approvalAction.action === 'approve') {
+      if (pending.action === 'approve') {
         // Call our database function to approve job and update user counter
         const { error } = await supabase.rpc('approve_job_and_update_counter', {
-          job_id: approvalAction.jobId,
+          job_id: pending.jobId,
           admin_id: user?.id
         });
 
@@ -117,7 +168,7 @@ const JobManagementTable = () => {
             approved_at: new Date().toISOString(),
             approved_by_admin: user?.id
           })
-          .eq('id', approvalAction.jobId);
+          .eq('id', pending.jobId);
 
         if (error) throw error;
 
@@ -128,7 +179,7 @@ const JobManagementTable = () => {
       }
 
       // Get the job data to find the posted_by user ID
-      const jobToApprove = allJobs?.find(job => job.id === approvalAction.jobId);
+      const jobToApprove = allJobs?.find(job => job.id === pending.jobId);
 
       // Invalidate queries to refresh data
       queryClient.invalidateQueries({ queryKey: ['jobs'] });
@@ -142,11 +193,12 @@ const JobManagementTable = () => {
     } catch (error) {
       console.error('Error processing job approval:', error);
       toast({
-        title: `Error ${approvalAction.action === 'approve' ? 'approving' : 'rejecting'} job`,
-        description: `There was an error ${approvalAction.action === 'approve' ? 'approving' : 'rejecting'} the job. Please try again.`,
+        title: `Error ${pending.action === 'approve' ? 'approving' : 'rejecting'} job`,
+        description: `There was an error ${pending.action === 'approve' ? 'approving' : 'rejecting'} the job. Please try again.`,
         variant: "destructive",
       });
     } finally {
+      inFlight.current.delete(pending.jobId);
       setApprovalDialogOpen(false);
       setApprovalAction(null);
     }
@@ -275,14 +327,37 @@ const JobManagementTable = () => {
       <CardHeader className="pb-6">
         <CardTitle className="flex items-center gap-3 text-xl">
           <Briefcase className="w-6 h-6" />
-          All Job Posts ({allJobs?.length || 0})
+          {filters.status === 'all' ? 'All Job Posts' : `${STATUS_LABELS[filters.status]} Jobs`} ({visibleJobs.length})
         </CardTitle>
       </CardHeader>
+      <CardContent className="pt-0">
+        <JobManagementFiltersBar
+          filters={filters}
+          onChange={onFiltersChange}
+          counts={jobCounts}
+          shown={visibleJobs.length}
+          loaded={allJobs?.length ?? 0}
+        />
+        {(allJobs?.length ?? 0) >= 1000 && (
+          <p className="text-sm text-amber-700 mb-2">
+            Showing the newest 1,000. Narrow the filters to see older jobs.
+          </p>
+        )}
+      </CardContent>
       <CardContent className="p-0">
         <Table>
           <TableHeader>
             <TableRow className="border-b">
-              <TableHead className="pl-6 py-4 font-semibold">Job Details</TableHead>
+              <TableHead className="pl-6 py-4 w-10">
+                <Checkbox
+                  checked={allSelected ? true : selectedJobs.length > 0 ? 'indeterminate' : false}
+                  onCheckedChange={(v) =>
+                    setSelectedIds(v === true ? new Set(visibleJobs.map((j) => j.id)) : new Set())
+                  }
+                  aria-label="Select all shown jobs"
+                />
+              </TableHead>
+              <TableHead className="py-4 font-semibold">Job Details</TableHead>
               <TableHead className="py-4 font-semibold">Posted By</TableHead>
               <TableHead className="py-4 font-semibold">Type & Status</TableHead>
               <TableHead className="py-4 font-semibold">Posted Date</TableHead>
@@ -290,9 +365,31 @@ const JobManagementTable = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {allJobs?.sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime())?.map((job) => (
+            {visibleJobs.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={6} className="py-12 text-center text-muted-foreground">
+                  No jobs match these filters.
+                  {!filtersAreDefault(filters) && (
+                    <Button
+                      variant="link"
+                      onClick={() => onFiltersChange({ ...filters, search: '', jobType: 'all', origin: 'all', deadline: 'all', featured: false })}
+                    >
+                      Clear filters
+                    </Button>
+                  )}
+                </TableCell>
+              </TableRow>
+            )}
+            {visibleJobs.map((job) => (
               <TableRow key={job.id} className="hover:bg-muted/50 transition-colors">
-                <TableCell className="pl-6 py-6">
+                <TableCell className="pl-6 py-6 w-10 align-top">
+                  <Checkbox
+                    checked={selectedIds.has(job.id)}
+                    onCheckedChange={(v) => toggleJob(job.id, v === true)}
+                    aria-label={`Select ${job.title}`}
+                  />
+                </TableCell>
+                <TableCell className="py-6">
                   <div className="space-y-2">
                     <div className="flex items-start gap-3">
                       <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
@@ -352,10 +449,32 @@ const JobManagementTable = () => {
                             </Badge>
                           );
                         } else if (approvalStatus === 'rejected') {
+                          // Auto-imported jobs are deleted 30 days after they
+                          // were rejected; people's own posts are kept.
+                          const rejectedAt = (job as Job).rejected_at;
+                          const daysLeft =
+                            job.is_auto_imported && rejectedAt
+                              ? Math.max(
+                                  0,
+                                  30 - Math.floor((Date.now() - new Date(rejectedAt).getTime()) / 86400000),
+                                )
+                              : null;
                           return (
-                            <Badge variant="destructive" className="w-fit">
-                              Rejected
-                            </Badge>
+                            <>
+                              <Badge variant="destructive" className="w-fit">
+                                Rejected
+                              </Badge>
+                              {daysLeft !== null && (
+                                <span className="text-xs text-muted-foreground">
+                                  Deleted automatically in {daysLeft} {daysLeft === 1 ? 'day' : 'days'}
+                                </span>
+                              )}
+                              {job.is_auto_imported && job.relevance_reasoning && (
+                                <span className="text-xs text-muted-foreground max-w-[260px]">
+                                  {job.relevance_reasoning}
+                                </span>
+                              )}
+                            </>
                           );
                         } else {
                           return (
@@ -385,7 +504,7 @@ const JobManagementTable = () => {
                           );
                         } else {
                           return (
-                            <Badge variant="outline" className="w-fit border-blue-300 text-blue-700 bg-blue-50">
+                            <Badge variant="outline" className="w-fit border-brand-navy/30 text-brand-navy bg-brand-surface">
                               <Eye className="w-3 h-3 mr-1" />
                               Active
                             </Badge>
@@ -534,7 +653,7 @@ const JobManagementTable = () => {
                                       <DropdownMenuItem
                                         onClick={() => handleUpdateJobStatus(job.id, 'active', job.posted_by)}
                                         disabled={updateJobStatus.isPending}
-                                        className="cursor-pointer text-blue-600 focus:text-blue-600"
+                                        className="cursor-pointer text-brand-navy focus:text-brand-navy"
                                       >
                                         <Eye className="w-4 h-4 mr-2" />
                                         Reactivate Job
@@ -565,6 +684,11 @@ const JobManagementTable = () => {
         </Table>
       </CardContent>
     </Card>
+
+    <BulkActionBar
+      selectedJobs={selectedJobs}
+      onClear={() => setSelectedIds(new Set())}
+    />
 
     {selectedJob && (
       <JobDetailsModal
@@ -599,27 +723,18 @@ const JobManagementTable = () => {
     <AlertDialog open={approvalDialogOpen} onOpenChange={setApprovalDialogOpen}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>
-            {approvalAction?.action === 'approve' ? 'Approve Job Post' : 'Reject Job Post'}
-          </AlertDialogTitle>
+          <AlertDialogTitle>Reject Job Post</AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to {approvalAction?.action} the job post "{approvalAction?.jobTitle}"? 
-            {approvalAction?.action === 'approve' 
-              ? ' This will publish the job to the job board and increment the user\'s approved job count.'
-              : ' This will reject the job and it will not be published.'
-            }
+            Are you sure you want to reject the job post "{approvalAction?.jobTitle}"? This will reject the job and it will not be published.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction
-            onClick={confirmJobApproval}
-            className={approvalAction?.action === 'approve' 
-              ? "bg-green-600 text-white hover:bg-green-700" 
-              : "bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            }
+            onClick={() => confirmJobApproval()}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            {approvalAction?.action === 'approve' ? 'Approve Job' : 'Reject Job'}
+            Reject Job
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

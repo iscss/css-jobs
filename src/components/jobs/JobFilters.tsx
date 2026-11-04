@@ -1,12 +1,9 @@
 
 import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Star, MapPin, Globe } from "lucide-react";
+import { Search } from "lucide-react";
 
 interface JobFilters {
   search: string;
@@ -110,144 +107,97 @@ const JobFilters = ({ onFiltersChange, currentFilters }: JobFiltersProps) => {
     onFiltersChange({ types: [], remote: false, featured: false, region: "all", country: "all", search: "" });
   };
 
+  const label = 'text-[11px] font-bold uppercase tracking-[0.1em] text-[#999] mt-[22px] mb-2.5';
+  const row = 'flex items-center gap-[9px] text-[13px] text-[#444] my-[9px]';
+
   return (
-    <Card className="sticky top-24">
-      <CardHeader>
-        <CardTitle className="text-lg text-navy-800 flex items-center gap-2">
-          <Search className="w-5 h-5" />
-          Filter Jobs
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Search */}
-        <div>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-            <Input
-              placeholder="Search keywords..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-              className="pl-10"
-            />
-          </div>
-        </div>
+    <div className="border border-[#e3e7ea] rounded-md bg-white px-5 py-[18px]">
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#999] h-4 w-4" />
+        <Input
+          placeholder="Search keywords..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+          className="pl-9 h-10 text-[13px] border-[#d6dce0] rounded"
+        />
+      </div>
 
-        {/* Featured Jobs - Made prominent */}
-        <div className="bg-gradient-to-r from-yellow-50 to-amber-50 p-4 rounded-lg border border-yellow-200">
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="featured"
-              checked={featuredOnly}
-              onCheckedChange={(checked) => {
-                setFeaturedOnly(checked as boolean);
-                updateFilters({ featured: checked as boolean });
-              }}
-            />
-            <label htmlFor="featured" className="text-sm font-medium text-amber-800 cursor-pointer flex items-center gap-2">
-              <Star className="w-4 h-4 fill-amber-500 text-amber-500" />
-              Featured positions only
-            </label>
-          </div>
+      {/* Position type */}
+      <h4 className={label}>Position type</h4>
+      {jobTypes.map((type) => (
+        <div key={type} className={row}>
+          <Checkbox
+            id={type}
+            checked={selectedTypes.includes(type)}
+            onCheckedChange={(checked) => handleTypeChange(type, checked as boolean)}
+          />
+          <label htmlFor={type} className="cursor-pointer">{type}</label>
         </div>
+      ))}
 
-        {/* Job Types */}
-        <div>
-          <h4 className="font-medium text-navy-800 mb-3">Position Type</h4>
-          <div className="space-y-2">
-            {jobTypes.map((type) => (
-              <div key={type} className="flex items-center space-x-2">
-                <Checkbox
-                  id={type}
-                  checked={selectedTypes.includes(type)}
-                  onCheckedChange={(checked) => handleTypeChange(type, checked as boolean)}
-                />
-                <label htmlFor={type} className="text-sm text-gray-700 cursor-pointer">
-                  {type}
-                </label>
-              </div>
+      {/* Location */}
+      <h4 className={label}>Location</h4>
+      <div className={row}>
+        <Checkbox
+          id="remote"
+          checked={remoteOnly}
+          onCheckedChange={(checked) => {
+            setRemoteOnly(checked as boolean);
+            updateFilters({ remote: checked as boolean });
+          }}
+        />
+        <label htmlFor="remote" className="cursor-pointer">Remote positions only</label>
+      </div>
+      <div className="space-y-2.5 mt-3">
+        <Select value={selectedRegion} onValueChange={(value) => {
+          setSelectedRegion(value);
+          setSelectedCountry("all"); // Clear country when region changes
+          updateFilters({ region: value, country: "all" });
+        }}>
+          <SelectTrigger className="h-9 text-[13px] border-[#d6dce0] rounded">
+            <SelectValue placeholder="Any region" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Any region</SelectItem>
+            {regions.map((region) => (
+              <SelectItem key={region.value} value={region.value}>{region.label}</SelectItem>
             ))}
-          </div>
-        </div>
+          </SelectContent>
+        </Select>
+        <Select value={selectedCountry} onValueChange={(value) => {
+          setSelectedCountry(value);
+          updateFilters({ country: value });
+        }}>
+          <SelectTrigger className="h-9 text-[13px] border-[#d6dce0] rounded">
+            <SelectValue placeholder="Any country" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Any country</SelectItem>
+            {countries
+              .filter(country => !selectedRegion || selectedRegion === "all" || country.region === selectedRegion)
+              .map((country) => (
+                <SelectItem key={country.value} value={country.value}>{country.label}</SelectItem>
+              ))}
+          </SelectContent>
+        </Select>
+      </div>
 
-        {/* Location Filters */}
-        <div>
-          <h4 className="font-medium text-navy-800 mb-3 flex items-center gap-2">
-            <MapPin className="w-4 h-4" />
-            Location
-          </h4>
-          <div className="space-y-3">
-            {/* Region Filter */}
-            <div>
-              <label className="text-xs text-gray-600 mb-1 block">Region</label>
-              <Select value={selectedRegion} onValueChange={(value) => {
-                setSelectedRegion(value);
-                setSelectedCountry("all"); // Clear country when region changes
-                updateFilters({ region: value, country: "all" });
-              }}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Any region" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Any region</SelectItem>
-                  {regions.map((region) => (
-                    <SelectItem key={region.value} value={region.value}>
-                      <div className="flex items-center gap-2">
-                        <Globe className="w-3 h-3" />
-                        {region.label}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Country Filter */}
-            <div>
-              <label className="text-xs text-gray-600 mb-1 block">Country</label>
-              <Select value={selectedCountry} onValueChange={(value) => {
-                setSelectedCountry(value);
-                updateFilters({ country: value });
-              }}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Any country" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Any country</SelectItem>
-                  {countries
-                    .filter(country => !selectedRegion || selectedRegion === "all" || country.region === selectedRegion)
-                    .map((country) => (
-                      <SelectItem key={country.value} value={country.value}>
-                        {country.label}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </div>
-
-        {/* Remote Work */}
-        <div>
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="remote"
-              checked={remoteOnly}
-              onCheckedChange={(checked) => {
-                setRemoteOnly(checked as boolean);
-                updateFilters({ remote: checked as boolean });
-              }}
-            />
-            <label htmlFor="remote" className="text-sm text-gray-700 cursor-pointer">
-              Remote positions only
-            </label>
-          </div>
-        </div>
-
-
-
-      </CardContent>
-    </Card>
+      {/* Featured */}
+      <h4 className={label}>Highlights</h4>
+      <div className={row}>
+        <Checkbox
+          id="featured"
+          checked={featuredOnly}
+          onCheckedChange={(checked) => {
+            setFeaturedOnly(checked as boolean);
+            updateFilters({ featured: checked as boolean });
+          }}
+        />
+        <label htmlFor="featured" className="cursor-pointer">Featured positions only</label>
+      </div>
+    </div>
   );
 };
 

@@ -7,8 +7,8 @@
 
 @layer base {
   :root {
-    --background: 240 10% 98%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 0 0% 100%;
+    --foreground: 0 0% 20%;
 
     --card: 0 0% 100%;
     --card-foreground: 222.2 84% 4.9%;
@@ -16,32 +16,42 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 262 83% 58%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 229 77% 24%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
+    --secondary: 222 46% 97%;
+    --secondary-foreground: 229 77% 24%;
 
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
+    --muted: 222 46% 97%;
+    --muted-foreground: 0 0% 33%;
 
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
+    --accent: 226 50% 94%;
+    --accent-foreground: 229 77% 24%;
 
-    /* Custom gradient variables for consistency */
-    --gradient-primary: linear-gradient(135deg, hsl(262 83% 58%), hsl(263 70% 50%));
-    --gradient-secondary: linear-gradient(135deg, hsl(252 56% 57%), hsl(262 83% 58%));
-    --gradient-accent: linear-gradient(135deg, hsl(242 78% 61%), hsl(252 56% 57%));
-    --gradient-featured: linear-gradient(135deg, hsl(262 83% 58%) 0%, hsl(263 70% 50%) 100%);
-    --gradient-button: linear-gradient(135deg, hsl(262 83% 58%), hsl(252 56% 57%));
-    --gradient-hover: linear-gradient(135deg, hsl(252 56% 57%), hsl(242 78% 61%));
+    /* ISCSS brand palette, shared with events.iscss.org */
+    --brand-navy: 229 77% 24%;      /* #0e1f6b */
+    --brand-gold: 49 90% 62%;       /* #f5d547 */
+    --brand-teal: 175 100% 38%;     /* #00c4b4 */
+    --brand-teal-dark: 174 100% 24%; /* #00796b */
+    --brand-teal-tint: 174 63% 93%;  /* #e0f8f6 */
+    --brand-surface: 222 46% 97%;    /* #f4f6fb */
+    --brand-surface-2: 226 50% 94%;  /* #e8ecf7 */
+
+    /* Flat navy in place of the old purple gradients, so existing
+       .modern-gradient etc. pick up the brand colour */
+    --gradient-primary: linear-gradient(135deg, hsl(229 77% 24%), hsl(229 77% 24%));
+    --gradient-secondary: linear-gradient(135deg, hsl(229 77% 24%), hsl(229 62% 32%));
+    --gradient-accent: linear-gradient(135deg, hsl(229 62% 32%), hsl(175 100% 38%));
+    --gradient-featured: linear-gradient(135deg, hsl(229 77% 24%) 0%, hsl(229 77% 24%) 100%);
+    --gradient-button: linear-gradient(135deg, hsl(229 77% 24%), hsl(229 77% 24%));
+    --gradient-hover: linear-gradient(135deg, hsl(229 62% 32%), hsl(229 62% 32%));
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 213 88% 25%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 229 77% 24%;
 
     --radius: 0.75rem;
 
