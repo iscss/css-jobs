@@ -7,7 +7,7 @@ Computational Social Science.
 | | |
 |---|---|
 | **Live site** | https://jobs.iscss.org |
-| **Sister site** | [CSS Events](https://events.iscss.org) ([repo](https://github.com/iscss/css-events)), which shares this project's Supabase database and sign-in |
+| **Sister site** | CSS Events ([repo](https://github.com/iscss/css-events)), **paused on Vercel since 2026-11-07** and no longer linked from the footer. It shares this project's Supabase database and sign-in |
 | **Accounts** | Vercel and Supabase are under `admin@iscss.org` |
 | **Deploys** | Pushing to `main` deploys the site to Vercel |
 

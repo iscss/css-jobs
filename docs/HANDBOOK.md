@@ -34,7 +34,7 @@ Other documents: [INGESTION.md](INGESTION.md) (the importer, AI and link check),
 |---|---|
 | **Live site** | https://jobs.iscss.org |
 | **Repository** | https://github.com/iscss/css-jobs (deploys from `main`) |
-| **Sister site** | [CSS Events](https://events.iscss.org), repo https://github.com/iscss/css-events |
+| **Sister site** | CSS Events, repo https://github.com/iscss/css-events. **Paused on Vercel since 2026-11-07**, so its footer link was removed from this site; resume the Vercel project and restore the link in `src/components/layout/Footer.tsx` to bring it back |
 | **Frontend hosting** | Vercel (project `cssjobs`), account `admin@iscss.org` |
 | **Backend** | Supabase project `ukkqeczgommifgecyrez` ("admin@iscss.org's Project"), **shared with CSS Events** |
 | **Old project id** | `vbekddjiflstedhvrhwt` in `supabase/config.toml` is the project the board used **before** the move to the current one. The local Docker stack takes its container names from it. It is not production now; point nothing at it |
