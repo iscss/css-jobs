@@ -437,6 +437,7 @@ Do **not** reset every imported job to pending: that would also bring back the j
 | An import returns "connection refused" | `functions serve` is not running |
 | The public page says "No jobs found" | No published jobs; approve one, or seed the demo jobs |
 | The import shows `"llm": {"enabled": false}` or a high `llmFallback` | The functions server has no key: check `supabase/functions/.env` and restart `functions serve` with `--env-file`. If the key is present, it may be wrong or out of credit |
+| A source's run says `did not return JSON` | The careers site answered with a maintenance or bot-check page. Wait a day; see [INGESTION.md > Check that the sources are healthy](INGESTION.md#check-that-the-sources-are-healthy) |
 | The link check returns many `unknown` | Some sites return 403 or 429 to the checker. `unknown` is never acted on, and it is retried after a day |
 
 ---

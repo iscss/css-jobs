@@ -255,6 +255,46 @@ and a weight. **Be careful adding to `DISQUALIFYING`**, because a match there is
 without the AI looking at it; test the pattern against real titles. The tests are in `src/lib/ingest.test.ts`. The functions
 that use it need redeploying, and `rescore-jobs` re-files what is already queued.
 
+### Check that the sources are healthy
+
+Do this after adding a source, after a deploy, and now and then (monthly is plenty).
+
+**1. Did last night's import work?** One row per source per run:
+
+```sql
+select source_slug, status, fetched_count, inserted_count, left(error_message, 90) as error, started_at
+from scrape_runs order by started_at desc limit 20;
+```
+
+(on production, run it in the SQL editor or with `npx supabase db query --remote=ukkqeczgommifgecyrez --read-only "..."`).
+A healthy source says `success`. A source that finds nothing is not an error: most days a university has no new CSS posting.
+`fetched_count` of 0 for many days in a row on a source that used to find jobs is worth a look.
+
+| Error in the log | Meaning | What to do |
+|------------------|---------|------------|
+| `HTTP 403` | The site refuses automated requests (jobRxiv does this to Supabase's servers) | Ask the owner to allow `CSSJobsBot`. Do not try to get around it |
+| `HTTP 429` | Rate limited | Normally clears by itself the next day. If it persists, add search terms or lower `max_per_term` so fewer requests are made |
+| `did not return JSON (got text/html ...)` | The site answered with a web page: a **maintenance window** or a **bot check**. Workday goes down for maintenance on some weekends, and every Workday source fails together | If all Workday sources fail on the same night, wait: the next night's run is normal. If one source fails for days, run its dry run and open its address |
+| `Workday search returned HTTP 422` | The search address or its settings are wrong for that tenant (Carnegie Mellon does this) | Re-check the `feed_url` as in [the Workday steps](#add-a-source-that-an-existing-adapter-can-read) |
+| `unknown adapter` | The row's `adapter` does not exist in `ADAPTERS` | Fix the name, or set `is_active = false` until the adapter exists |
+| `feed returned HTTP 404` or a DNS error | The address moved or the site is gone | Find the new address and `UPDATE job_sources SET feed_url = '...'` |
+
+**2. Is the nightly job itself running?** `select jobname, schedule, active from cron.job;` shows the four schedules, and
+[HANDBOOK > Operating production](HANDBOOK.md#operating-production) says how to read the HTTP replies if `scrape_runs` stays empty.
+
+**3. Do the addresses in the documentation still work?**
+
+```bash
+./scripts/check-source-links.sh
+```
+
+It lists every address in [SOURCES.md](SOURCES.md) that does not answer 200. A 403 is usually a site that refuses
+automated requests, and a 404 or "000" is a real problem: fix the address in `docs/SOURCES.md` (edit the file directly) and, for a job source, the `feed_url` in the
+`job_sources` table.
+
+**4. Try one source by hand** with a dry run, which fetches and checks but inserts nothing
+([Running it by hand](#running-it-by-hand)).
+
 ### Change the schedule
 
 How often the import, link check and organiser run is set in the database, not in code:

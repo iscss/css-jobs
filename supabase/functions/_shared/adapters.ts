@@ -168,6 +168,30 @@ interface WorkdayPosting {
   postedOn?: string;
 }
 
+// Read a JSON reply, or say what came back instead. A careers site in
+// maintenance or behind a bot check answers with an HTML page; without this the
+// run log would say "Unexpected token <", which tells nobody what happened.
+async function readJson(
+  response: Response,
+  label: string,
+): Promise<Record<string, unknown>> {
+  try {
+    return (await response.json()) as Record<string, unknown>;
+  } catch {
+    let where = '';
+    try {
+      const u = new URL(response.url);
+      where = ` from ${u.host}${u.pathname}`;
+    } catch {
+      // no usable address on the response
+    }
+    const type = response.headers?.get('content-type') ?? 'unknown type';
+    throw new Error(
+      `${label} did not return JSON (got ${type}${where}); the site may be down for maintenance or blocking automated requests`,
+    );
+  }
+}
+
 const WORKDAY_PAGE_SIZE = 20; // Workday caps `limit` at 20 regardless of what you ask for.
 
 async function workdayPost(
@@ -186,7 +210,7 @@ async function workdayPost(
   if (!response.ok) {
     throw new Error(`Workday search returned HTTP ${response.status}`);
   }
-  return await response.json();
+  return await readJson(response, 'Workday');
 }
 
 export async function workdayAdapter(
@@ -291,7 +315,7 @@ async function oracleGet(url: string): Promise<Record<string, unknown>> {
   if (!response.ok) {
     throw new Error(`Oracle Recruiting returned HTTP ${response.status}`);
   }
-  return await response.json();
+  return await readJson(response, 'Oracle Recruiting');
 }
 
 export async function oracleRecruitingAdapter(

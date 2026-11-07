@@ -15,7 +15,9 @@ How the importer works is in [INGESTION.md](INGESTION.md); how to add a source i
 > had already changed or block automated requests (noted below). Treat the status
 > columns as a snapshot and re-check a site before building an importer for it.
 > The community lists were read from the public pages with a handful of polite
-> requests and nothing was scraped in bulk.
+> requests and nothing was scraped in bulk. To re-check every address here, run
+> `./scripts/check-source-links.sh`; for the health of the job sources themselves, see
+> [INGESTION.md > Check that the sources are healthy](INGESTION.md#check-that-the-sources-are-healthy).
 
 ---
 
@@ -65,7 +67,7 @@ and `config.note`. To switch one on after it is fixed: `UPDATE job_sources SET i
 | `koc` | Koç University (CCSS) | Not identified | **Blocked** | HTTP 403 to automated requests |
 | `gesis` | GESIS | Not identified | **Blocked** | HTTP 403 to automated requests |
 | `cuhk` | The Chinese University of Hong Kong | Not identified | Unverified | The Personnel Office address did not resolve from the network it was checked on |
-| `microsoft-research` | Microsoft Research | Eightfold | **Blocked** | Its search API answered HTTP 429 (rate limited) to an automated request; read its terms first |
+| `microsoft-research` | Microsoft Research | Eightfold | **Unreliable** | Its search API (`apply.careers.microsoft.com/api/pcsx/search`) answered once with data on 2026-11-07 and then nothing, after an HTTP 429 earlier. It is rate limited, so a reader needs slow, patient requests; read Microsoft's terms first |
 
 Carnegie Mellon (`wd-cmu`) is not seeded in production: its Workday search returns HTTP 422 on every run.
 
@@ -401,6 +403,19 @@ The how-to steps are in [INGESTION.md > How-to guides](INGESTION.md#how-to-guide
 3. **More Workday universities** are one row each (see [INGESTION.md](INGESTION.md#add-a-source-that-an-existing-adapter-can-read)). When a university's careers site is not obviously Workday, look at a job's apply link: Yale's front end is Phenom People, but its apply links point at Workday.
 4. **Microsoft Research** needs its terms read first.
 5. **Announcing the board.** varyCSS, the SICSS location hosts and the conference lists above are where to tell people the board exists.
+
+**The message to send a site that blocks the importer** (jobRxiv, Columbia, UMass Amherst, Harvard, Koç, GESIS). Send it from an ISCSS address to the site's web, IT or HR contact:
+
+> Subject: Allowing a small, polite job reader for the ISCSS job board
+>
+> Hello,
+>
+> I help run the job board of the International Society for Computational Social Science (https://jobs.iscss.org). Once a day, a small program reads your public job listings [for jobRxiv: your public job feed at https://jobrxiv.org/?feed=job_feed] and links candidates back to your own page to apply. It makes a few dozen requests a day, one at a time with pauses, and identifies itself as `CSSJobsBot/1.0 (+https://jobs.iscss.org; contact: admin@iscss.org)`. It does not log in, and it does not copy anything that is not already public.
+>
+> Your site currently answers it with an error ([HTTP 403 / a bot check]), so your listings cannot reach people looking for computational social science positions. Could you allow that user agent, or tell us the feed or data service you would prefer we use? If you would rather we did not read your listings at all, please say so and we will remove the source.
+>
+> Thank you,
+> [name], ISCSS (admin@iscss.org)
 
 **Before adding any source:** check its terms and `robots.txt`, keep the request rate low,
 keep the `CSSJobsBot` user agent, and remember that every imported job still waits for an

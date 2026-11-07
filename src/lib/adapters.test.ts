@@ -309,6 +309,32 @@ describe('genericRssAdapter', () => {
   });
 });
 
+describe('a careers site that answers with a web page instead of JSON', () => {
+  // Workday's maintenance redirect and bot-check pages are HTML. The run log
+  // has to say so, not "Unexpected token <".
+  const html = () =>
+    vi.fn().mockResolvedValue(
+      new Response('<!DOCTYPE html><html>maintenance</html>', {
+        status: 200,
+        headers: { 'content-type': 'text/html' },
+      }),
+    );
+
+  it('names the problem for Workday', async () => {
+    vi.stubGlobal('fetch', html());
+    await expect(
+      workdayAdapter('https://x.wd5.myworkdayjobs.com/wday/cxs/x/X/jobs', { institution: 'X' }),
+    ).rejects.toThrow(/did not return JSON.*text\/html.*maintenance/);
+  });
+
+  it('names the problem for Oracle Recruiting', async () => {
+    vi.stubGlobal('fetch', html());
+    await expect(
+      oracleRecruitingAdapter('https://careers.example.edu', { institution: 'X', site_number: 's' }),
+    ).rejects.toThrow(/did not return JSON/);
+  });
+});
+
 describe('oracleRecruitingAdapter', () => {
   const BASE = 'https://careers.example.edu';
   const config = { institution: 'Example University', site_number: 'example' };

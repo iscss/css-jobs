@@ -35,7 +35,7 @@ Where to look for the thing you want to do:
 |--------------|-------|
 | Run it on my computer | [Quick start](#quick-start), then [HANDBOOK > Local development](docs/HANDBOOK.md#local-development) |
 | Deploy a change, or apply a database migration | [HANDBOOK > Deployment](docs/HANDBOOK.md#deployment) |
-| Check that the nightly import ran | [HANDBOOK > Operating production](docs/HANDBOOK.md#operating-production) |
+| Check that the nightly import ran, or that the sources are healthy | [INGESTION > Check that the sources are healthy](docs/INGESTION.md#check-that-the-sources-are-healthy), [HANDBOOK > Operating production](docs/HANDBOOK.md#operating-production) |
 | Rotate a key or secret | [HANDBOOK > Operating production](docs/HANDBOOK.md#operating-production) |
 | Add a job source | [INGESTION > How-to guides](docs/INGESTION.md#how-to-guides), candidates in [SOURCES](docs/SOURCES.md#4-adding-more-sources) |
 | Change what counts as a CSS job, or edit the AI prompts | [INGESTION > Edit the AI prompts](docs/INGESTION.md#edit-the-ai-prompts) |
@@ -77,7 +77,7 @@ Detail in [HANDBOOK > Architecture](docs/HANDBOOK.md#architecture).
 src/            the site: pages, components, hooks, helpers and their tests
 supabase/       edge functions (the importer, link check, organiser) and SQL migrations
 docs/           the documentation above, and docs/design/ with the chosen mockup
-scripts/        domain loading, safety checks, a demo seed (local only)
+scripts/        domain loading, safety checks, the source-address check, a demo seed (local only)
 public/         static files: logos, favicon, the university-domains list
 index.html      page title, share cards, Content-Security-Policy
 vercel.json     security headers
