@@ -25,8 +25,10 @@ How the importer works is in [INGESTION.md](INGESTION.md); how to add a source i
 
 These are rows in the `job_sources` table (see [INGESTION.md](INGESTION.md#how-to-guides)). The first production
 import ran on 2026-11-04 with the first ten rows below. The university sources from the lab list were added on
-2026-11-07 (migration `20260816000000`) and tested against the live sites; they reach production when that
-migration is applied ([HANDBOOK > Deployment](HANDBOOK.md#deployment)).
+2026-11-07 (migration `20260816000000`), tested against the live sites. The migration was applied to production
+and the importer functions redeployed the same day ([HANDBOOK > Deployment](HANDBOOK.md#deployment)), so their
+first production run is the 03:00 UTC import on 2026-11-08. Their "Result" below is from a test import on a
+local copy, not from production.
 
 ### 1.1 Active
 

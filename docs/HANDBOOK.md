@@ -38,7 +38,7 @@ Other documents: [INGESTION.md](INGESTION.md) (the importer, AI and link check),
 | **Frontend hosting** | Vercel (project `cssjobs`), account `admin@iscss.org` |
 | **Backend** | Supabase project `ukkqeczgommifgecyrez` ("admin@iscss.org's Project"), **shared with CSS Events** |
 | **Old project id** | `vbekddjiflstedhvrhwt` in `supabase/config.toml` is the project the board used **before** the move to the current one. The local Docker stack takes its container names from it. It is not production now; point nothing at it |
-| **Automation** | Importer, link check, organiser and purge run on schedules in the database; deployed 2026-11-04 |
+| **Automation** | Importer, link check, organiser and purge run on schedules in the database; deployed 2026-11-04; the five university sources added 2026-11-07 |
 | **Status** | Live. About 30 accounts at launch; the importer found 153 jobs on its first run (jobRxiv blocked, see [Known issues](#known-issues-and-future-work)) |
 
 There is no landing page: `/` is the jobs list. Routes: `/` (jobs; `/jobs` redirects here), `/auth`,
@@ -334,7 +334,7 @@ production-only columns (see [Schema drift](#migrations-and-schema-drift)).
 
 Done for production on 2026-11-04. To repeat it, or to set up another project:
 
-1. **Apply the migrations** with `psql` (not `db push`), `20260803000000` to `20260815000000`, in order. These change the live database, so review them first.
+1. **Apply the migrations** with `psql` (not `db push`), `20260803000000` to `20260816000000`, in order. These change the live database, so review them first.
 2. **Deploy the functions** (above).
 3. **Set the secrets:** `ANTHROPIC_API_KEY` and a `SCHEDULER_SECRET` made with `openssl rand -hex 32`.
 4. **Tell the scheduler where to call**, with the same `SCHEDULER_SECRET` value:
@@ -499,6 +499,7 @@ Do **not** reset every imported job to pending: that would also bring back the j
 | `20260813000000_structured_job_content` | `structured`, `structured_at`, `structure_failed_at`, the reset trigger, the 15-minute organiser schedule and `structure_job_now()` |
 | `20260814000000_clean_comses_html` | One-time clean-up of CoMSES descriptions that still held HTML tags |
 | `20260815000000_close_profile_email_leak` | Drops the policy that let anyone read every profile; adds `email_is_registered()` |
+| `20260816000000_seed_university_sources` | Penn, Northeastern, USC, Yale and Stanford as active sources, and ten registered but inactive ones; safe to run twice |
 
 All were applied to production with `psql`. A new migration needs a new, later timestamp.
 
