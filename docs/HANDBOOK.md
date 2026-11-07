@@ -465,7 +465,7 @@ Do **not** reset every imported job to pending: that would also bring back the j
 
 **Open issues**
 - **jobRxiv is not imported on production.** It answers HTTP 403 to requests from Supabase's servers (it sits behind Cloudflare; the feed works from other networks). It is the largest source: locally it gave all 5 clear matches and 33 of 55 relevant jobs. Ask jobRxiv, from ISCSS, to allow `CSSJobsBot`, which reads the public feed once a day; meanwhile its jobs can be loaded once from a network where it works. The importer does not try to evade the block.
-- **Carnegie Mellon's Workday search returns HTTP 422** on every run, so it is not seeded.
+- **Carnegie Mellon is not seeded**: its Workday search returns HTTP 422 ([SOURCES.md](SOURCES.md#12-registered-but-inactive)).
 - **The admin "Inactive" job status button** offers a value the database rejects (`job_status` accepts only `active` and `filled`).
 - **Colour contrast:** the teal headline highlight and several small greys fail WCAG AA ([BRANDING.md > Accessibility](BRANDING.md#accessibility)).
 - **Share image** is the small ISCSS logo; a 1200 by 630 image would be better, and `twitter:site` (`@cssjobs`) is unconfirmed.

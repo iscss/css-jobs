@@ -92,11 +92,8 @@ universities) and `20260816000000` (the university sources from the lab list).
 A source whose `adapter` names something that does not exist is logged as an error and skipped, which is why
 sources that still need a reader are registered with `is_active = false`.
 
-**Registered, tested and active** (migration `20260816000000`): Penn, Northeastern, USC and Yale (Workday) and Stanford
-(Oracle). **Registered but inactive**, each with the reason in its `config.status` and `config.note`: Columbia,
-UMass Amherst, Harvard, Koç, GESIS and Microsoft Research (they block automated requests), Toronto, Vermont and TU
-Graz (need a reader written), and CUHK (unverified). The full table, with what each returned, is in
-[SOURCES.md section 1](SOURCES.md#1-job-sources-the-importer-reads).
+Which sources are active, which are registered but inactive, and why each is inactive: [SOURCES.md section 1](SOURCES.md#1-job-sources-the-importer-reads).
+Each inactive row says why in its `config.status` and `config.note`.
 
 Request headers identify the importer as `CSSJobsBot/1.0` with a contact address, and it spaces
 its requests out. It does not try to get around a site that blocks it (see jobRxiv in

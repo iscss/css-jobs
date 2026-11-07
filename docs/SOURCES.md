@@ -135,11 +135,7 @@ column is how the lab's **host institution** is covered as a job source (section
 | 16 | Computational Social Science @ CUHK | The Chinese University of Hong Kong | [cssl.socsc.cuhk.edu.hk](https://cssl.socsc.cuhk.edu.hk/) | OK | `cuhk`, inactive (unverified) |
 | 17 | Computational Story Lab | University of Vermont | [compstorylab.org](https://www.compstorylab.org/) | OK | `atom-uvm`, inactive (needs an adapter) |
 
-Reading the table: **8 of the 17 labs' host institutions are now read by the importer** (Penn, Northeastern, Yale,
-Stanford, USC, Maryland, and through them Wharton and the other Penn labs). The rest are registered but inactive.
-The sites that **block automated requests** (Columbia, UMass Amherst, Harvard, Koç, GESIS, Microsoft, and jobRxiv from
-Supabase's servers) are the same kind of obstacle: the importer identifies itself as `CSSJobsBot` with a contact
-address and does not try to get around a block, so the fix for all of them is one request to the owner to allow it.
+Reading the table: **7 of the 17 labs** are covered through their university's careers site (Penn, Northeastern, Yale, Stanford, USC and Maryland; Wharton and the Warren Center both use Penn's). The rest are registered but inactive. For the ones that block automated requests, the fix is one request to the owner ([section 4](#4-adding-more-sources)).
 
 ### 3.3 varyCSS
 
