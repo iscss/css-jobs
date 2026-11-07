@@ -228,6 +228,52 @@ async function fetchWithRetry(
   return fetchFn(url, init);
 }
 
+// Oracle Recruiting Cloud careers pages (Stanford and others) are JavaScript apps
+// that answer 200 for any job id, closed or invented, so the page proves nothing.
+// The public REST service behind them returns no item for a requisition that is
+// gone, so ask it instead. Page address:
+//   https://<host>/hcmUI/CandidateExperience/<lang>/sites/<site>/job/<id>
+export function oracleDetailUrl(url: string): string | null {
+  const match = url.match(
+    /^(https:\/\/[^/]+)\/hcmUI\/CandidateExperience\/(?:[a-z]{2}(?:-[A-Za-z]{2})?\/)?sites\/([^/]+)\/job\/([A-Za-z0-9_-]+)/,
+  );
+  if (!match) return null;
+  const [, origin, site, id] = match;
+  return `${origin}/hcmRestApi/resources/latest/recruitingCEJobRequisitionDetails` +
+    `?expand=all&onlyData=true&finder=ById;Id=%22${id}%22,siteNumber=${site}`;
+}
+
+export function classifyOracle(
+  status: number,
+  json: unknown,
+  now: Date = new Date(),
+): LinkCheck {
+  if (status === 404 || status === 410) {
+    return { status: 'dead', reason: `HTTP ${status}` };
+  }
+  if (status !== 200) return { status: 'unknown', reason: `HTTP ${status}` };
+
+  const items = (json as { items?: unknown } | null)?.items;
+  if (!Array.isArray(items)) {
+    return { status: 'unknown', reason: 'no posting data returned' };
+  }
+  if (items.length === 0) {
+    return { status: 'dead', reason: 'no longer listed by Oracle Recruiting' };
+  }
+
+  const end = (items[0] as { ExternalPostedEndDate?: string }).ExternalPostedEndDate;
+  if (end) {
+    const date = new Date(end);
+    if (!Number.isNaN(date.getTime()) && date.getTime() < now.getTime()) {
+      return {
+        status: 'closed',
+        reason: `posting period ended (${date.toISOString().slice(0, 10)})`,
+      };
+    }
+  }
+  return { status: 'live', reason: 'ok' };
+}
+
 export type LinkAction = 'delete' | 'hide' | 'record';
 
 /**
@@ -271,6 +317,23 @@ export async function checkListing(
         }
       }
       return classifyWorkday(response.status, json);
+    }
+
+    const oracle = oracleDetailUrl(url);
+    if (oracle) {
+      const response = await fetchFn(oracle, {
+        headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
+        signal: AbortSignal.timeout(15000),
+      });
+      let json: unknown = null;
+      if (response.status === 200) {
+        try {
+          json = await response.json();
+        } catch {
+          return { status: 'unknown', reason: 'unreadable response' };
+        }
+      }
+      return classifyOracle(response.status, json, now);
     }
 
     const response = await fetchWithRetry(fetchFn, url, {

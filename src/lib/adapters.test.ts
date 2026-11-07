@@ -4,6 +4,7 @@ import {
   genericRssAdapter,
   comsesAdapter,
   workdayAdapter,
+  oracleRecruitingAdapter,
 } from '../../supabase/functions/_shared/adapters.ts';
 
 // A trimmed copy of a real jobRxiv item, including the CDATA wrapping and the
@@ -305,5 +306,129 @@ describe('genericRssAdapter', () => {
       institution: 'Stanford University',
       location: 'Stanford, CA',
     });
+  });
+});
+
+describe('oracleRecruitingAdapter', () => {
+  const BASE = 'https://careers.example.edu';
+  const config = { institution: 'Example University', site_number: 'example' };
+
+  const detail = (over: Record<string, unknown> = {}) => ({
+    items: [{
+      Id: '201567',
+      Title: 'Postdoctoral Scholar in Computational Social Science',
+      ExternalDescriptionStr: '<p>Agent-based models of collective behaviour.</p>',
+      ExternalResponsibilitiesStr: '<ul><li>Run experiments</li></ul>',
+      ExternalQualificationsStr: '<p>PhD in sociology or computer science.</p>',
+      ExternalPostedStartDate: '2026-10-29T17:54:45+00:00',
+      PrimaryLocation: 'Stanford, CA, United States',
+      ...over,
+    }],
+  });
+
+  const list = (ids: string[], total = ids.length) => ({
+    items: [{
+      TotalJobsCount: total,
+      requisitionList: ids.map((Id) => ({ Id, Title: `Job ${Id}` })),
+    }],
+  });
+
+  // Routes the list call and the per-job detail call by URL.
+  function mockOracle(
+    pages: Record<string, unknown>[],
+    details: Record<string, Record<string, unknown> | null>,
+  ) {
+    let page = 0;
+    return vi.fn().mockImplementation((url: string) => {
+      if (url.includes('recruitingCEJobRequisitionDetails')) {
+        const id = /Id=%22([^%]+)%22/.exec(url)?.[1] ?? '';
+        const body = details[id];
+        return Promise.resolve(
+          body ? { ok: true, status: 200, json: () => Promise.resolve(body) } : { ok: false, status: 404 },
+        );
+      }
+      const body = pages[Math.min(page, pages.length - 1)];
+      page++;
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(body) });
+    });
+  }
+
+  it('maps a requisition through list plus detail, joining description, duties and qualifications', async () => {
+    vi.stubGlobal('fetch', mockOracle([list(['201567'])], { '201567': detail() }));
+
+    const jobs = await oracleRecruitingAdapter(BASE, config);
+
+    expect(jobs).toHaveLength(1);
+    expect(jobs[0]).toMatchObject({
+      title: 'Postdoctoral Scholar in Computational Social Science',
+      institution: 'Example University',
+      location: 'Stanford, CA, United States',
+      sourceUrl: 'https://careers.example.edu/hcmUI/CandidateExperience/en/sites/example/job/201567',
+      sourceJobId: '201567',
+      postedAt: '2026-10-29T17:54:45+00:00',
+    });
+    expect(jobs[0].description).toContain('Agent-based models');
+    expect(jobs[0].description).toContain('Run experiments');
+    expect(jobs[0].description).toContain('PhD in sociology');
+  });
+
+  it('sends the site number and the search term to the server', async () => {
+    const fetchMock = mockOracle([list([])], {});
+    vi.stubGlobal('fetch', fetchMock);
+
+    await oracleRecruitingAdapter(BASE, { ...config, search_terms: ['network analysis'] });
+
+    const url = fetchMock.mock.calls[0][0] as string;
+    expect(url).toContain('/hcmRestApi/resources/latest/recruitingCEJobRequisitions');
+    expect(url).toContain('siteNumber=example');
+    expect(url).toContain('keyword=%22network%20analysis%22');
+  });
+
+  it('fetches a job matched by several terms only once', async () => {
+    const fetchMock = mockOracle([list(['1']), list(['1'])], { '1': detail({ Id: '1' }) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const jobs = await oracleRecruitingAdapter(BASE, { ...config, search_terms: ['a', 'b'] });
+
+    expect(jobs).toHaveLength(1);
+    const detailCalls = fetchMock.mock.calls.filter(([u]) => String(u).includes('Details'));
+    expect(detailCalls).toHaveLength(1);
+  });
+
+  it('pages through results until a short page', async () => {
+    const full = Array.from({ length: 25 }, (_, i) => String(i + 1));
+    const fetchMock = mockOracle([list(full, 26), list(['26'], 26)], {});
+    vi.stubGlobal('fetch', fetchMock);
+
+    await oracleRecruitingAdapter(BASE, { ...config, max_per_term: 50 });
+
+    const listCalls = fetchMock.mock.calls.filter(([u]) => !String(u).includes('Details'));
+    expect(listCalls).toHaveLength(2);
+    expect(String(listCalls[1][0])).toContain('offset=25');
+  });
+
+  it('skips a job whose detail fetch fails rather than failing the run', async () => {
+    vi.stubGlobal('fetch', mockOracle([list(['1', '2'])], { '1': null, '2': detail({ Id: '2' }) }));
+
+    const jobs = await oracleRecruitingAdapter(BASE, config);
+
+    expect(jobs.map((j) => j.sourceJobId)).toEqual(['2']);
+  });
+
+  it('skips a requisition with no description', async () => {
+    vi.stubGlobal('fetch', mockOracle([list(['1'])], {
+      '1': detail({ ExternalDescriptionStr: '', ExternalResponsibilitiesStr: '', ExternalQualificationsStr: '' }),
+    }));
+    expect(await oracleRecruitingAdapter(BASE, config)).toEqual([]);
+  });
+
+  it('requires an institution and a site number', async () => {
+    await expect(oracleRecruitingAdapter(BASE, { site_number: 'example' })).rejects.toThrow(/institution/);
+    await expect(oracleRecruitingAdapter(BASE, { institution: 'X' })).rejects.toThrow(/site_number/);
+  });
+
+  it('surfaces a non-OK list response', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 503 }));
+    await expect(oracleRecruitingAdapter(BASE, config)).rejects.toThrow(/503/);
   });
 });

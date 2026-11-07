@@ -6,6 +6,8 @@ import {
   workdayJsonUrl,
   workdaySearchTarget,
   linkCheckAction,
+  oracleDetailUrl,
+  classifyOracle,
 } from '../../supabase/functions/_shared/liveness';
 
 const now = new Date('2026-10-26T00:00:00Z');
@@ -240,5 +242,53 @@ describe('linkCheckAction', () => {
 
   it('treats a missing flag as not imported', () => {
     expect(linkCheckAction({ approval_status: 'pending', is_auto_imported: null }, 'dead')).toBe('record');
+  });
+});
+
+describe('Oracle Recruiting links', () => {
+  const page = 'https://careersearch.stanford.edu/hcmUI/CandidateExperience/en/sites/stanford/job/200340';
+  const res = (status: number, json: unknown = {}) => ({
+    status,
+    url: page,
+    text: () => Promise.resolve(''),
+    json: () => Promise.resolve(json),
+  });
+
+  it('maps a careers page address to the REST detail address', () => {
+    expect(oracleDetailUrl(page)).toBe(
+      'https://careersearch.stanford.edu/hcmRestApi/resources/latest/recruitingCEJobRequisitionDetails' +
+        '?expand=all&onlyData=true&finder=ById;Id=%22200340%22,siteNumber=stanford',
+    );
+  });
+
+  it('handles a language segment like en-GB and ignores other addresses', () => {
+    expect(oracleDetailUrl('https://x.example/hcmUI/CandidateExperience/en-GB/sites/CX_1/job/55'))
+      .toContain('siteNumber=CX_1');
+    expect(oracleDetailUrl('https://example.com/jobs/1')).toBeNull();
+  });
+
+  it('calls a requisition the service no longer lists dead', () => {
+    expect(classifyOracle(200, { items: [] }).status).toBe('dead');
+    expect(classifyOracle(404, null).status).toBe('dead');
+  });
+
+  it('calls a listed requisition live, and one past its posting end date closed', () => {
+    const now = new Date('2026-11-07T00:00:00Z');
+    expect(classifyOracle(200, { items: [{ ExternalPostedEndDate: '2026-12-31T08:00:00+00:00' }] }, now).status).toBe('live');
+    expect(classifyOracle(200, { items: [{ ExternalPostedEndDate: '2026-10-01T08:00:00+00:00' }] }, now).status).toBe('closed');
+    expect(classifyOracle(200, { items: [{}] }, now).status).toBe('live');
+  });
+
+  it('never acts on a failed or odd response', () => {
+    expect(classifyOracle(503, null).status).toBe('unknown');
+    expect(classifyOracle(403, null).status).toBe('unknown');
+    expect(classifyOracle(200, {}).status).toBe('unknown');
+  });
+
+  it('checkListing uses the REST service, so a made-up job is not called live', async () => {
+    const fetchFn = vi.fn().mockResolvedValue(res(200, { items: [] }));
+    const r = await checkListing(page, fetchFn, now);
+    expect(r.status).toBe('dead');
+    expect(String(fetchFn.mock.calls[0][0])).toContain('/hcmRestApi/');
   });
 });

@@ -267,6 +267,121 @@ export async function workdayAdapter(
   return jobs;
 }
 
+// Oracle Recruiting Cloud: the "candidate experience" careers sites that Stanford
+// and many other universities run. The page is a JavaScript app over a public
+// REST service, so this reads the same service the page does:
+//   list:   .../hcmRestApi/resources/latest/recruitingCEJobRequisitions
+//   detail: .../hcmRestApi/resources/latest/recruitingCEJobRequisitionDetails
+// feed_url is the site's origin (for example https://careersearch.stanford.edu);
+// config needs `institution` and `site_number` (the "sites/<name>" part of the
+// careers page address), and may have `search_terms`, `max_per_term`, `location`.
+interface OracleRequisition {
+  Id?: string;
+  Title?: string;
+  PrimaryLocation?: string;
+  PostedDate?: string;
+}
+
+const ORACLE_PAGE_SIZE = 25;
+
+async function oracleGet(url: string): Promise<Record<string, unknown>> {
+  const response = await fetch(url, {
+    headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
+  });
+  if (!response.ok) {
+    throw new Error(`Oracle Recruiting returned HTTP ${response.status}`);
+  }
+  return await response.json();
+}
+
+export async function oracleRecruitingAdapter(
+  feedUrl: string,
+  config: Record<string, unknown>,
+): Promise<RawJob[]> {
+  const institution = String(config.institution ?? '');
+  if (!institution) {
+    throw new Error('oracle-recruiting adapter requires config.institution');
+  }
+  const site = String(config.site_number ?? '');
+  if (!site) {
+    throw new Error('oracle-recruiting adapter requires config.site_number');
+  }
+
+  const base = feedUrl.replace(/\/+$/, '');
+  const api = `${base}/hcmRestApi/resources/latest`;
+  const searchTerms = Array.isArray(config.search_terms) && config.search_terms.length
+    ? (config.search_terms as string[])
+    : ['computational social science'];
+  const maxPerTerm = Number(config.max_per_term ?? 40);
+
+  const requisitions = new Map<string, OracleRequisition>();
+
+  for (const term of searchTerms) {
+    for (let offset = 0; offset < maxPerTerm; offset += ORACLE_PAGE_SIZE) {
+      const keyword = encodeURIComponent(term);
+      const page = await oracleGet(
+        `${api}/recruitingCEJobRequisitions?onlyData=true` +
+          `&expand=requisitionList.secondaryLocations` +
+          `&finder=findReqs;siteNumber=${site},keyword=%22${keyword}%22,` +
+          `limit=${ORACLE_PAGE_SIZE},offset=${offset}`,
+      );
+
+      const result = ((page.items ?? []) as Record<string, unknown>[])[0] ?? {};
+      const batch = (result.requisitionList ?? []) as OracleRequisition[];
+      for (const requisition of batch) {
+        // The same job matches several search terms; keyed by id so each is
+        // only fetched once.
+        if (requisition.Id) requisitions.set(String(requisition.Id), requisition);
+      }
+
+      if (batch.length < ORACLE_PAGE_SIZE) break;
+      if (offset + ORACLE_PAGE_SIZE < maxPerTerm) await sleep(300);
+    }
+  }
+
+  const jobs: RawJob[] = [];
+  for (const [id, requisition] of requisitions) {
+    // A failed detail fetch drops one job rather than the whole source.
+    try {
+      const detail = await oracleGet(
+        `${api}/recruitingCEJobRequisitionDetails?expand=all&onlyData=true` +
+          `&finder=ById;Id=%22${encodeURIComponent(id)}%22,siteNumber=${site}`,
+      );
+      const info = ((detail.items ?? []) as Record<string, unknown>[])[0];
+      if (!info) continue;
+
+      // The posting is split into a description, duties and qualifications.
+      const description = [
+        info.ExternalDescriptionStr,
+        info.ExternalResponsibilitiesStr,
+        info.ExternalQualificationsStr,
+      ].map((part) => String(part ?? '').trim()).filter(Boolean).join('\n\n');
+      if (!description) continue;
+
+      jobs.push({
+        title: String(info.Title ?? requisition.Title ?? ''),
+        institution,
+        location: String(
+          info.PrimaryLocation ?? requisition.PrimaryLocation ?? config.location ??
+            'Not specified',
+        ),
+        description,
+        sourceUrl: `${base}/hcmUI/CandidateExperience/en/sites/${site}/job/${id}`,
+        sourceJobId: id,
+        postedAt: String(
+          info.ExternalPostedStartDate ?? requisition.PostedDate ?? '',
+        ),
+      });
+    } catch {
+      continue;
+    }
+
+    await sleep(250); // Be a polite guest on someone else's careers site.
+  }
+
+  return jobs;
+}
+
 export const ADAPTERS: Record<
   string,
   (feedUrl: string, config: Record<string, unknown>) => Promise<RawJob[]>
@@ -275,4 +390,5 @@ export const ADAPTERS: Record<
   'rss-comses': comsesAdapter,
   'rss-generic': genericRssAdapter,
   'workday': workdayAdapter,
+  'oracle-recruiting': oracleRecruitingAdapter,
 };
