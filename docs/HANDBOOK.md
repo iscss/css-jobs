@@ -448,11 +448,13 @@ Do **not** reset every imported job to pending: that would also bring back the j
 
 **Feature a job.** Job Management > the job's menu > feature. A "Featured" badge shows in the list.
 
-**Add a job source.** One row in `job_sources`; see [INGESTION.md > Adding a source](INGESTION.md#adding-a-source) and the candidates in [SOURCES.md](SOURCES.md#4-adding-more-sources).
+**Add a job source.** One row in `job_sources`; see [INGESTION.md > Add a source](INGESTION.md#add-a-source-that-an-existing-adapter-can-read), [switch on an inactive one](INGESTION.md#switch-on-a-registered-but-inactive-source), or [write a new adapter](INGESTION.md#write-a-new-adapter). Candidates are in [SOURCES.md](SOURCES.md#4-adding-more-sources).
 
 **Load the university domains** (already done for production; 10,484 domains). To reload: `node scripts/generate-domains-sql.cjs`, then run the generated `supabase/seed-domains.sql` in the SQL editor. Users with those domains are approved as posters when they verify their email.
 
-**Change the AI's definition of CSS.** Edit the prompt in `supabase/functions/_shared/llm.ts` and the keyword lists in `_shared/ingest.ts`, deploy `ingest-jobs` and `rescore-jobs`, then run `rescore-jobs` ([INGESTION.md](INGESTION.md#the-ai-verdict)).
+**Edit the AI prompts or the definition of CSS.** The prompt is in `supabase/functions/_shared/llm.ts` and the keyword lists in `_shared/ingest.ts`. Test, deploy and re-run the verdict as in [INGESTION.md > Edit the AI prompts](INGESTION.md#edit-the-ai-prompts) and [Change the keyword filter](INGESTION.md#change-the-keyword-filter).
+
+**Deploy a change to the importer.** The table in [INGESTION.md > Apply a change to production](INGESTION.md#apply-a-change-to-production) says which functions to redeploy for which file.
 
 **Change the look.** [BRANDING.md](BRANDING.md#where-it-lives-in-the-code) lists the files.
 

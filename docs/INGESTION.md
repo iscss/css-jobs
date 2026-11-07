@@ -12,6 +12,7 @@ and deploying it is in [HANDBOOK.md](HANDBOOK.md#production-setup-one-time) and
 - [The safety guarantee](#the-safety-guarantee)
 - [How it works](#how-it-works)
 - [Sources and adapters](#sources-and-adapters)
+- [How-to guides](#how-to-guides): add a source, write an adapter, edit the AI prompts, change the keyword filter
 - [Deduplication and freshness](#deduplication-and-freshness)
 - [The AI verdict](#the-ai-verdict)
 - [The link check](#the-link-check)
@@ -61,7 +62,7 @@ job_sources -> adapter -> normalise -> dedupe -> keyword pre-filter -> AI verdic
 | `supabase/functions/check-listings/index.ts` | Link check and clean-up of stored jobs |
 | `supabase/functions/rescore-jobs/index.ts` | Re-runs the AI verdict over pending and rejected imports (manual) |
 | `supabase/functions/structure-jobs/index.ts` | Organises published jobs into sections |
-| `supabase/functions/_shared/adapters.ts` | Per-source fetch and parse (jobRxiv, CoMSES, generic RSS, Workday) |
+| `supabase/functions/_shared/adapters.ts` | Per-source fetch and parse (jobRxiv, CoMSES, generic RSS, Workday, Oracle Recruiting) |
 | `supabase/functions/_shared/ingest.ts` | Normalisation, HTML stripping, constraint checks, keyword scoring, hashing |
 | `supabase/functions/_shared/llm.ts` | The AI verdict, closing-date extraction, and the prompt |
 | `supabase/functions/_shared/structure.ts` | The organiser: prompt, quote checking, section slicing |
@@ -77,35 +78,204 @@ job_sources -> adapter -> normalise -> dedupe -> keyword pre-filter -> AI verdic
 Sources are rows in `job_sources` (data, not code). The list in use, what each returned on the
 first production run, and the boards investigated are in [SOURCES.md](SOURCES.md). The adapters:
 
-| Adapter | For |
-|---------|-----|
-| `rss-jobrxiv` | jobRxiv's structured job feed |
-| `rss-comses` | CoMSES Net (institution is recovered from the text; the feed escapes its HTML twice, which `stripHtml` handles) |
-| `rss-generic` | Plain RSS 2.0; institution and location come from `config` |
-| `workday` | University career sites on Workday; needs `config.institution` and optional `search_terms` |
+| Adapter | For | `config` |
+|---------|-----|----------|
+| `rss-jobrxiv` | jobRxiv's structured job feed | none |
+| `rss-comses` | CoMSES Net (institution is recovered from the text; the feed escapes its HTML twice, which `stripHtml` handles) | none |
+| `rss-generic` | Plain RSS 2.0 | `institution`, `location` |
+| `workday` | University career sites on Workday (a search, then one request per posting) | `institution` (required); `search_terms`, `max_per_term` |
+| `oracle-recruiting` | Career sites on Oracle Recruiting Cloud, such as Stanford (the same search-then-detail pattern, through Oracle's public REST service) | `institution` and `site_number` (required); `search_terms`, `max_per_term` |
 
-### Adding a source
+The sources the migrations create are in `20260803000000` (jobRxiv), `20260812000000` (CoMSES and the first Workday
+universities) and `20260816000000` (the university sources from the lab list).
 
-No deploy is needed for a feed the existing adapters can read:
+A source whose `adapter` names something that does not exist is logged as an error and skipped, which is why
+sources that still need a reader are registered with `is_active = false`.
 
-```sql
-INSERT INTO job_sources (slug, name, adapter, feed_url, config, max_age_days) VALUES (
-  'example',
-  'Example University',
-  'rss-generic',
-  'https://example.edu/jobs/feed',
-  '{"institution": "Example University", "location": "Example City"}'::jsonb,
-  180
-);
-```
-
-Adding another Workday university is one row, with its `.../wday/cxs/<tenant>/<site>/jobs` address
-and `search_terms`. Pause a source with `UPDATE job_sources SET is_active = false WHERE slug = '...'`.
-The sources the migrations create are in `20260803000000` (jobRxiv) and `20260812000000` (the rest).
+**Registered, tested and active** (migration `20260816000000`): Penn, Northeastern, USC and Yale (Workday) and Stanford
+(Oracle). **Registered but inactive**, each with the reason in its `config.status` and `config.note`: Columbia,
+UMass Amherst, Harvard, Koç, GESIS and Microsoft Research (they block automated requests), Toronto, Vermont and TU
+Graz (need a reader written), and CUHK (unverified). The full table, with what each returned, is in
+[SOURCES.md section 1](SOURCES.md#1-job-sources-the-importer-reads).
 
 Request headers identify the importer as `CSSJobsBot/1.0` with a contact address, and it spaces
 its requests out. It does not try to get around a site that blocks it (see jobRxiv in
-[SOURCES.md](SOURCES.md)).
+[SOURCES.md](SOURCES.md)). **The fix for a blocked site is to ask the owner to allow `CSSJobsBot`.**
+
+---
+
+## How-to guides
+
+Each guide ends with how to put the change on production. Test locally first (see
+[Running it by hand](#running-it-by-hand)); the commands for a production change are collected in
+[Apply a change to production](#apply-a-change-to-production).
+
+### Add a source that an existing adapter can read
+
+No deploy is needed. A source is one row in `job_sources`:
+
+| Column | Meaning |
+|--------|---------|
+| `slug` | Short unique name, used with `{"source": "<slug>"}` and in the logs. Convention: adapter prefix and place, e.g. `wd-upenn` |
+| `name` | Shown in the logs |
+| `adapter` | One of the adapters above |
+| `feed_url` | Must start with `http://` or `https://` (the table enforces it) |
+| `config` | The adapter's settings (table above), as JSON |
+| `max_age_days` | Ignore postings older than this. Leave empty for feeds that list only open roles. Use 180 to 365 for career sites that keep old postings |
+| `is_active` | `false` pauses a source without deleting it |
+
+**A university on Workday.** Open the university's careers site. The address looks like
+`https://<tenant>.wd<N>.myworkdayjobs.com/<site>` (or `.../en-US/<site>`). The importer's address is the same host with
+`/wday/cxs/<tenant>/<site>/jobs`. Check it before adding it:
+
+```bash
+curl -s -X POST 'https://<tenant>.wd<N>.myworkdayjobs.com/wday/cxs/<tenant>/<site>/jobs' \
+  -H 'Content-Type: application/json' -H 'Accept: application/json' \
+  -d '{"appliedFacets":{},"limit":5,"offset":0,"searchText":"computational social science"}'
+```
+
+A JSON reply with a `total` is a working Workday site. If the careers page looks like something else, open one job and
+look at its **Apply** link: Yale's front end is Phenom People, but the apply links go to Workday. A `.../hcmUI/CandidateExperience/...` address
+means Oracle Recruiting (use `oracle-recruiting`, `site_number` is the part after `/sites/`). Then:
+
+```sql
+INSERT INTO job_sources (slug, name, adapter, feed_url, config, max_age_days) VALUES (
+  'wd-example',
+  'Example University',
+  'workday',
+  'https://example.wd1.myworkdayjobs.com/wday/cxs/example/careers/jobs',
+  '{"institution": "Example University", "search_terms": ["computational social science", "social data science", "computational sociology"]}'::jsonb,
+  365
+);
+```
+
+**An RSS feed** uses `rss-generic`, with `{"institution": "...", "location": "..."}` and the feed's address. **An
+Oracle site** uses `oracle-recruiting` with `feed_url` set to the site's root (`https://careersearch.stanford.edu`)
+and `"site_number": "stanford"` in `config`.
+
+**Test it before the first real run**, with a dry run that fetches and checks but inserts nothing, then a real run for
+that one source, then a look at the result:
+
+```bash
+curl -s -X POST http://127.0.0.1:54321/functions/v1/ingest-jobs -H "Authorization: Bearer $SRK" \
+  -H "Content-Type: application/json" -d '{"source":"wd-example","dryRun":true}'
+```
+
+Read `fetched`, `inserted`, `skipped` and the sample listings. If `fetched` is 0, check the address and
+search terms. Search terms matter: a Workday site returns only what matches them, which is what keeps a
+university's thousands of staff postings out.
+
+**Make it permanent** by putting the row in a new migration file (`supabase/migrations/<later timestamp>_<name>.sql`,
+using `INSERT ... ON CONFLICT (slug) DO NOTHING` so it can run twice), as
+`20260816000000_seed_university_sources.sql` does, and apply that file to production
+([below](#apply-a-change-to-production)). A row typed into the production SQL editor works too, but then a fresh database does
+not have it and the next person will not know it exists.
+
+**Pause or remove:** `UPDATE job_sources SET is_active = false WHERE slug = '...'`. The jobs already imported stay.
+
+### Switch on a registered but inactive source
+
+The sources in section 1.2 of [SOURCES.md](SOURCES.md#12-registered-but-inactive) are in the table already. Read the
+source's `config.note`:
+
+```sql
+SELECT slug, config->>'status' AS status, config->>'note' AS note FROM job_sources WHERE NOT is_active;
+```
+
+- **blocked**: ask the owner to allow `CSSJobsBot` (it reads the public careers page once a day and says who it is),
+  then check with a dry run. Sites behind a bot challenge (Columbia and UMass Amherst's PageUp) also need a reader.
+- **needs-adapter**: [write the adapter](#write-a-new-adapter) first.
+- **unverified**: check the address from another network and identify the platform.
+
+When it works: `UPDATE job_sources SET is_active = true, config = config - 'status' - 'note' WHERE slug = '...';`
+and set `adapter` to the real one if it was a placeholder.
+
+### Write a new adapter
+
+An adapter is one function: it takes the source's `feed_url` and `config` and returns a list of `RawJob`
+(`title`, `institution`, `location`, `description`, `sourceUrl`, and optionally `jobType`, `sourceJobId`,
+`applicationUrl`, `postedAt`), defined in `_shared/ingest.ts`. It does **no validation**: `normalizeJob` checks lengths,
+strips HTML and maps the job type. Use the Workday and Oracle adapters in `supabase/functions/_shared/adapters.ts` as
+the pattern for a site with a search and a detail page. Steps:
+
+1. Find the data, not the page. Look in the browser's Network tab for a JSON or XML service the page calls (that is how
+   the Workday, Oracle and Atom readers were found). Check the site's terms and its `robots.txt` first. Where a site refuses
+   automated requests, stop and ask the owner; do not work around it.
+2. Write the function in `_shared/adapters.ts`. Send the `CSSJobsBot` headers, sleep a few hundred
+   milliseconds between requests, **throw a clear error when the response is not OK** (so a failing source shows in
+   `scrape_runs` and does not look like a quiet day), and **skip a posting you cannot read instead of throwing**.
+3. Register it in the `ADAPTERS` object at the bottom of that file.
+4. Add tests in `src/lib/adapters.test.ts`, with the HTTP calls mocked: the mapping, paging, duplicates, a failed detail,
+   an empty description, a missing config value and a non-OK reply. `oracleRecruitingAdapter` has eight to copy.
+5. **Teach the link check about the site** if its pages are JavaScript apps that answer 200 for anything (check
+   with a made-up job id: if it says "live", it is wrong). Add a branch in `checkListing` in `_shared/liveness.ts` that asks
+   the site's own data service whether the posting still exists, as the Workday and Oracle branches do, with tests in
+   `src/lib/liveness.test.ts`. A job whose link cannot be checked stays `unknown`, which is never acted on.
+6. Add the source row ([above](#add-a-source-that-an-existing-adapter-can-read)), run `npx vitest run`, a dry run, then a real
+   run, and look at what came in.
+7. Deploy `ingest-jobs` and `check-listings` ([below](#apply-a-change-to-production)).
+
+### Edit the AI prompts
+
+There are two prompts, and both treat the posting as data, never as instructions. Keep that sentence when you edit.
+
+| What | Where | Used by |
+|------|-------|---------|
+| **Does the job fit CSS?** The definition, the three verdicts, the closing-date rules | `SYSTEM_PROMPT` in `supabase/functions/_shared/llm.ts` | `ingest-jobs` (new jobs) and `rescore-jobs` |
+| **Organising a posting into sections.** What the model may and may not do | `STRUCTURE_SYSTEM_PROMPT` in `_shared/structure.ts` | `structure-jobs` |
+| The model name | `DEFAULT_MODEL` in `llm.ts`, `STRUCTURE_MODEL` in `structure.ts`, or the `ANTHROPIC_MODEL` secret on Supabase to override both without a code change | |
+| How many jobs get a verdict per run | `MAX_LLM_PER_RUN` secret (default 150) | `ingest-jobs` |
+
+**Changing what counts as CSS (the usual edit).** Change the definition paragraph and the verdict list in `SYSTEM_PROMPT`.
+The reply format (one JSON object with `verdict`, `reasoning`, `deadline`) is parsed by `parseScore`, so change the format only together with that
+function and its tests. Keep the rule "when unsure, choose borderline, never reject": it is what stops a good job from being
+filed as rejected. The same definition is written in prose at the top of
+[The AI verdict](#the-ai-verdict), so update that paragraph too. Then:
+
+1. `npx vitest run` (the prompt tests check that the posting is wrapped in `<posting>` tags and that the format parses).
+2. **Try it on real jobs before it goes live.** Locally, run `rescore-jobs` with `"dryRun": true` and read the verdicts
+   it would give. A good test set is a dozen jobs you already know: some clear fits, some clear misses, some
+   borderline ones.
+3. Deploy `ingest-jobs` and `rescore-jobs`, so both use the new prompt.
+4. **Re-run the verdict over the queue** so existing jobs follow the new rules: run the link check to completion first
+   (hard checks, then the AI), then `rescore-jobs` in pages until `next` is null
+   ([Running it by hand](#running-it-by-hand)). It leaves published jobs and anything an admin acted on alone.
+
+**Changing the organiser's prompt.** The organiser may only point at text (quotes and starting positions). If you let the prompt ask for
+rewriting, `verifyStructure` will throw those answers away, because every quote is checked against the original. To
+see a change on jobs that already have an organised copy, clear it (`UPDATE jobs SET structured = NULL, structured_at = NULL WHERE id = '...'`) and run
+`structure-jobs`. Deploy `structure-jobs` after the change.
+
+### Change the keyword filter
+
+The free first step before the AI is `scoreRelevance` in `_shared/ingest.ts`. Its word lists are, in order, `EXPLICIT_FIELD`
+(field names that are CSS by definition), `METHOD_SIGNALS`, `SOCIAL_SIGNALS` (a role needs both) and `DISQUALIFYING`
+(fields that are never CSS: a match skips the AI and files the job as rejected). Each entry is a regular expression
+and a weight. **Be careful adding to `DISQUALIFYING`**, because a match there is the one case where a job is rejected
+without the AI looking at it; test the pattern against real titles. The tests are in `src/lib/ingest.test.ts`. The functions
+that use it need redeploying, and `rescore-jobs` re-files what is already queued.
+
+### Change the schedule
+
+How often the import, link check and organiser run is set in the database, not in code:
+[HANDBOOK > Operating production](HANDBOOK.md#operating-production) has the `cron.alter_job` commands.
+The window for which postings count as too old is the source's `max_age_days`.
+
+### Apply a change to production
+
+| You changed | Do |
+|-------------|----|
+| A row in `job_sources` or any SQL | A new file in `supabase/migrations/`, applied with `psql` ([HANDBOOK > Deployment](HANDBOOK.md#deployment)). `db push` does not work on production |
+| `_shared/adapters.ts`, `_shared/ingest.ts` or `_shared/llm.ts` | `npx supabase functions deploy ingest-jobs rescore-jobs --no-verify-jwt --remote=ukkqeczgommifgecyrez --yes` |
+| `_shared/liveness.ts` | `npx supabase functions deploy check-listings --no-verify-jwt --remote=ukkqeczgommifgecyrez --yes` |
+| `_shared/structure.ts` | `npx supabase functions deploy structure-jobs --no-verify-jwt --remote=ukkqeczgommifgecyrez --yes` |
+| Several of these | Deploy them all together: `npx supabase functions deploy ingest-jobs rescore-jobs check-listings structure-jobs --no-verify-jwt --remote=ukkqeczgommifgecyrez --yes` |
+
+Functions import the `_shared` files at deploy time, so a change to a shared file does nothing on production until the
+functions that use it are redeployed. **A new source is picked up by the next 03:00 UTC run**, or import it at once by
+calling `ingest-jobs` with `{"source": "<slug>"}` (key and address: [Running it by hand](#running-it-by-hand), with the
+production address from [HANDBOOK](HANDBOOK.md#production-setup-one-time)). Imported jobs always land as pending, so
+an admin sees them in the queue before anyone else does.
 
 ---
 
@@ -214,6 +384,9 @@ The rule is `linkCheckAction` in `_shared/liveness.ts`. A few details learned th
   `wdN.myworkdaysite.com/recruiting/...` links (University of Washington). A Workday **403** means a posting was
   taken down but can also mean we are blocked, so it counts as `dead` only when the tenant's own job search no
   longer lists the requisition.
+- **Oracle Recruiting** pages (Stanford) are also JavaScript apps, so they are checked through Oracle's REST service: no
+  matching requisition means `dead`, and a past end date means `closed`. A made-up job id was reported live by the plain
+  page check, which is why this exists.
 - A **429** (rate-limited) is retried once after a few seconds; a job left `unknown` is tried again after a day
   (not the full week).
 - The word "expired" in a stylesheet is not a closed posting: the check reads only visible text, status codes,

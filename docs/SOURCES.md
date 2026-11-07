@@ -6,12 +6,12 @@ could supply more. Part of the [CSS Jobs documentation](../README.md#documentati
 - **Job sources the importer reads today:** [section 1](#1-job-sources-the-importer-reads)
 - **Boards and aggregators we looked at:** [section 2](#2-boards-and-aggregators-investigated)
 - **The CSS community directory**, taken from the [Penn CSS Lab community page](https://css.engineering.upenn.edu/about/community/), [varyCSS](http://varycss.org/) and [SICSS](https://sicss.io/): [section 3](#3-css-community-directory)
-- **Which to add next, and how:** [section 4](#4-adding-more-sources)
+- **What to add next, and how:** [section 4](#4-adding-more-sources)
 
 How the importer works is in [INGESTION.md](INGESTION.md); how to add a source is in
-[INGESTION.md > Adding a source](INGESTION.md#adding-a-source).
+[INGESTION.md > How-to guides](INGESTION.md#how-to-guides).
 
-> **Checked on 2026-11-06.** Pages move: several links on the Penn community page
+> **Checked on 2026-11-06 and 2026-11-07.** Pages move: several links on the Penn community page
 > had already changed or block automated requests (noted below). Treat the status
 > columns as a snapshot and re-check a site before building an importer for it.
 > The community lists were read from the public pages with a handful of polite
@@ -21,26 +21,53 @@ How the importer works is in [INGESTION.md](INGESTION.md); how to add a source i
 
 ## 1. Job sources the importer reads
 
-These are rows in the `job_sources` table (see [INGESTION.md](INGESTION.md#adding-a-source)).
-The first production import ran on 2026-11-04.
+These are rows in the `job_sources` table (see [INGESTION.md](INGESTION.md#how-to-guides)). The first production
+import ran on 2026-11-04 with the first ten rows below. The university sources from the lab list were added on
+2026-11-07 (migration `20260816000000`) and tested against the live sites; they reach production when that
+migration is applied ([HANDBOOK > Deployment](HANDBOOK.md#deployment)).
 
-| Slug | Source | Adapter | Feed or search address | Max age | First production import |
-|------|--------|---------|------------------------|---------|-------------------------|
-| `jobrxiv` | [jobRxiv](https://jobrxiv.org/) | `rss-jobrxiv` | `https://jobrxiv.org/?feed=job_feed` | none | **Blocked: HTTP 403** from Supabase's servers (works from other networks). About 760 jobs found locally; 33 relevant |
-| `comses` | [CoMSES Net](https://www.comses.net/) | `rss-comses` | `https://www.comses.net/feeds/jobs/rss/` | 180 days | 6 imported (114 of 120 too old) |
-| `wd-brown` | Brown University | `workday` | `brown.wd5.myworkdayjobs.com` | 365 days | 1 |
-| `wd-cornell` | Cornell University | `workday` | `cornell.wd1.myworkdayjobs.com` | 365 days | 17 |
-| `wd-osu` | Ohio State University | `workday` | `osu.wd1.myworkdayjobs.com` | 365 days | 23 |
-| `wd-uchicago` | University of Chicago | `workday` | `uchicago.wd5.myworkdayjobs.com` | 365 days | 41 |
-| `wd-umd` | University of Maryland | `workday` | `umd.wd1.myworkdayjobs.com` | 365 days | 14 |
-| `wd-uva` | University of Virginia | `workday` | `uva.wd1.myworkdayjobs.com` | 365 days | 0 (no matches) |
-| `wd-uw` | University of Washington | `workday` | `uw.wd5.myworkdayjobs.com` (job links use `wd5.myworkdaysite.com`) | 365 days | 15 |
-| `wd-wisconsin` | University of Wisconsin | `workday` | `wisconsin.wd1.myworkdayjobs.com` | 365 days | 36 |
-| `wd-cmu` | Carnegie Mellon University | `workday` | `cmu.wd5.myworkdayjobs.com` | 365 days | **Not seeded.** Its search returns HTTP 422 on every run since at least October 2026 |
+### 1.1 Active
 
-The Workday sources search for CSS terms ("computational social science", "social data
-science", "computational sociology", and for some "agent-based model" or "network
-analysis") before anything is downloaded.
+| Slug | Source | Adapter | Address | Max age | Result |
+|------|--------|---------|---------|---------|--------|
+| `jobrxiv` | [jobRxiv](https://jobrxiv.org/) | `rss-jobrxiv` | `jobrxiv.org/?feed=job_feed` | none | **Blocked: HTTP 403** from Supabase's servers (works from other networks). About 760 jobs found locally; 33 relevant |
+| `comses` | [CoMSES Net](https://www.comses.net/) | `rss-comses` | `comses.net/feeds/jobs/rss/` | 180 days | Production: 6 imported (114 of 120 too old) |
+| `wd-brown` | Brown University | `workday` | `brown.wd5.myworkdayjobs.com` | 365 days | Production: 1 |
+| `wd-cornell` | Cornell University | `workday` | `cornell.wd1.myworkdayjobs.com` | 365 days | Production: 17 |
+| `wd-osu` | Ohio State University | `workday` | `osu.wd1.myworkdayjobs.com` | 365 days | Production: 23 |
+| `wd-uchicago` | University of Chicago | `workday` | `uchicago.wd5.myworkdayjobs.com` | 365 days | Production: 41 |
+| `wd-umd` | University of Maryland | `workday` | `umd.wd1.myworkdayjobs.com` | 365 days | Production: 14 |
+| `wd-uva` | University of Virginia | `workday` | `uva.wd1.myworkdayjobs.com` | 365 days | Production: 0 (no matches) |
+| `wd-uw` | University of Washington | `workday` | `uw.wd5.myworkdayjobs.com` (job links use `wd5.myworkdaysite.com`) | 365 days | Production: 15 |
+| `wd-wisconsin` | University of Wisconsin | `workday` | `wisconsin.wd1.myworkdayjobs.com` | 365 days | Production: 36 |
+| `wd-upenn` | University of Pennsylvania (Warren Center, Wharton, CSSLab) | `workday` | `upenn.wd1.myworkdayjobs.com`, site `careers-at-penn` | 365 days | Local test: 27 found, 25 inserted (all keyword-rejected: mostly staff roles) |
+| `wd-northeastern` | Northeastern University (Lazer Lab) | `workday` | `northeastern.wd1.myworkdayjobs.com`, site `careers` | 365 days | Local test: 67 found, 61 inserted, 13 pending for review |
+| `wd-usc` | University of Southern California (USC Dornsife) | `workday` | `usc.wd5.myworkdayjobs.com`, site `ExternalUSCCareers` | 365 days | Local test: 26 found, 23 inserted, 5 pending |
+| `wd-yale` | Yale University (Human Nature Lab) | `workday` | `yale.wd1.myworkdayjobs.com`, site `external_career_site` (Yale's front end is Phenom People; its apply links reveal Workday) | 365 days | Local test: 9 found, 9 inserted, 1 pending |
+| `oracle-stanford` | Stanford University (IRiSS) | `oracle-recruiting` | `careersearch.stanford.edu`, site `stanford` | 365 days | Local test: 82 found, 63 inserted, 6 pending (2 accepted by the AI). **New adapter**; the link check reads Stanford's REST service |
+
+The Workday and Oracle sources search for CSS terms ("computational social science", "social data science",
+"computational sociology", and for Northeastern "network science") before anything is downloaded.
+
+### 1.2 Registered but inactive
+
+Registered so they are visible and one switch away; the importer skips them. Each says why in `config.status`
+and `config.note`. To switch one on after it is fixed: `UPDATE job_sources SET is_active = true WHERE slug = '...';`
+
+| Slug | Host (lab or center) | Careers system | Status | Why, and what is needed |
+|------|----------------------|----------------|--------|-------------------------|
+| `pageup-columbia` | Columbia University (Data Science Institute) | PageUp | **Blocked** | An AWS bot challenge answers automated requests with HTTP 202 and a JavaScript page. Ask Columbia HR to allow `CSSJobsBot`, then write a PageUp reader |
+| `pageup-umass` | UMass Amherst (CSSI) | PageUp | **Blocked** | The same AWS bot challenge as Columbia |
+| `harvard` | Harvard (Computational Policy Lab, Kennedy School) | Not identified | **Blocked** | The jobs page answers HTTP 403 to automated requests |
+| `sf-toronto` | University of Toronto (CS) | SAP SuccessFactors | Needs an adapter | HTML pages; the search ignored the query in a first test, so a reader has to be written and checked |
+| `atom-uvm` | University of Vermont (Computational Story Lab) | PeopleAdmin | Needs an adapter | An Atom feed exists and `?query=` filters it, but entries carry only a title and department; a reader must fetch each posting page |
+| `tugraz` | Graz University of Technology | JavaScript app (`jobs.tugraz.at`) | Needs an adapter | No public data endpoint or feed found |
+| `koc` | Koç University (CCSS) | Not identified | **Blocked** | HTTP 403 to automated requests |
+| `gesis` | GESIS | Not identified | **Blocked** | HTTP 403 to automated requests |
+| `cuhk` | The Chinese University of Hong Kong | Not identified | Unverified | The Personnel Office address did not resolve from the network it was checked on |
+| `microsoft-research` | Microsoft Research | Eightfold | **Blocked** | Its search API answered HTTP 429 (rate limited) to an automated request; read its terms first |
+
+Carnegie Mellon (`wd-cmu`) is not seeded in production: its Workday search returns HTTP 422 on every run.
 
 ---
 
@@ -80,34 +107,35 @@ page (for Penn students; a very short page, no feed).
 
 ### 3.2 Other CSS labs and centers
 
-The logo grid on that page, in the order shown. "Listed address" is the link the Penn
-page gives; "Status" is what it returned on 2026-11-06.
+The logo grid on that page, in the order shown. "Address" is the one currently in use (the Penn page's links
+have moved for several, and these are the corrected ones). "Status" is what it returned on 2026-11-07. The last
+column is how the lab's **host institution** is covered as a job source (section 1).
 
-| # | Lab or center | Host | Listed address | Status | Where it posts jobs (found) |
-|---|---------------|------|----------------|--------|------------------------------|
-| 1 | The Warren Center for Network & Data Sciences | University of Pennsylvania | [warrencenter.upenn.edu](https://warrencenter.upenn.edu/) | OK | No jobs page found; check Penn's careers site |
-| 2 | Wharton Analytics: Computational Social Science | Wharton, University of Pennsylvania | `analytics.wharton.upenn.edu/computational-social-science/` | **404, moved** to [ai-analytics.wharton.upenn.edu](https://ai-analytics.wharton.upenn.edu/) | None found |
-| 3 | Lazer Lab | Northeastern University | `lazerlab.net/publication/computational-social-science` | **404**; site root [lazerlab.net](https://www.lazerlab.net/) works | None found (`/join` is 404) |
-| 4 | Human Nature Lab | Yale University | [humannaturelab.net](https://humannaturelab.net/research-areas/observational-studies-of-social-networks) | OK | **[Open Positions](https://humannaturelab.net/open-positions)** page |
-| 5 | IRiSS Computational Social Science | Stanford University | [iriss.stanford.edu/css](https://iriss.stanford.edu/css) | OK | None found; check Stanford's careers site |
-| 6 | CSS Lab | TU Graz, Austria | `tugraz.at/institute/isds/.../computational-social-science-lab-css-lab/` | **Moved, now 404** (redirects to `/institute/hcc/...`); needs the new address | Not checked |
-| 7 | Computational Social Science Lab | USC Dornsife | [dornsife.usc.edu/labs/cssl](https://dornsife.usc.edu/labs/cssl/) | OK | No jobs page; the site advertises a feed (news, not jobs) |
-| 8 | ILCSS, Interdisciplinary Lab for Computational Social Science | University of Maryland | [ilcss.umd.edu](https://ilcss.umd.edu/) | OK | None found. University of Maryland is already a source (`wd-umd`) |
-| 9 | Computational Social Science group | Columbia Data Science Institute | [datascience.columbia.edu/.../computational-social-science](https://datascience.columbia.edu/research/groups/computational-social-science/) | **HTTP 403** to automated requests | Not verified |
-| 10 | CSS Lab | University of Toronto, Computer Science | [csslab.cs.toronto.edu](http://csslab.cs.toronto.edu/) | OK | **Blog posts announce positions** (for example a 2024 postdoctoral fellow post and a 2023 "Join our group" post); the site advertises an Atom/RSS feed, so `rss-generic` could read it |
-| 11 | Stanford Computational Policy Lab | Stanford University | [policylab.stanford.edu](https://policylab.stanford.edu/) | OK | None found (`/join` is 404) |
-| 12 | Microsoft Research: Computational Social Science | Microsoft | [microsoft.com/.../computational-social-science](https://www.microsoft.com/en-us/research/theme/computational-social-science/) | OK | [Careers & internships](https://www.microsoft.com/en-us/research/careers/) and [careers.microsoft.com](https://careers.microsoft.com/) |
-| 13 | Computational Social Science Institute (CSSI) | UMass Amherst | [cssi.umass.edu](http://www.cssi.umass.edu/) | OK | **[Join Us](http://www.cssi.umass.edu/join)** page |
-| 14 | Center for Computational Social Sciences (CCSS) | Koç University, Turkey | `ccss.ku.edu.tr` | **HTTP 403** (redirects to `research.ku.edu.tr/.../ccss/`) | Not verified |
-| 15 | GESIS: Computational Social Science department | GESIS Leibniz Institute for the Social Sciences, Germany | [gesis.org/.../computational-social-science](https://www.gesis.org/en/institute/departments/computational-social-science) | **HTTP 403** to automated requests | Not verified. GESIS also lists vacancies under its institute pages |
-| 16 | Computational Social Science @ CUHK | The Chinese University of Hong Kong | [cssl.socsc.cuhk.edu.hk](https://cssl.socsc.cuhk.edu.hk) | OK | None found on the home page |
-| 17 | Computational Story Lab | University of Vermont | [compstorylab.org](http://www.compstorylab.org/) | OK | None found (`/join/` is 404) |
+| # | Lab or center | Host | Address | Status | Host's job source |
+|---|---------------|------|---------|--------|-------------------|
+| 1 | The Warren Center for Network & Data Sciences | University of Pennsylvania | [warrencenter.upenn.edu](https://warrencenter.upenn.edu/) | OK | `wd-upenn`, active |
+| 2 | Wharton Analytics: Computational Social Science | Wharton, University of Pennsylvania | [ai-analytics.wharton.upenn.edu/computational-social-science](https://ai-analytics.wharton.upenn.edu/computational-social-science/) | **404** (the site root, [ai-analytics.wharton.upenn.edu](https://ai-analytics.wharton.upenn.edu/), works) | `wd-upenn`, active |
+| 3 | Lazer Lab | Northeastern University | [lazerlab.net/publication/computational-social-science](https://www.lazerlab.net/publication/computational-social-science) | **404** (the root, [lazerlab.net](https://www.lazerlab.net/), works) | `wd-northeastern`, active |
+| 4 | Human Nature Lab | Yale University | [humannaturelab.net/computational-social-science](https://humannaturelab.net/computational-social-science) | OK. Its own [Open Positions](https://humannaturelab.net/open-positions) page | `wd-yale`, active |
+| 5 | IRiSS Computational Social Science | Stanford University | [iriss.stanford.edu/.../computational-social-science](https://iriss.stanford.edu/user/login?destination=/research-centers/computational-social-science) | OK (a login-redirect address) | `oracle-stanford`, active |
+| 6 | CSS Lab | TU Graz, Austria | [tugraz.at/institute/hcc/.../css-lab](https://www.tugraz.at/institute/hcc/research/research-groups/computational-social-science-lab-css-lab/) | **404** | `tugraz`, inactive (needs an adapter) |
+| 7 | Computational Social Science Lab | USC | [dornsife.usc.edu](https://dornsife.usc.edu/) | OK | `wd-usc`, active |
+| 8 | ILCSS, Interdisciplinary Lab for Computational Social Science | University of Maryland | [ilcss.umd.edu](https://ilcss.umd.edu/) | OK | `wd-umd`, active (since the first import) |
+| 9 | Computational Social Science group | Columbia Data Science Institute | [datascience.columbia.edu/.../computational-social-science](https://datascience.columbia.edu/research/groups/computational-social-science/) | **HTTP 403** to automated requests | `pageup-columbia`, inactive (blocked) |
+| 10 | CSS Lab | University of Toronto, Computer Science | [csslab.cs.toronto.edu](https://csslab.cs.toronto.edu/) | OK. Positions appear as blog posts, and the site advertises a feed | `sf-toronto`, inactive (needs an adapter) |
+| 11 | Computational Policy Lab | Harvard Kennedy School (the lab previously listed at Stanford) | [policylab.hks.harvard.edu](https://policylab.hks.harvard.edu/) | OK | `harvard`, inactive (blocked) |
+| 12 | Microsoft Research: Computational Social Science | Microsoft | [microsoft.com/.../computational-social-science](https://www.microsoft.com/en-us/research/theme/computational-social-science/) | OK. [Careers](https://www.microsoft.com/en-us/research/careers/) | `microsoft-research`, inactive (blocked) |
+| 13 | Computational Social Science Institute (CSSI) | UMass Amherst | [cssi.umass.edu](https://www.cssi.umass.edu/) | OK. Its [Join Us](http://www.cssi.umass.edu/join) page | `pageup-umass`, inactive (blocked) |
+| 14 | Center for Computational Social Sciences (CCSS) | Koç University, Turkey | [research.ku.edu.tr/.../ccss](https://research.ku.edu.tr/research-infrastructure/research-centers-and-units/ccss/) | **HTTP 403** | `koc`, inactive (blocked) |
+| 15 | GESIS: Computational Social Science department | GESIS Leibniz Institute for the Social Sciences, Germany | [gesis.org/.../computational-social-science](https://www.gesis.org/en/institute/about-us/departments/computational-social-science) | **HTTP 403** | `gesis`, inactive (blocked) |
+| 16 | Computational Social Science @ CUHK | The Chinese University of Hong Kong | [cssl.socsc.cuhk.edu.hk](https://cssl.socsc.cuhk.edu.hk/) | OK | `cuhk`, inactive (unverified) |
+| 17 | Computational Story Lab | University of Vermont | [compstorylab.org](https://www.compstorylab.org/) | OK | `atom-uvm`, inactive (needs an adapter) |
 
-Reading the table: the **sites that block automated requests** (Columbia, Koç, GESIS,
-IC2S2) are the same kind of obstacle jobRxiv presents, so ask before building anything
-for them. The labs with a **jobs or "join" page** (4, 10, 13) are the cheapest to add.
-Most of the others hire through their host university's careers system; whether that
-is Workday (which the importer already reads) has not been checked for each.
+Reading the table: **8 of the 17 labs' host institutions are now read by the importer** (Penn, Northeastern, Yale,
+Stanford, USC, Maryland, and through them Wharton and the other Penn labs). The rest are registered but inactive.
+The sites that **block automated requests** (Columbia, UMass Amherst, Harvard, Koç, GESIS, Microsoft, and jobRxiv from
+Supabase's servers) are the same kind of obstacle: the importer identifies itself as `CSSJobsBot` with a contact
+address and does not try to get around a block, so the fix for all of them is one request to the owner to allow it.
 
 ### 3.3 varyCSS
 
@@ -366,14 +394,12 @@ latest year.
 
 ## 4. Adding more sources
 
-Ranked by effort, using what was found above:
+The how-to steps are in [INGESTION.md > How-to guides](INGESTION.md#how-to-guides). What to do next, by effort:
 
-1. **Labs that already post openings in a feed or on a simple page.**
-   - *CSS Lab, University of Toronto:* positions appear as blog posts and the site advertises a feed. Try the existing `rss-generic` adapter with `config.institution = "University of Toronto"`.
-   - *Human Nature Lab* (Open Positions page) and *CSSI at UMass Amherst* (Join Us page): static pages with no feed. These need a small HTML adapter, which is the first of its kind in the importer.
-2. **Host universities' careers systems.** Most labs above hire through one. If a university's careers site runs on Workday, adding it is **one row** in `job_sources` (see [INGESTION.md > Adding a source](INGESTION.md#adding-a-source)). Check each before assuming: Northeastern, Yale, Stanford, USC, Columbia, Penn, Toronto and UMass Amherst have not been checked.
-3. **Microsoft Research careers.** A large corporate careers site with its own search; read its terms before building anything.
-4. **Sites that block automated requests** (Columbia, Koç, GESIS, IC2S2, and jobRxiv from Supabase's servers). Ask first. The importer identifies itself as `CSSJobsBot` with a contact address and does not try to get around a block. The same ask works for all of them: allow the bot to read the public pages once a day.
+1. **Switch on the blocked sources by asking the owners.** One message, from ISCSS, to Columbia, UMass Amherst, Harvard, Koç, GESIS and jobRxiv: the importer reads the public careers pages once a day and identifies itself as `CSSJobsBot`. Columbia and UMass then also need a PageUp reader.
+2. **Write the missing readers**, each about a day with tests: SAP SuccessFactors (Toronto), PeopleAdmin postings (Vermont, and many other universities), a plain page reader for labs that list openings on a static page (Human Nature Lab's Open Positions, CSSI's Join Us).
+3. **More Workday universities** are one row each (see [INGESTION.md](INGESTION.md#add-a-source-that-an-existing-adapter-can-read)). When a university's careers site is not obviously Workday, look at a job's apply link: Yale's front end is Phenom People, but its apply links point at Workday.
+4. **Microsoft Research** needs its terms read first.
 5. **Announcing the board.** varyCSS, the SICSS location hosts and the conference lists above are where to tell people the board exists.
 
 **Before adding any source:** check its terms and `robots.txt`, keep the request rate low,

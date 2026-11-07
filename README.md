@@ -37,8 +37,9 @@ Where to look for the thing you want to do:
 | Deploy a change, or apply a database migration | [HANDBOOK > Deployment](docs/HANDBOOK.md#deployment) |
 | Check that the nightly import ran | [HANDBOOK > Operating production](docs/HANDBOOK.md#operating-production) |
 | Rotate a key or secret | [HANDBOOK > Operating production](docs/HANDBOOK.md#operating-production) |
-| Add a job source | [INGESTION > Adding a source](docs/INGESTION.md#adding-a-source), candidates in [SOURCES](docs/SOURCES.md#4-adding-more-sources) |
-| Change what counts as a CSS job | [INGESTION > The AI verdict](docs/INGESTION.md#the-ai-verdict) |
+| Add a job source | [INGESTION > How-to guides](docs/INGESTION.md#how-to-guides), candidates in [SOURCES](docs/SOURCES.md#4-adding-more-sources) |
+| Change what counts as a CSS job, or edit the AI prompts | [INGESTION > Edit the AI prompts](docs/INGESTION.md#edit-the-ai-prompts) |
+| Write a reader for a new kind of careers site | [INGESTION > Write a new adapter](docs/INGESTION.md#write-a-new-adapter) |
 | Make someone an admin | [HANDBOOK > Common tasks](docs/HANDBOOK.md#common-tasks) |
 | Change colours or fonts | [BRANDING](docs/BRANDING.md) |
 | Find out what is broken or unfinished | [HANDBOOK > Known issues](docs/HANDBOOK.md#known-issues-and-future-work) |
