@@ -480,6 +480,14 @@ COMMIT;
 
 If a statement errors, run `ROLLBACK;` and nothing is changed. Since migration `20260818000000`, an account that approved other people no longer blocks its own deletion (the "who approved" record is cleared). Before that migration the delete failed with `violates foreign key constraint "user_profiles_approved_by_fkey"`.
 
+**Someone cannot sign in, and shows Unverified.** User Management shows **Verified** or **Unverified** under each email. **Unverified means the person has not clicked the confirmation link** that Supabase emailed when they signed up. They cannot sign in, and **making them an admin or a poster does not help**; an admin cannot verify an address for them in the app. (This happened on 2026-11-11: an admin account created for Alex stayed Unverified because the link was never clicked, so it could never sign in.) What to do:
+1. Ask them to open the email and click the link. Check spam; the sender is Supabase.
+2. If it never arrives, **delete the account** (User Management > the person's menu > **Delete User**) and ask them to sign up again, which sends a new link. This is what we did for Alex.
+3. Supabase's built-in email sender is rate limited, so links can be late or missing when several people sign up at once. A custom email provider (SMTP, under Supabase **Authentication** settings) is the lasting fix.
+4. Last resort, only when you are sure the address is theirs: in the SQL Editor, `UPDATE auth.users SET email_confirmed_at = now() WHERE email = 'person@example.edu';`.
+
+Always have a new admin **verify first and request admin themselves** (or be granted it once verified), as in [the README](../README.md#get-admin-access).
+
 **Feature a job.** Job Management > the job's menu > feature. A "Featured" badge shows in the list.
 
 **Add a job source.** One row in `job_sources`; see [INGESTION.md > Add a source](INGESTION.md#add-a-source-that-an-existing-adapter-can-read), [switch on an inactive one](INGESTION.md#switch-on-a-registered-but-inactive-source), or [write a new adapter](INGESTION.md#write-a-new-adapter). Candidates are in [SOURCES.md](SOURCES.md#4-adding-more-sources).

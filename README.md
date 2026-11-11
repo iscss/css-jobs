@@ -32,7 +32,7 @@ Step by step, for each kind of person. Button and menu names are the ones on scr
 
 1. Click **Sign in** (top right), then **Don't have an account? Sign up**.
 2. Enter your name, email and a password. The password needs **12 or more characters** with an uppercase letter, a lowercase letter, a number and a symbol.
-3. Open the email from the site and click the verification link (check spam). You cannot sign in until you do. **Every verified account can post jobs straight away**; there is no approval step for that.
+3. Open the email from the site and click the verification link (check spam). You cannot sign in until you do, and an admin cannot verify an address for you, so the link has to be clicked. **Every verified account can post jobs straight away**; there is no approval step for that. If the email never arrives, see [Someone cannot sign in](docs/HANDBOOK.md#common-tasks).
 4. Return to the site and click **Sign in**. Use **Forgot password?** on that page if you lose the password.
 5. Signed in, your name appears top right. Click it for **Job board**, **Profile** and **Sign out**, and **Admin dashboard** if you are an admin.
 
@@ -48,7 +48,7 @@ Step by step, for each kind of person. Button and menu names are the ones on scr
 
 Admins review jobs and manage users. Everyone starts as a job poster; admin is asked for and granted.
 
-1. **The person asks.** Signed in, they open their name, then **Profile**, and click **Request admin access** (it shows once they are a poster).
+1. **The person asks.** They create an account and **click the verification link in the email first**: an account that still shows **Unverified** in User Management cannot sign in, so granting it admin achieves nothing. Then, signed in, they open their name, then **Profile**, and click **Request admin access**.
 2. **An admin decides.** In **Admin dashboard**, the **Pending Approvals** tab lists the request under **Admin Access Requests**. Open the menu on it and choose **Grant Admin**, or **Dismiss Request** to leave them as a poster. (An admin can also skip the request: **User Management** tab, the person's menu, **Grant Admin**.)
 3. The new admin signs out and back in. **Admin dashboard** now appears in their name menu.
 
