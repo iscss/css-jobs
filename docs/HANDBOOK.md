@@ -216,7 +216,7 @@ Policies on every table decide what each visitor can read or change. The ones th
 - A poster clicks **Request admin access** on their Profile (stored as `admin_requested_at`). Admins see it under **Admin Access Requests** in Pending Approvals and choose **Grant Admin** or **Dismiss Request**. **Grant Admin** and **Revoke Admin** are also in User Management.
 - Everything, from `/admin`: approve or reject jobs (approving is one click; rejecting asks first), grant or dismiss admin requests, edit any job (**Edit job**, including pending ones), redo a job's sections (**Organise now**), feature jobs, delete users and jobs.
 - Only admins can change `is_admin`, `is_approved_poster` or `can_publish_directly`.
-- Review the admin list now and then: an admin can do anything, including deleting users.
+- Review the admin list now and then: an admin can do anything, including deleting other admins (never themselves).
 
 ---
 
@@ -258,7 +258,7 @@ toggle, clickable links in descriptions, an **Apply** button (or **Apply by emai
 - *Stats:* exact counts from the database; a job card opens Job Management with that filter. The user cards add up (**Admins** + **Job Posters** + **Posting Removed** = **Total Users**; an admin is counted once, as an admin), and **Admin Requests** is how many people are waiting for admin access.
 - *Pending Approvals:* admin access requests, and the imported-jobs queue with filters, the AI verdict and reason, and bulk Approve/Reject (up to 300 per action, with a confirmation that says how many jobs change and how many are skipped).
 - *Job Management:* filter by status, type, origin and deadline; sort by newest, oldest, match, closing soonest or title; approve, reject, feature, **Edit job**, **Organise now**, delete.
-- *User Management:* see all users; **Grant Admin** / **Revoke Admin**, **Revoke Poster** / **Restore Poster**, delete users.
+- *User Management:* see all users; **Grant Admin** / **Revoke Admin**, **Revoke Poster** / **Restore Poster**, **Delete User** (any account but your own).
 
 **Poster access is automatic.** Every new account is created as an approved poster (`trg_poster_on_signup`), and production requires email confirmation, so an address must be owned before anyone can sign in. The older university-domain rule (`auto_approve_user_by_domain()`, `EmailVerificationHandler.tsx`) still runs on verification and is now redundant.
 
@@ -337,7 +337,7 @@ production-only columns (see [Schema drift](#migrations-and-schema-drift)).
 
 Done for production on 2026-11-04. To repeat it, or to set up another project:
 
-1. **Apply the migrations** with `psql` (not `db push`), `20260803000000` to `20260817000000`, in order. These change the live database, so review them first.
+1. **Apply the migrations** with `psql` (not `db push`), `20260803000000` to `20260818000000`, in order. These change the live database, so review them first.
 2. **Deploy the functions** (above).
 3. **Set the secrets:** `ANTHROPIC_API_KEY` and a `SCHEDULER_SECRET` made with `openssl rand -hex 32`.
 4. **Tell the scheduler where to call**, with the same `SCHEDULER_SECRET` value:
@@ -450,25 +450,23 @@ Do **not** reset every imported job to pending: that would also bring back the j
 **Add an admin.** The person clicks **Request admin access** on their Profile; an admin grants it under Pending Approvals, or uses User Management > the user's menu > **Grant Admin**. The very first one must be set in SQL:
 `UPDATE user_profiles SET is_admin = true, admin_requested_at = NULL WHERE email = 'new-admin@example.com';`
 
-**Remove an admin or delete an account.** The app's **Delete** button refuses to delete an admin or your own account, so use the
-Supabase dashboard > **SQL Editor**. First make sure another working admin remains (`SELECT u.email FROM user_profiles p JOIN auth.users u ON u.id = p.id WHERE p.is_admin;`).
-To only take admin away and keep the account: `UPDATE user_profiles SET is_admin = false WHERE email = '...';`. To delete the account for good, find
-its id (`SELECT id FROM auth.users WHERE email = '...';`) and run, with that id in place of `<ID>`:
+**Remove an admin or delete an account.** In **Admin dashboard > User Management**, open the person's menu:
+**Revoke Admin** takes admin away and keeps the account; **Delete User** deletes it for good. An admin can delete any account, **another admin's included, but not their own** (so at least one admin always remains). Deleting an account also deletes the jobs it posted, and the confirmation says so.
+
+If the button is greyed out, the row is your own account. If a delete still fails, see the SQL fallback below.
+
+*SQL fallback* (Supabase dashboard > SQL Editor), for when the app cannot do it. Find the id (`SELECT id FROM auth.users WHERE email = '...';`), check the jobs
+(`SELECT count(*) FROM jobs WHERE posted_by = '<ID>';`), and run, with the id in place of `<ID>`:
 
 ```sql
 BEGIN;
-UPDATE user_profiles SET approved_by = NULL WHERE approved_by = '<ID>';
-UPDATE jobs SET approved_by_admin = NULL WHERE approved_by_admin = '<ID>';
-UPDATE poster_applications SET reviewed_by = NULL WHERE reviewed_by = '<ID>';
 DELETE FROM user_profiles WHERE id = '<ID>';
 DELETE FROM auth.users WHERE id = '<ID>';
 SELECT email FROM auth.users WHERE id = '<ID>';   -- must return no rows
 COMMIT;
 ```
 
-The three `UPDATE`s are needed because an admin's approvals are recorded against their account, and the delete fails ("violates foreign key
-constraint ... approved_by_fkey") while anything still points at it. Deleting an account also deletes the jobs it posted, so check first:
-`SELECT count(*) FROM jobs WHERE posted_by = '<ID>';`. If a statement errors, run `ROLLBACK;` and nothing is changed.
+If a statement errors, run `ROLLBACK;` and nothing is changed. Since migration `20260818000000`, an account that approved other people no longer blocks its own deletion (the "who approved" record is cleared). Before that migration the delete failed with `violates foreign key constraint "user_profiles_approved_by_fkey"`.
 
 **Feature a job.** Job Management > the job's menu > feature. A "Featured" badge shows in the list.
 
@@ -524,6 +522,7 @@ constraint ... approved_by_fkey") while anything still points at it. Deleting an
 | `20260815000000_close_profile_email_leak` | Drops the policy that let anyone read every profile; adds `email_is_registered()` |
 | `20260816000000_seed_university_sources` | Penn, Northeastern, USC, Yale and Stanford as active sources, and ten registered but inactive ones; safe to run twice |
 | `20260817000000_automatic_poster_access` | Every new account is an approved poster (trigger); `admin_requested_at`; existing accounts brought in line |
+| `20260818000000_deleting_an_account_keeps_its_approvals` | `approved_by`, `approved_by_admin` and `reviewed_by` clear themselves when that account is deleted, so deleting an admin who approved people works |
 
 All were applied to production with `psql`. A new migration needs a new, later timestamp.
 

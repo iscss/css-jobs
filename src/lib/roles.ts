@@ -96,3 +96,12 @@ export function userCounts(users: RoleFields[] | null | undefined) {
   const posters = list.filter((u) => accountRole(u) === 'poster').length;
   return { total: list.length, admins, posters, removed: list.length - admins - posters };
 }
+
+/**
+ * An admin can delete any account except their own. Deleting another admin is
+ * allowed on purpose: because you cannot delete yourself, at least one admin
+ * (the one doing the deleting) always remains.
+ */
+export function canDeleteUser(targetId: string, currentUserId: string | null | undefined): boolean {
+  return !!currentUserId && targetId !== currentUserId;
+}

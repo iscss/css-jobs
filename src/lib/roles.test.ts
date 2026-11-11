@@ -3,6 +3,7 @@ import {
   accessStatusLabel,
   accountRole,
   adminUpdate,
+  canDeleteUser,
   canOpenPostPage,
   posterUpdate,
   roleBadgeClass,
@@ -140,5 +141,20 @@ describe('userCounts', () => {
 
   it('copes with no users yet', () => {
     expect(userCounts(undefined)).toEqual({ total: 0, admins: 0, posters: 0, removed: 0 });
+  });
+});
+
+describe('canDeleteUser', () => {
+  it('lets an admin delete another account, admin or not', () => {
+    expect(canDeleteUser('someone-else', 'me')).toBe(true);
+  });
+
+  it('never lets an admin delete their own account, so one admin always remains', () => {
+    expect(canDeleteUser('me', 'me')).toBe(false);
+  });
+
+  it('refuses when nobody is signed in', () => {
+    expect(canDeleteUser('someone-else', null)).toBe(false);
+    expect(canDeleteUser('someone-else', undefined)).toBe(false);
   });
 });

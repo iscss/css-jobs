@@ -103,10 +103,11 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Check if target user is admin (prevent deleting other admins)
-    const { data: targetProfile, error: targetProfileError } = await supabase
+    // Another admin may be deleted. Self-deletion is refused above, so at least one
+    // admin (the caller) always remains. Make sure the person exists first.
+    const { error: targetProfileError } = await supabase
       .from('user_profiles')
-      .select('is_admin')
+      .select('id')
       .eq('id', userId)
       .single()
 
@@ -115,13 +116,6 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({ error: 'User not found' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    if (targetProfile?.is_admin) {
-      return new Response(
-        JSON.stringify({ error: 'Cannot delete another admin user' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 

@@ -35,7 +35,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import UserProfileModal from './UserProfileModal';
 import type { AdminUserProfile } from '@/hooks/useAdminUserProfiles';
-import { accessStatusLabel, adminUpdate, posterUpdate } from '@/lib/roles';
+import { accessStatusLabel, adminUpdate, canDeleteUser, posterUpdate } from '@/lib/roles';
 
 const UserManagementTable = () => {
   const { data: allUsers, isLoading } = useAllUsers();
@@ -71,16 +71,6 @@ const UserManagementTable = () => {
       toast({
         title: "Cannot delete yourself",
         description: "You cannot delete your own account.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Check if user is trying to delete another admin
-    if (user.is_admin) {
-      toast({
-        title: "Cannot delete admin users",
-        description: "Admin users cannot be deleted. Remove admin privileges first.",
         variant: "destructive",
       });
       return;
@@ -334,7 +324,7 @@ const UserManagementTable = () => {
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             onClick={() => handleDeleteUser(user)}
-                            disabled={user.id === currentUser?.id || user.is_admin}
+                            disabled={!canDeleteUser(user.id, currentUser?.id)}
                             className="cursor-pointer text-destructive focus:text-destructive"
                           >
                             <Trash2 className="w-4 h-4 mr-2" />
@@ -363,7 +353,8 @@ const UserManagementTable = () => {
             <AlertDialogTitle>Delete User</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to permanently delete the user "{userToDelete?.full_name || 'Unknown'}"? 
-              This action cannot be undone and will remove all their data from the system.
+              This action cannot be undone and will remove all their data from the system, including any jobs they posted.
+              {userToDelete?.is_admin && ' This person is an admin: they will lose admin access too.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -60,7 +60,7 @@ For the **very first admin**, or if nobody can reach the admin page, run this on
 UPDATE user_profiles SET is_admin = true, admin_requested_at = NULL WHERE email = 'new-admin@example.com';
 ```
 
-To delete an account, see [HANDBOOK > Common tasks](docs/HANDBOOK.md#common-tasks).
+An admin can delete any account except their own (**User Management**, the person's menu, **Delete User**); details in [HANDBOOK > Common tasks](docs/HANDBOOK.md#common-tasks).
 
 ### Use the admin dashboard
 
@@ -68,7 +68,7 @@ Open your name (top right), then **Admin dashboard** (address `/admin`). The top
 
 - **Pending Approvals.** Jobs waiting for a decision, and requests for admin access. **Approve** is one click; **Reject** asks first. Imported jobs show the AI's verdict (accept, borderline or reject) and its reason, and can be approved or rejected in bulk.
 - **Job Management.** Every job: filter, sort, approve, reject, feature, **Edit job**, delete.
-- **User Management.** Every account: **Grant Admin** or **Revoke Admin**, **Revoke Poster** or **Restore Poster**, delete users.
+- **User Management.** Every account: **Grant Admin** or **Revoke Admin**, **Revoke Poster** or **Restore Poster**, **Delete User** (any account but your own).
 
 Nothing imported by the nightly job goes public until an admin approves it here. More on the workflow in [HANDBOOK > Workflows](docs/HANDBOOK.md#workflows) and the importer in [INGESTION.md](docs/INGESTION.md).
 
