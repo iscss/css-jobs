@@ -18,6 +18,58 @@ Computational Social Science.
 - **Admins** approve, reject and edit jobs and manage users from `/admin`.
 - **Automation** imports jobs from external feeds each night, checks that links are still alive, asks an AI whether each job fits CSS, and queues the results for an admin. **Nothing is published without an admin approving it.**
 
+## Using the site
+
+Step by step, for each kind of person. Button and menu names are the ones on screen.
+
+### Browse and apply (no account)
+
+1. Open https://jobs.iscss.org. The home page is the job list.
+2. Search, or filter by type and location. Click a job to open its details.
+3. Click **Apply**. It opens the employer's own page, or your email program when only a contact email is given.
+
+### Create an account and sign in
+
+1. Click **Sign in** (top right), then **Don't have an account? Sign up**.
+2. Enter your name, email and a password. The password needs **12 or more characters** with an uppercase letter, a lowercase letter, a number and a symbol.
+3. Open the email from the site and click the verification link (check spam). You cannot sign in until you do.
+4. Return to the site and click **Sign in**. Use **Forgot password?** on that page if you lose the password.
+5. Signed in, your name appears top right. Click it for **Job board**, **Profile** and **Sign out**, and **Admin dashboard** if you are an admin.
+
+### Post a job
+
+1. **Get posting access.** A university email address is approved automatically when you verify it. With any other address, open your name, then **Profile**, then the **Profile Settings** tab and click **Request job posting access**; an admin approves it.
+2. Click **Post a job** (top right). If you do not have posting access yet, this takes you to the request page instead.
+3. Fill in the form. These are required: **Job Title**, **Job Type**, **Institution**, **Location**, **Job Description**, and **an Application URL or a Contact Email** (one of the two, to submit).
+4. Click **Save as Draft** to keep it unfinished, or **Submit for Approval** when it is ready. A new poster's job waits for an admin. After **3 approved jobs**, the button becomes **Publish Job** and jobs go live at once.
+5. Once approved, the job shows on the home page. Find your jobs under **Profile**, then **My Jobs**.
+
+### Get admin access
+
+Admins review jobs and users. There is no sign-up for it; an existing admin grants it.
+
+1. The person creates an account and **verifies their email** (see above).
+2. An existing admin opens **Admin dashboard**, then the **User Management** tab, finds the person, opens the menu on their row and chooses **Grant Admin**.
+3. The new admin signs out and back in. **Admin dashboard** now appears in their name menu.
+
+For the **very first admin**, or if nobody can reach the admin page, run this once in the Supabase dashboard under **SQL Editor** (use the person's own verified address):
+
+```sql
+UPDATE user_profiles SET is_admin = true, is_approved_poster = true WHERE email = 'new-admin@example.com';
+```
+
+To remove an admin or delete an account, see [HANDBOOK > Common tasks](docs/HANDBOOK.md#common-tasks).
+
+### Use the admin dashboard
+
+Open your name (top right), then **Admin dashboard** (address `/admin`). It has three tabs:
+
+- **Pending Approvals.** Jobs and people waiting for a decision. **Approve** is one click; **Reject** asks first. Imported jobs show the AI's verdict (accept, borderline or reject) and its reason, and can be approved or rejected in bulk.
+- **Job Management.** Every job: filter, sort, approve, reject, feature, **Edit job**, delete.
+- **User Management.** Every account: approve posters, grant or remove admin, delete users.
+
+Nothing imported by the nightly job goes public until an admin approves it here. More on the workflow in [HANDBOOK > Workflows](docs/HANDBOOK.md#workflows) and the importer in [INGESTION.md](docs/INGESTION.md).
+
 ## Documentation
 
 Four documents, each with one job. They link to each other for details.
@@ -40,7 +92,8 @@ Where to look for the thing you want to do:
 | Add a job source | [INGESTION > How-to guides](docs/INGESTION.md#how-to-guides), candidates in [SOURCES](docs/SOURCES.md#4-adding-more-sources) |
 | Change what counts as a CSS job, or edit the AI prompts | [INGESTION > Edit the AI prompts](docs/INGESTION.md#edit-the-ai-prompts) |
 | Write a reader for a new kind of careers site | [INGESTION > Write a new adapter](docs/INGESTION.md#write-a-new-adapter) |
-| Make someone an admin | [HANDBOOK > Common tasks](docs/HANDBOOK.md#common-tasks) |
+| Post a job, sign in, or get admin access | [Using the site](#using-the-site) |
+| Remove an admin or delete an account | [HANDBOOK > Common tasks](docs/HANDBOOK.md#common-tasks) |
 | Change colours or fonts | [BRANDING](docs/BRANDING.md) |
 | Find out what is broken or unfinished | [HANDBOOK > Known issues](docs/HANDBOOK.md#known-issues-and-future-work) |
 

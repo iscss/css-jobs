@@ -447,6 +447,26 @@ Do **not** reset every imported job to pending: that would also bring back the j
 **Add an admin.** Admin > User Management > the user's menu > **Grant Admin**. The very first one must be set in SQL:
 `UPDATE user_profiles SET is_admin = true WHERE email = 'new-admin@example.com';`
 
+**Remove an admin or delete an account.** The app's **Delete** button refuses to delete an admin or your own account, so use the
+Supabase dashboard > **SQL Editor**. First make sure another working admin remains (`SELECT u.email FROM user_profiles p JOIN auth.users u ON u.id = p.id WHERE p.is_admin;`).
+To only take admin away and keep the account: `UPDATE user_profiles SET is_admin = false WHERE email = '...';`. To delete the account for good, find
+its id (`SELECT id FROM auth.users WHERE email = '...';`) and run, with that id in place of `<ID>`:
+
+```sql
+BEGIN;
+UPDATE user_profiles SET approved_by = NULL WHERE approved_by = '<ID>';
+UPDATE jobs SET approved_by_admin = NULL WHERE approved_by_admin = '<ID>';
+UPDATE poster_applications SET reviewed_by = NULL WHERE reviewed_by = '<ID>';
+DELETE FROM user_profiles WHERE id = '<ID>';
+DELETE FROM auth.users WHERE id = '<ID>';
+SELECT email FROM auth.users WHERE id = '<ID>';   -- must return no rows
+COMMIT;
+```
+
+The three `UPDATE`s are needed because an admin's approvals are recorded against their account, and the delete fails ("violates foreign key
+constraint ... approved_by_fkey") while anything still points at it. Deleting an account also deletes the jobs it posted, so check first:
+`SELECT count(*) FROM jobs WHERE posted_by = '<ID>';`. If a statement errors, run `ROLLBACK;` and nothing is changed.
+
 **Feature a job.** Job Management > the job's menu > feature. A "Featured" badge shows in the list.
 
 **Add a job source.** One row in `job_sources`; see [INGESTION.md > Add a source](INGESTION.md#add-a-source-that-an-existing-adapter-can-read), [switch on an inactive one](INGESTION.md#switch-on-a-registered-but-inactive-source), or [write a new adapter](INGESTION.md#write-a-new-adapter). Candidates are in [SOURCES.md](SOURCES.md#4-adding-more-sources).
