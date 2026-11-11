@@ -35,6 +35,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import UserProfileModal from './UserProfileModal';
 import type { AdminUserProfile } from '@/hooks/useAdminUserProfiles';
+import { accessStatusLabel, adminUpdate, posterUpdate } from '@/lib/roles';
 
 const UserManagementTable = () => {
   const { data: allUsers, isLoading } = useAllUsers();
@@ -58,7 +59,7 @@ const UserManagementTable = () => {
     
     updatePermissions.mutate({
       userId: adminAction.userId,
-      updates: { is_admin: adminAction.isAdmin }
+      updates: adminUpdate(adminAction.isAdmin)
     });
     setAdminDialogOpen(false);
     setAdminAction(null);
@@ -98,13 +99,9 @@ const UserManagementTable = () => {
   };
 
   const handleTogglePoster = (userId: string, currentStatus: boolean) => {
-    const newPosterStatus = !currentStatus;
     updatePermissions.mutate({
       userId,
-      updates: { 
-        is_approved_poster: newPosterStatus,
-        user_type: newPosterStatus ? 'job_poster' : 'job_seeker'
-      }
+      updates: posterUpdate(!currentStatus, currentUser?.id ?? '')
     });
   };
 
@@ -263,11 +260,13 @@ const UserManagementTable = () => {
                       {user.is_approved_poster && (
                         <Badge variant="default" className="w-fit">Job Poster</Badge>
                       )}
-                      {user.approval_status === 'pending' && (
-                        <Badge variant="outline" className="w-fit">Pending Approval</Badge>
-                      )}
-                      {user.approval_status === 'rejected' && (
-                        <Badge variant="destructive" className="w-fit">Rejected</Badge>
+                      {accessStatusLabel(user) && (
+                        <Badge
+                          variant={user.approval_status === 'rejected' ? 'destructive' : 'outline'}
+                          className="w-fit"
+                        >
+                          {accessStatusLabel(user)}
+                        </Badge>
                       )}
                       {user.approval_status === 'approved' && !user.is_approved_poster && !user.is_admin && (
                         <Badge variant="secondary" className="w-fit">Member</Badge>
@@ -307,7 +306,7 @@ const UserManagementTable = () => {
                             {user.is_admin ? (
                               <>
                                 <ShieldOff className="w-4 h-4 mr-2" />
-                                Remove Admin
+                                Revoke Admin
                               </>
                             ) : (
                               <>
@@ -328,7 +327,7 @@ const UserManagementTable = () => {
                             ) : (
                               <>
                                 <User className="w-4 h-4 mr-2" />
-                                Grant Poster
+                                Restore Poster
                               </>
                             )}
                           </DropdownMenuItem>

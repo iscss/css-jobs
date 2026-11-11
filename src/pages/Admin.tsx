@@ -245,11 +245,11 @@ const Admin = () => {
                   </div>
                 </div>
 
-                {/* Pending User Approvals */}
+                {/* Admin Access Requests */}
                 <div>
                   <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                     <Users className="w-5 h-5" />
-                    Pending User Approvals
+                    Admin Access Requests
                     {pendingApprovals && pendingApprovals.length > 0 && (
                       <Badge variant="outline" className="border-brand-navy/30 text-brand-navy bg-brand-surface-2">
                         {pendingApprovals.length}
@@ -284,8 +284,8 @@ const Admin = () => {
                     ) : (
                       <div className="text-center py-6 bg-green-50 rounded-lg border border-green-200">
                         <Users className="w-10 h-10 text-green-500 mx-auto mb-2" />
-                        <h3 className="text-md font-medium text-green-700 mb-1">No pending user approvals</h3>
-                        <p className="text-green-600 text-sm">All user requests have been processed.</p>
+                        <h3 className="text-md font-medium text-green-700 mb-1">No admin access requests</h3>
+                        <p className="text-green-600 text-sm">Nobody is waiting for admin access.</p>
                       </div>
                     )}
                   </div>

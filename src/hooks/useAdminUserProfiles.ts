@@ -26,6 +26,8 @@ export interface AdminUserProfile {
   auth_created_at: string | null;
   email_opt_out: boolean | null;
   unsubscribe_token: string | null;
+  /** Set when the user asked for admin access; filled in by useAdminApprovals. */
+  admin_requested_at?: string | null;
 }
 
 export const useAdminUserProfiles = () => {

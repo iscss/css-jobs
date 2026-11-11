@@ -46,3 +46,40 @@ export function roleBadgeClass(profile: RoleFields | null | undefined): string {
 export function canOpenPostPage(profile: RoleFields | null | undefined): boolean {
   return accountRole(profile) !== 'member';
 }
+
+// What an admin's button writes to the profile. Keeping these in one place means the
+// stored status can never disagree with the flags (a granted admin used to keep the
+// "pending" status from sign-up and show "Pending Approval").
+
+/** Switch posting on (restoring it after a revoke) or off. A revoke is recorded as a rejection. */
+export function posterUpdate(
+  grant: boolean,
+  adminId: string,
+  now: string = new Date().toISOString(),
+) {
+  return grant
+    ? {
+        is_approved_poster: true,
+        user_type: 'job_poster',
+        approval_status: 'approved',
+        approved_by: adminId,
+        approved_at: now,
+      }
+    : {
+        is_approved_poster: false,
+        approval_status: 'rejected',
+      };
+}
+
+/** Grant or remove admin. Either way a pending request for it is settled. */
+export function adminUpdate(grant: boolean) {
+  return { is_admin: grant, admin_requested_at: null };
+}
+
+/** The label that replaces "Pending Approval" in the user list. Only flags and the stored status matter. */
+export function accessStatusLabel(profile: RoleFields | null | undefined): string | null {
+  if (profile?.is_admin || profile?.is_approved_poster) return null;
+  if (profile?.approval_status === 'rejected') return 'Poster access removed';
+  if (profile?.approval_status === 'pending') return 'Pending Approval';
+  return null;
+}

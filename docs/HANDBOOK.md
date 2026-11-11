@@ -206,14 +206,15 @@ Policies on every table decide what each visitor can read or change. The ones th
 - Sign-up no longer offers a job-seeker choice; it creates poster accounts. Older seeker accounts keep working.
 - Can save jobs. Alerts are not enabled.
 
-**Job poster** (needs approval)
+**Job poster** (automatic: every new account)
 - Everything a member can do, plus creating job postings.
 - A new poster's jobs go to **pending** for an admin. After **3 approved jobs** the poster publishes directly. The count is kept by the `track_job_approval` trigger; do not add to it from the app.
 - A job needs an application link or a contact email to be submitted (a draft can be saved without).
-- University email domains are approved automatically; other addresses wait for an admin.
+- Posting access is granted by the database when the account is created (trigger `trg_poster_on_signup`, migration `20260817000000`). An admin can take it away with **Revoke Poster** (recorded as `approval_status = 'rejected'`, which nothing undoes) and bring it back with **Restore Poster**.
 
-**Admin** (the first one is set in SQL; after that, **Grant Admin** in User Management)
-- Everything, from `/admin`: approve or reject users and jobs (approving is one click; rejecting asks first), edit any job (**Edit job**, including pending ones), redo a job's sections (**Organise now**), feature jobs, delete users and jobs.
+**Admin** (asked for by the user, granted by an admin; the first one is set in SQL)
+- A poster clicks **Request admin access** on their Profile (stored as `admin_requested_at`). Admins see it under **Admin Access Requests** in Pending Approvals and choose **Grant Admin** or **Dismiss Request**. **Grant Admin** and **Revoke Admin** are also in User Management.
+- Everything, from `/admin`: approve or reject jobs (approving is one click; rejecting asks first), grant or dismiss admin requests, edit any job (**Edit job**, including pending ones), redo a job's sections (**Organise now**), feature jobs, delete users and jobs.
 - Only admins can change `is_admin`, `is_approved_poster` or `can_publish_directly`.
 - Review the admin list now and then: an admin can do anything, including deleting users.
 
@@ -255,11 +256,11 @@ toggle, clickable links in descriptions, an **Apply** button (or **Apply by emai
 
 **Admin dashboard** (`/admin`, needs `is_admin`):
 - *Stats:* exact counts from the database; a card opens Job Management with that filter.
-- *Pending Approvals:* poster requests, and the imported-jobs queue with filters, the AI verdict and reason, and bulk Approve/Reject (up to 300 per action, with a confirmation that says how many jobs change and how many are skipped).
+- *Pending Approvals:* admin access requests, and the imported-jobs queue with filters, the AI verdict and reason, and bulk Approve/Reject (up to 300 per action, with a confirmation that says how many jobs change and how many are skipped).
 - *Job Management:* filter by status, type, origin and deadline; sort by newest, oldest, match, closing soonest or title; approve, reject, feature, **Edit job**, **Organise now**, delete.
-- *User Management:* see all users, grant or remove admin and posting rights, delete users.
+- *User Management:* see all users; **Grant Admin** / **Revoke Admin**, **Revoke Poster** / **Restore Poster**, delete users.
 
-**Email verification auto-approval.** When someone verifies an email from a whitelisted university domain they are approved as a poster (`auto_approve_user_by_domain()`; `EmailVerificationHandler.tsx`). Production requires email confirmation, so an address must be owned to be approved.
+**Poster access is automatic.** Every new account is created as an approved poster (`trg_poster_on_signup`), and production requires email confirmation, so an address must be owned before anyone can sign in. The older university-domain rule (`auto_approve_user_by_domain()`, `EmailVerificationHandler.tsx`) still runs on verification and is now redundant.
 
 **Email alerts: built but off.** The tables, matching functions and queue exist, and the profile page has an "alerts" tab showing a "coming soon" note. **No function sends the emails**: there is no queue processor. To finish it: sign up at resend.com and verify a sending domain, `supabase secrets set RESEND_API_KEY=...`, write and deploy an edge function that sends rows from `email_queue` where `sent_at IS NULL` and marks them sent, run it on a schedule (every 5 minutes), and replace the placeholder in `src/pages/Profile.tsx`. Basic account emails (confirmation, password reset) already work through Supabase Auth and are unrelated.
 
@@ -334,7 +335,7 @@ production-only columns (see [Schema drift](#migrations-and-schema-drift)).
 
 Done for production on 2026-11-04. To repeat it, or to set up another project:
 
-1. **Apply the migrations** with `psql` (not `db push`), `20260803000000` to `20260816000000`, in order. These change the live database, so review them first.
+1. **Apply the migrations** with `psql` (not `db push`), `20260803000000` to `20260817000000`, in order. These change the live database, so review them first.
 2. **Deploy the functions** (above).
 3. **Set the secrets:** `ANTHROPIC_API_KEY` and a `SCHEDULER_SECRET` made with `openssl rand -hex 32`.
 4. **Tell the scheduler where to call**, with the same `SCHEDULER_SECRET` value:
@@ -444,8 +445,8 @@ Do **not** reset every imported job to pending: that would also bring back the j
 
 ## Common tasks
 
-**Add an admin.** Admin > User Management > the user's menu > **Grant Admin**. The very first one must be set in SQL:
-`UPDATE user_profiles SET is_admin = true WHERE email = 'new-admin@example.com';`
+**Add an admin.** The person clicks **Request admin access** on their Profile; an admin grants it under Pending Approvals, or uses User Management > the user's menu > **Grant Admin**. The very first one must be set in SQL:
+`UPDATE user_profiles SET is_admin = true, admin_requested_at = NULL WHERE email = 'new-admin@example.com';`
 
 **Remove an admin or delete an account.** The app's **Delete** button refuses to delete an admin or your own account, so use the
 Supabase dashboard > **SQL Editor**. First make sure another working admin remains (`SELECT u.email FROM user_profiles p JOIN auth.users u ON u.id = p.id WHERE p.is_admin;`).
@@ -520,6 +521,7 @@ constraint ... approved_by_fkey") while anything still points at it. Deleting an
 | `20260814000000_clean_comses_html` | One-time clean-up of CoMSES descriptions that still held HTML tags |
 | `20260815000000_close_profile_email_leak` | Drops the policy that let anyone read every profile; adds `email_is_registered()` |
 | `20260816000000_seed_university_sources` | Penn, Northeastern, USC, Yale and Stanford as active sources, and ten registered but inactive ones; safe to run twice |
+| `20260817000000_automatic_poster_access` | Every new account is an approved poster (trigger); `admin_requested_at`; existing accounts brought in line |
 
 All were applied to production with `psql`. A new migration needs a new, later timestamp.
 

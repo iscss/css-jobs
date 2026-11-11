@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { accountRole, canOpenPostPage, roleBadgeClass, roleLabel } from './roles';
+import {
+  accessStatusLabel,
+  accountRole,
+  adminUpdate,
+  canOpenPostPage,
+  posterUpdate,
+  roleBadgeClass,
+  roleLabel,
+} from './roles';
 
 describe('accountRole', () => {
   it('calls an admin an admin, whatever the stored type says', () => {
@@ -59,5 +67,54 @@ describe('canOpenPostPage', () => {
   it('keeps plain members out', () => {
     expect(canOpenPostPage({ user_type: 'job_seeker' })).toBe(false);
     expect(canOpenPostPage(null)).toBe(false);
+  });
+});
+
+describe('posterUpdate', () => {
+  it('grants posting and settles the stored status, so nothing is left pending', () => {
+    const u = posterUpdate(true, 'admin-1', '2026-11-11T00:00:00Z');
+    expect(u).toMatchObject({
+      is_approved_poster: true,
+      user_type: 'job_poster',
+      approval_status: 'approved',
+      approved_by: 'admin-1',
+      approved_at: '2026-11-11T00:00:00Z',
+    });
+  });
+
+  it('records a revoke as a rejection, so it is not undone by the sign-up rule', () => {
+    expect(posterUpdate(false, 'admin-1')).toEqual({ is_approved_poster: false, approval_status: 'rejected' });
+  });
+
+  it('a revoked account reads as "not approved", not as a member or as pending', () => {
+    const revoked = { user_type: 'job_poster', ...posterUpdate(false, 'a') };
+    expect(accountRole(revoked)).toBe('pending_poster');
+    expect(roleLabel(revoked)).toBe('Job poster (not approved)');
+    expect(accessStatusLabel(revoked)).toBe('Poster access removed');
+  });
+
+  it('a restored account is a plain poster again', () => {
+    const restored = posterUpdate(true, 'a');
+    expect(accountRole(restored)).toBe('poster');
+    expect(accessStatusLabel(restored)).toBeNull();
+  });
+});
+
+describe('adminUpdate', () => {
+  it('settles the request whether admin is granted or removed', () => {
+    expect(adminUpdate(true)).toEqual({ is_admin: true, admin_requested_at: null });
+    expect(adminUpdate(false)).toEqual({ is_admin: false, admin_requested_at: null });
+  });
+});
+
+describe('accessStatusLabel', () => {
+  it('never says Pending Approval for an admin or a poster, whatever the stored status', () => {
+    expect(accessStatusLabel({ is_admin: true, is_approved_poster: true, approval_status: 'pending' })).toBeNull();
+    expect(accessStatusLabel({ is_admin: true, approval_status: 'pending' })).toBeNull();
+    expect(accessStatusLabel({ is_approved_poster: true, approval_status: 'pending' })).toBeNull();
+  });
+
+  it('still reports a genuinely pending account', () => {
+    expect(accessStatusLabel({ approval_status: 'pending' })).toBe('Pending Approval');
   });
 });

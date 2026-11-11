@@ -520,6 +520,7 @@ export type Database = {
       }
       user_profiles: {
         Row: {
+          admin_requested_at: string | null
           approval_status: string | null
           approved_at: string | null
           approved_by: string | null
@@ -543,6 +544,7 @@ export type Database = {
           website_url: string | null
         }
         Insert: {
+          admin_requested_at?: string | null
           approval_status?: string | null
           approved_at?: string | null
           approved_by?: string | null
@@ -566,6 +568,7 @@ export type Database = {
           website_url?: string | null
         }
         Update: {
+          admin_requested_at?: string | null
           approval_status?: string | null
           approved_at?: string | null
           approved_by?: string | null

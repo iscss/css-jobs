@@ -262,7 +262,7 @@ const Auth = () => {
                     <AlertCircle className="h-4 w-4 text-brand-navy" />
                     <AlertDescription className="text-brand-navy text-sm">
                       Accounts are for people who post jobs. You don't need an account to browse or apply for jobs.
-                      Institution/University emails will be automatically accepted. If you do not have a University affiliated email address, please note that it will need to go through manual review and approval.
+                      Once you verify your email you can post jobs. A new poster's jobs are reviewed by an admin before they appear, and after three approved jobs they publish directly.
                     </AlertDescription>
                   </Alert>
                 </>

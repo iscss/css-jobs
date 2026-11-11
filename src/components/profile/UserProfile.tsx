@@ -69,18 +69,17 @@ const UserProfile = () => {
     }
   };
 
-  // A plain member asks to post jobs; an admin approves the request.
-  const requestPostingAccess = async () => {
+  // Posting access is automatic. A poster who wants to review jobs and manage users
+  // asks for admin access, and an admin grants or dismisses the request.
+  const requestAdminAccess = async () => {
     try {
       await updateProfile.mutateAsync({
-        user_type: 'job_poster',
-        approval_status: 'pending',
-        requested_at: new Date().toISOString(),
+        admin_requested_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       });
       toast({
         title: "Request sent",
-        description: "An admin will review your request to post jobs.",
+        description: "An admin will review your request for admin access.",
       });
     } catch (error) {
       toast({
@@ -214,15 +213,28 @@ const UserProfile = () => {
               <div className="flex items-center gap-2">
                 <Badge className={roleBadgeClass(profile)}>{roleLabel(profile)}</Badge>
               </div>
-              {role === 'member' && (
+              {role === 'poster' && (
                 <div className="space-y-2">
-                  <p className="text-sm text-gray-600">
-                    You do not need an account to browse or apply for jobs. If you want to post jobs, ask for posting access and an admin will review it.
-                  </p>
-                  <Button type="button" variant="outline" onClick={requestPostingAccess} disabled={updateProfile.isPending}>
-                    Request job posting access
-                  </Button>
+                  {(profile as Record<string, unknown>)?.admin_requested_at ? (
+                    <p className="text-sm text-gray-600">
+                      You have asked for admin access. An admin will review it and you will see the Admin dashboard in your account menu once it is granted.
+                    </p>
+                  ) : (
+                    <>
+                      <p className="text-sm text-gray-600">
+                        You can post jobs. Admins also review jobs and manage users. If you need that, ask for it and an admin will decide.
+                      </p>
+                      <Button type="button" variant="outline" onClick={requestAdminAccess} disabled={updateProfile.isPending}>
+                        Request admin access
+                      </Button>
+                    </>
+                  )}
                 </div>
+              )}
+              {(role === 'member' || (role === 'pending_poster' && profile?.approval_status === 'rejected')) && (
+                <p className="text-sm text-gray-600">
+                  Your job posting access has been removed. If you think this is a mistake, please contact an admin.
+                </p>
               )}
             </div>
 

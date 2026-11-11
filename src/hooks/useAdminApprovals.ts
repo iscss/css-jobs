@@ -5,65 +5,52 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useAdminCheck } from './useAdminCheck';
 import type { AdminUserProfile } from './useAdminUserProfiles';
+import { adminUpdate } from '@/lib/roles';
 
+// The admin queue for people: accounts that asked for admin access. (Posting access
+// is automatic, so there is no longer a queue for it.)
 export const useAdminApprovals = () => {
   const { user } = useAuth();
   const { data: isAdmin } = useAdminCheck();
 
   return useQuery({
     queryKey: ['admin-approvals'],
-    queryFn: async () => {
+    queryFn: async (): Promise<AdminUserProfile[]> => {
       if (!user || !isAdmin) throw new Error('User must be authenticated admin');
 
-      const { data: profiles, error: profilesError } = await supabase.rpc('get_admin_user_profiles');
+      // The list function carries the email and sign-in details; the request time is
+      // read from the table directly (an admin can read every profile).
+      const [{ data: profiles, error: profilesError }, { data: requests, error: requestsError }] =
+        await Promise.all([
+          supabase.rpc('get_admin_user_profiles'),
+          supabase.from('user_profiles').select('id, admin_requested_at').not('admin_requested_at', 'is', null),
+        ]);
 
       if (profilesError) throw profilesError;
+      if (requestsError) throw requestsError;
 
-      // Filter for users with pending approval status who want posting privileges
-      // Don't require email verification - admins can decide whether to approve unverified users
-      const pendingProfiles = (profiles || []).filter(
-        (profile: AdminUserProfile) => 
-          profile.approval_status === 'pending' && 
-          profile.user_type === 'job_poster'
-      );
-
-      return pendingProfiles;
+      const askedAt = new Map((requests || []).map((r) => [r.id, r.admin_requested_at as string]));
+      return (profiles || [])
+        .filter((profile: AdminUserProfile) => askedAt.has(profile.id) && !profile.is_admin)
+        .map((profile: AdminUserProfile) => ({ ...profile, admin_requested_at: askedAt.get(profile.id) }));
     },
     enabled: !!user && !!isAdmin,
   });
 };
 
-export const useUpdateApprovalStatus = () => {
+// Grant or dismiss a request for admin access.
+export const useResolveAdminRequest = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async ({
-      userId,
-      status,
-      userType
-    }: {
-      userId: string;
-      status: 'approved' | 'rejected';
-      userType: string;
-    }) => {
+    mutationFn: async ({ userId, grant }: { userId: string; grant: boolean }) => {
       if (!user) throw new Error('User must be authenticated');
-
-      const updateData: Record<string, unknown> = {
-        approval_status: status,
-        approved_at: new Date().toISOString(),
-        approved_by: user.id,
-      };
-
-      // If approving a job poster, set is_approved_poster to true
-      if (status === 'approved' && userType === 'job_poster') {
-        updateData.is_approved_poster = true;
-      }
 
       const { data, error } = await supabase
         .from('user_profiles')
-        .update(updateData)
+        .update(adminUpdate(grant))
         .eq('id', userId)
         .select()
         .single();
@@ -71,19 +58,22 @@ export const useUpdateApprovalStatus = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: (data, variables) => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['admin-approvals'] });
       queryClient.invalidateQueries({ queryKey: ['admin-user-profiles'] });
+      queryClient.invalidateQueries({ queryKey: ['user-profile'] });
       toast({
-        title: `User ${variables.status === 'approved' ? 'Approved' : 'Rejected'}`,
-        description: `The user has been successfully ${variables.status}.`,
+        title: variables.grant ? 'Admin access granted' : 'Request dismissed',
+        description: variables.grant
+          ? 'They need to sign out and back in to see the Admin dashboard.'
+          : 'The user keeps their posting access.',
       });
     },
-    onError: (error) => {
+    onError: () => {
       toast({
-        title: "Error updating approval status",
-        description: "There was an error updating the user's approval status.",
-        variant: "destructive",
+        title: 'Could not update the request',
+        description: 'Please try again.',
+        variant: 'destructive',
       });
     },
   });

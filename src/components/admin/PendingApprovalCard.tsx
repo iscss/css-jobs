@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useUpdateApprovalStatus } from '@/hooks/useAdminApprovals';
+import { useResolveAdminRequest } from '@/hooks/useAdminApprovals';
 import { Check, X, User, Building2, Calendar, Mail, Info, Eye, Shield, CheckCircle, XCircle, MoreHorizontal } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import UserProfileModal from './UserProfileModal';
@@ -21,7 +21,7 @@ interface PendingApprovalCardProps {
 }
 
 const PendingApprovalCard = ({ profile }: PendingApprovalCardProps) => {
-  const updateApprovalMutation = useUpdateApprovalStatus();
+  const updateApprovalMutation = useResolveAdminRequest();
   const { toast } = useToast();
   const [showProfileModal, setShowProfileModal] = useState(false);
 
@@ -71,19 +71,11 @@ const PendingApprovalCard = ({ profile }: PendingApprovalCardProps) => {
   };
 
   const handleApprove = () => {
-    updateApprovalMutation.mutate({
-      userId: profile.id,
-      status: 'approved',
-      userType: profile.user_type || 'job_seeker'
-    });
+    updateApprovalMutation.mutate({ userId: profile.id, grant: true });
   };
 
   const handleReject = () => {
-    updateApprovalMutation.mutate({
-      userId: profile.id,
-      status: 'rejected',
-      userType: profile.user_type || 'job_seeker'
-    });
+    updateApprovalMutation.mutate({ userId: profile.id, grant: false });
   };
 
   const handleRequestMoreInfo = () => {
@@ -119,7 +111,7 @@ const PendingApprovalCard = ({ profile }: PendingApprovalCardProps) => {
                         {getUserTypeLabel(profile.user_type || 'job_seeker')}
                       </Badge>
                       <Badge variant="outline" className="bg-amber-50 border-amber-200 text-amber-800">
-                        Pending Review
+                        Admin access requested
                       </Badge>
                       {profile.is_admin && (
                         <Badge variant="destructive">
@@ -158,14 +150,14 @@ const PendingApprovalCard = ({ profile }: PendingApprovalCardProps) => {
                           className="cursor-pointer text-green-600 focus:text-green-600"
                         >
                           <Check className="w-4 h-4 mr-2" />
-                          Approve Request
+                          Grant Admin
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={handleReject}
                           className="cursor-pointer text-red-600 focus:text-red-600"
                         >
                           <X className="w-4 h-4 mr-2" />
-                          Reject Request
+                          Dismiss Request
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
@@ -210,7 +202,7 @@ const PendingApprovalCard = ({ profile }: PendingApprovalCardProps) => {
                   <Calendar className="w-5 h-5 text-muted-foreground" />
                   <div>
                     <div className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Requested</div>
-                    <div className="text-sm font-medium">{formatDate(profile.requested_at)}</div>
+                    <div className="text-sm font-medium">{formatDate(profile.admin_requested_at ?? profile.requested_at)}</div>
                   </div>
                 </div>
 
@@ -232,11 +224,8 @@ const PendingApprovalCard = ({ profile }: PendingApprovalCardProps) => {
                 <div className="text-sm">
                   <span className="font-medium text-primary">Access Request:</span>{' '}
                   <span className="text-muted-foreground">
-                    User is requesting{' '}
-                    {profile.user_type === 'job_poster'
-                      ? 'job posting privileges'
-                        : 'job seeking access'
-                    } and requires admin approval.
+                    This user is asking to become an admin. Granting it lets them approve jobs and users and delete accounts.
+                    Dismissing it leaves their posting access as it is.
                   </span>
                 </div>
               </div>

@@ -66,12 +66,37 @@ describe('profile settings', () => {
     expect(screen.getByText('Job poster (awaiting approval)')).toBeTruthy();
   });
 
-  it('gives a plain member a way to ask for posting access, with no seeker choice', () => {
+  it('lets a poster ask for admin access', () => {
+    mockProfile = accounts['an approved poster'];
+    render(<UserProfile />);
+    expect(screen.getByRole('button', { name: /request admin access/i })).toBeTruthy();
+  });
+
+  it('shows that an admin request is waiting, and does not offer it twice', () => {
+    mockProfile = { ...accounts['an approved poster'], admin_requested_at: '2026-11-11T10:00:00Z' };
+    render(<UserProfile />);
+    expect(screen.queryByRole('button', { name: /request admin access/i })).toBeNull();
+    expect(screen.getByText(/you have asked for admin access/i)).toBeTruthy();
+  });
+
+  it('does not offer admin access to an admin', () => {
+    mockProfile = accounts['an admin stored as a job poster'];
+    render(<UserProfile />);
+    expect(screen.queryByRole('button', { name: /request admin access/i })).toBeNull();
+  });
+
+  it('tells an account whose posting was removed to contact an admin, with no way to ask again', () => {
+    mockProfile = accounts['a poster who was not approved'];
+    const { container } = render(<UserProfile />);
+    expect(screen.getByText(/posting access has been removed/i)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /request/i })).toBeNull();
+    expect(container.textContent).not.toMatch(/seeker/i);
+  });
+
+  it('never shows the old posting-access request', () => {
     mockProfile = { ...base, is_admin: false, user_type: 'job_seeker', is_approved_poster: false };
     const { container } = render(<UserProfile />);
-    expect(screen.getByText('Member')).toBeTruthy();
-    expect(screen.getByText(/request job posting access/i)).toBeTruthy();
+    expect(screen.queryByText(/request job posting access/i)).toBeNull();
     expect(container.textContent).not.toMatch(/seeker/i);
-    expect(container.querySelectorAll('[role="radio"], input[type="radio"]')).toHaveLength(0);
   });
 });
