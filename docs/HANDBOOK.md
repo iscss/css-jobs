@@ -154,7 +154,7 @@ and **never paste a key into chat, issues or commits**. If one leaks, revoke it 
 | `saved_jobs` | A user's bookmarks |
 | `job_alerts`, `job_alert_matches` | Alert settings and matches (not enabled) |
 | `email_queue` | Emails waiting to be sent (no sender built yet) |
-| `approved_domains` | University email whitelist: 10,484 domains loaded in production (from `public/data/university-domains.json`, 10,170 institutions) |
+| `approved_domains` | University email whitelist (no longer needed for posting access, which is automatic; kept for the older verification rule): 10,484 domains loaded in production (from `public/data/university-domains.json`, 10,170 institutions) |
 | `poster_applications`, `notification_settings`, `admin_audit_log` | Posting applications, email preferences, an audit trail |
 | `events` | CSS Events' table (shared database) |
 | `job_sources` | Feeds and career sites the importer reads |
@@ -197,13 +197,18 @@ Policies on every table decide what each visitor can read or change. The ones th
 ## Roles and permissions
 
 > **Roles are worked out from what an account can do, not from the stored `user_type`** (`src/lib/roles.ts`):
-> **Admin** (`is_admin`), **Job poster** (`is_approved_poster`), **Job poster awaiting approval** (`user_type = 'job_poster'`
-> but not approved yet), otherwise **Member**. An admin or approved poster whose stored type still says `job_seeker` is
-> shown, counted and allowed accordingly. The profile page shows the role read-only; a Member can ask for posting access there.
+> **Admin** (`is_admin`), **Job poster** (`is_approved_poster`), **Job poster (not approved)** (`user_type = 'job_poster'`
+> but `is_approved_poster` is false: an account whose posting an admin removed), otherwise **Member** (an older account
+> that never had posting access; after migration `20260817000000` there are none). An admin or approved poster whose stored
+> type still says `job_seeker` is shown, counted and allowed accordingly. The profile page shows the role read-only.
+>
+> **Every new account starts as a job poster. Admin is requested and granted. Posting access can be revoked and restored.**
+> The admin buttons write through `posterUpdate` and `adminUpdate` in `src/lib/roles.ts`, so the stored `approval_status`
+> always agrees with the flags (it used to be left at `pending`, which made an admin show "Pending Approval").
 
-**Member** (formerly "job seeker"; auto-approved)
+**Member** (an older account without posting access)
 - Browsing and applying never needs an account: the board is public and Apply opens the employer's link.
-- Sign-up no longer offers a job-seeker choice; it creates poster accounts. Older seeker accounts keep working.
+- Sign-up no longer offers a job-seeker choice; it creates poster accounts. Older seeker accounts were made posters by migration `20260817000000`.
 - Can save jobs. Alerts are not enabled.
 
 **Job poster** (automatic: every new account)
@@ -279,7 +284,7 @@ toggle, clickable links in descriptions, an **Apply** button (or **Apply by emai
 - **Scheduled functions** accept only the service role key or `SCHEDULER_SECRET`, compared in constant time and never under 32 characters. They run with Supabase's JWT check off and verify the credential themselves.
 - **The organiser's output is checked**: every quote must appear in the original posting, links must be `http(s)`, and the stored JSON is validated before the page shows it.
 - **Security headers** (`vercel.json`): Content-Security-Policy, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, Referrer-Policy, Permissions-Policy, `X-XSS-Protection`. `index.html` also carries a Content-Security-Policy tag; **browsers enforce both, so keep them identical** (a mismatch blocked the fonts until 2026-11-06).
-- **`delete-user` function:** JWT check, admin-only, cannot delete yourself, CORS limited to an allow-list (`ALLOWED_ORIGINS` in `supabase/functions/delete-user/index.ts`: `jobs.iscss.org`, localhost, and the old `css-jobs.andersgiovanni.com`, which can be removed). If the production domain changes, update that list.
+- **`delete-user` function:** JWT check, admin-only, an admin can delete any account **except their own** (another admin included, so one admin always remains), CORS limited to an allow-list (`ALLOWED_ORIGINS` in `supabase/functions/delete-user/index.ts`: `jobs.iscss.org`, localhost, and the old `css-jobs.andersgiovanni.com`, which can be removed). If the production domain changes, update that list.
 - **Rate limiting** on auth attempts is client-side only; server-side limiting is future work.
 - **Secrets** live in Supabase (`ANTHROPIC_API_KEY`, `SCHEDULER_SECRET`); `supabase/functions/.env` is gitignored.
 
@@ -327,6 +332,13 @@ npx supabase functions deploy ingest-jobs check-listings rescore-jobs structure-
   --no-verify-jwt --remote=ukkqeczgommifgecyrez
 npx supabase functions deploy delete-user --remote=ukkqeczgommifgecyrez     # verifies the user's JWT
 ```
+
+**Signing the CLI in.** The deploy commands need the CLI logged in to the Supabase account that owns the project. There is no
+password: `npx supabase login` opens a browser, and you sign in with **GitHub** as for the dashboard. macOS may then ask for your **Mac login
+password** to let the CLI read its token from the Keychain; that is a system prompt, and **Allow** is safe (it asks again whenever `npx` fetches a
+new CLI build; `brew install supabase/tap/supabase` avoids that). To skip the Keychain, create a token at
+supabase.com/dashboard/account/tokens and run `export SUPABASE_ACCESS_TOKEN=sbp_...` in that Terminal window (do not save it in a file, and delete it afterwards).
+The database password is separate and is only for `psql`; the SQL Editor in the dashboard needs neither.
 
 **TypeScript types** (`src/integrations/supabase/types.ts`) are edited by hand. Regenerating them would drop
 production-only columns (see [Schema drift](#migrations-and-schema-drift)).
