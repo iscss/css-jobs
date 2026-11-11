@@ -1,8 +1,8 @@
-import { accountRole } from '@/lib/roles';
+import { userCounts } from '@/lib/roles';
 import { useAllUsers } from "@/hooks/useUserManagement";
 import { useJobCounts } from "@/hooks/useJobManagement";
 import { useAdminApprovals } from "@/hooks/useAdminApprovals";
-import { Users, Briefcase, Clock, CheckCircle, XCircle, UserCheck } from "lucide-react";
+import { Users, Briefcase, Clock, CheckCircle, XCircle, UserCheck, ShieldCheck, UserX } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { JobManagementFilters } from "@/components/admin/JobManagementFilters";
 
@@ -17,18 +17,14 @@ const AdminStats = ({ onTabChange, onOpenJobs }: AdminStatsProps) => {
   const { data: jobCounts, isLoading: jobsLoading } = useJobCounts();
   const { data: pendingApprovals, isLoading: approvalsLoading } = useAdminApprovals();
 
-  // Counted by what an account can do, not by the stored sign-up type, so an
-  // admin or approved poster stored as "job_seeker" is not counted as a member.
-  const jobSeekers = users?.filter(user => accountRole(user) === 'member') || [];
-  const jobPosters = users?.filter(user => ['poster', 'pending_poster'].includes(accountRole(user))) || [];
-  
-  const approvedPosters = users?.filter(user => user.is_approved_poster) || [];
-  const adminUsers = users?.filter(user => user.is_admin) || [];
+  // Counted by what an account can do, not by the stored sign-up type. The counts add
+  // up: admins + job posters + posting removed = total users.
+  const counts = userCounts(users);
 
   const userStats = [
     {
       title: "Total Users",
-      value: usersLoading ? "..." : users?.length || 0,
+      value: usersLoading ? "..." : counts.total,
       icon: Users,
       color: "text-brand-navy",
       bgColor: "bg-brand-surface",
@@ -36,39 +32,39 @@ const AdminStats = ({ onTabChange, onOpenJobs }: AdminStatsProps) => {
       clickable: true,
     },
     {
-      title: "Members",
-      value: usersLoading ? "..." : jobSeekers.length,
-      icon: Users,
-      color: "text-green-500",
-      bgColor: "bg-green-50",
+      title: "Admins",
+      value: usersLoading ? "..." : counts.admins,
+      icon: ShieldCheck,
+      color: "text-brand-navy",
+      bgColor: "bg-brand-surface",
       onClick: () => onTabChange?.('users'),
       clickable: true,
     },
     {
       title: "Job Posters",
-      value: usersLoading ? "..." : jobPosters.length,
+      value: usersLoading ? "..." : counts.posters,
       icon: UserCheck,
-      color: "text-brand-navy",
-      bgColor: "bg-brand-surface",
+      color: "text-emerald-500",
+      bgColor: "bg-emerald-50",
       onClick: () => onTabChange?.('users'),
       clickable: true,
     },
     {
-      title: "Pending Approvals",
+      title: "Posting Removed",
+      value: usersLoading ? "..." : counts.removed,
+      icon: UserX,
+      color: "text-yellow-600",
+      bgColor: "bg-yellow-50",
+      onClick: () => onTabChange?.('users'),
+      clickable: true,
+    },
+    {
+      title: "Admin Requests",
       value: approvalsLoading ? "..." : pendingApprovals?.length || 0,
       icon: Clock,
       color: "text-orange-500",
       bgColor: "bg-orange-50",
       onClick: () => onTabChange?.('approvals'),
-      clickable: true,
-    },
-    {
-      title: "Approved Posters",
-      value: usersLoading ? "..." : approvedPosters.length,
-      icon: UserCheck,
-      color: "text-emerald-500",
-      bgColor: "bg-emerald-50",
-      onClick: () => onTabChange?.('users'),
       clickable: true,
     },
   ];
@@ -126,7 +122,7 @@ const AdminStats = ({ onTabChange, onOpenJobs }: AdminStatsProps) => {
       {/* User Statistics */}
       <div>
         <h3 className="text-lg font-semibold text-gray-800 mb-4">User Management</h3>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
           {userStats.map((stat, index) => {
             const IconComponent = stat.icon;
             return (

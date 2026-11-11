@@ -7,6 +7,7 @@ import {
   posterUpdate,
   roleBadgeClass,
   roleLabel,
+  userCounts,
 } from './roles';
 
 describe('accountRole', () => {
@@ -116,5 +117,28 @@ describe('accessStatusLabel', () => {
 
   it('still reports a genuinely pending account', () => {
     expect(accessStatusLabel({ approval_status: 'pending' })).toBe('Pending Approval');
+  });
+});
+
+describe('userCounts', () => {
+  const users = [
+    { is_admin: true, is_approved_poster: true },
+    { is_admin: true, is_approved_poster: false, user_type: 'job_seeker' },
+    { is_approved_poster: true },
+    { is_approved_poster: true, user_type: 'job_seeker' },
+    { user_type: 'job_poster', is_approved_poster: false, approval_status: 'rejected' },
+  ];
+
+  it('counts an admin once, as an admin, and never also as a poster', () => {
+    expect(userCounts(users)).toEqual({ total: 5, admins: 2, posters: 2, removed: 1 });
+  });
+
+  it('always adds up to the total', () => {
+    const c = userCounts(users);
+    expect(c.admins + c.posters + c.removed).toBe(c.total);
+  });
+
+  it('copes with no users yet', () => {
+    expect(userCounts(undefined)).toEqual({ total: 0, admins: 0, posters: 0, removed: 0 });
   });
 });

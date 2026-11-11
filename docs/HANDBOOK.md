@@ -255,12 +255,14 @@ toggle, clickable links in descriptions, an **Apply** button (or **Apply by emai
 **Saved jobs.** Signed-in users bookmark jobs.
 
 **Admin dashboard** (`/admin`, needs `is_admin`):
-- *Stats:* exact counts from the database; a card opens Job Management with that filter.
+- *Stats:* exact counts from the database; a job card opens Job Management with that filter. The user cards add up (**Admins** + **Job Posters** + **Posting Removed** = **Total Users**; an admin is counted once, as an admin), and **Admin Requests** is how many people are waiting for admin access.
 - *Pending Approvals:* admin access requests, and the imported-jobs queue with filters, the AI verdict and reason, and bulk Approve/Reject (up to 300 per action, with a confirmation that says how many jobs change and how many are skipped).
 - *Job Management:* filter by status, type, origin and deadline; sort by newest, oldest, match, closing soonest or title; approve, reject, feature, **Edit job**, **Organise now**, delete.
 - *User Management:* see all users; **Grant Admin** / **Revoke Admin**, **Revoke Poster** / **Restore Poster**, delete users.
 
 **Poster access is automatic.** Every new account is created as an approved poster (`trg_poster_on_signup`), and production requires email confirmation, so an address must be owned before anyone can sign in. The older university-domain rule (`auto_approve_user_by_domain()`, `EmailVerificationHandler.tsx`) still runs on verification and is now redundant.
+
+**If sign-up ever fails after migration `20260817000000`:** the only thing it added to the sign-up path is the trigger `trg_poster_on_signup`. Remove it with `DROP TRIGGER IF EXISTS trg_poster_on_signup ON public.user_profiles;` and new accounts are then created without posting access, as before. Do not run this otherwise: it is what makes every new account a poster, and it is not needed to undo anything else.
 
 **Email alerts: built but off.** The tables, matching functions and queue exist, and the profile page has an "alerts" tab showing a "coming soon" note. **No function sends the emails**: there is no queue processor. To finish it: sign up at resend.com and verify a sending domain, `supabase secrets set RESEND_API_KEY=...`, write and deploy an edge function that sends rows from `email_queue` where `sent_at IS NULL` and marks them sent, run it on a schedule (every 5 minutes), and replace the placeholder in `src/pages/Profile.tsx`. Basic account emails (confirmation, password reset) already work through Supabase Auth and are unrelated.
 

@@ -83,3 +83,16 @@ export function accessStatusLabel(profile: RoleFields | null | undefined): strin
   if (profile?.approval_status === 'pending') return 'Pending Approval';
   return null;
 }
+
+/**
+ * The user counts on the admin dashboard. They partition the accounts, so
+ * admins + posters + removed always equals total: an admin is counted once as an
+ * admin (not also as a poster), and "removed" is everyone left over, which is an
+ * account whose posting access an admin took away.
+ */
+export function userCounts(users: RoleFields[] | null | undefined) {
+  const list = users ?? [];
+  const admins = list.filter((u) => accountRole(u) === 'admin').length;
+  const posters = list.filter((u) => accountRole(u) === 'poster').length;
+  return { total: list.length, admins, posters, removed: list.length - admins - posters };
+}

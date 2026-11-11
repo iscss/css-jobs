@@ -64,7 +64,7 @@ To delete an account, see [HANDBOOK > Common tasks](docs/HANDBOOK.md#common-task
 
 ### Use the admin dashboard
 
-Open your name (top right), then **Admin dashboard** (address `/admin`). It has three tabs:
+Open your name (top right), then **Admin dashboard** (address `/admin`). The top of the page shows counts: **Total Users** (made up of **Admins**, **Job Posters** and **Posting Removed**), **Admin Requests**, and the job totals. Below are three tabs:
 
 - **Pending Approvals.** Jobs waiting for a decision, and requests for admin access. **Approve** is one click; **Reject** asks first. Imported jobs show the AI's verdict (accept, borderline or reject) and its reason, and can be approved or rejected in bulk.
 - **Job Management.** Every job: filter, sort, approve, reject, feature, **Edit job**, delete.
