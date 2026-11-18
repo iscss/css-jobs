@@ -349,7 +349,7 @@ production-only columns (see [Schema drift](#migrations-and-schema-drift)).
 
 Done for production on 2026-11-04. To repeat it, or to set up another project:
 
-1. **Apply the migrations** with `psql` (not `db push`), `20260803000000` to `20260818000000`, in order. These change the live database, so review them first.
+1. **Apply the migrations** with `psql` (not `db push`), `20260803000000` to `20260819000000`, in order. These change the live database, so review them first.
 2. **Deploy the functions** (above).
 3. **Set the secrets:** `ANTHROPIC_API_KEY` and a `SCHEDULER_SECRET` made with `openssl rand -hex 32`.
 4. **Tell the scheduler where to call**, with the same `SCHEDULER_SECRET` value:
@@ -543,6 +543,7 @@ Always have a new admin **verify first and request admin themselves** (or be gra
 | `20260816000000_seed_university_sources` | Penn, Northeastern, USC, Yale and Stanford as active sources, and ten registered but inactive ones; safe to run twice |
 | `20260817000000_automatic_poster_access` | Every new account is an approved poster (trigger); `admin_requested_at`; existing accounts brought in line |
 | `20260818000000_deleting_an_account_keeps_its_approvals` | `approved_by`, `approved_by_admin` and `reviewed_by` clear themselves when that account is deleted, so deleting an admin who approved people works |
+| `20260819000000_ingest_each_source_separately` | The nightly import asks for each active source in its own request, so a slow source cannot cut the others off |
 
 All were applied to production with `psql`. A new migration needs a new, later timestamp.
 

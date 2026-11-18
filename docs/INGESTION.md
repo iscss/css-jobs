@@ -267,6 +267,19 @@ from scrape_runs order by started_at desc limit 20;
 A healthy source says `success`. A source that finds nothing is not an error: most days a university has no new CSS posting.
 `fetched_count` of 0 for many days in a row on a source that used to find jobs is worth a look.
 
+**Did every active source run?** Each active source should have a run from the last day. This lists any that did not:
+
+```sql
+SELECT s.slug, max(r.started_at) AS last_run
+FROM job_sources s LEFT JOIN scrape_runs r ON r.source_slug = s.slug
+WHERE s.is_active
+GROUP BY s.slug
+HAVING max(r.started_at) IS NULL OR max(r.started_at) < now() - interval '30 hours'
+ORDER BY last_run NULLS FIRST;
+```
+
+No rows is healthy. (Before migration `20260819000000`, several sources were skipped most nights because they were all fetched in one call that hit its time limit.)
+
 | Error in the log | Meaning | What to do |
 |------------------|---------|------------|
 | `HTTP 403` | The site refuses automated requests (jobRxiv does this to Supabase's servers) | Ask the owner to allow `CSSJobsBot`. Do not try to get around it |
@@ -469,10 +482,12 @@ Four schedules run in the database (`pg_cron`), each calling a SQL function that
 
 | Job | When (UTC) | Calls | What it does |
 |-----|------------|-------|--------------|
-| `ingest-jobs-daily` | 03:00 daily | `run_job_ingestion()` | Fetch, get a verdict, insert as pending or rejected |
+| `ingest-jobs-daily` | 03:00 daily | `run_job_ingestion()` | Fetch, get a verdict, insert as pending or rejected. **One request per active source**, so each has its own time limit (migration `20260819000000`) |
 | `purge-expired-jobs` | 00:05 daily | `purge_expired_jobs()` | Delete expired, hidden dead and old rejected jobs |
 | `check-listings` | every 2 hours, at :15 | `run_listing_check()` | Link check, up to 60 due jobs per call |
 | `structure-jobs` | every 15 minutes | `run_job_structuring()` | Organise up to 20 published jobs |
+
+**Why one request per source.** The importer used to be called once and looped over every source inside that call, which has a time limit; with 15 sources the call was cut off and the last ones were skipped most nights (`scrape_runs` showed 7 to 10 sources a night). Check that every active source ran with the query in [Check that the sources are healthy](#check-that-the-sources-are-healthy).
 
 **Scheduling covers fetching and checking only.** Imported jobs still land as `pending` or `rejected` and an
 admin approves every one.
