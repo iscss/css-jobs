@@ -292,3 +292,45 @@ describe('Oracle Recruiting links', () => {
     expect(String(fetchFn.mock.calls[0][0])).toContain('/hcmRestApi/');
   });
 });
+
+describe('removed postings on SuccessFactors and UC recruitment sites', () => {
+  it('flags a SuccessFactors job that redirects to the error page', () => {
+    const result = classifyPage({
+      ...base,
+      requestedUrl: 'https://careers.example.edu/job/Durham-Postdoc-NC/1000000001/',
+      finalUrl: 'https://careers.example.edu/errorpage/?errortype=Exception',
+      body: '<p>Careers</p>',
+    });
+    expect(result).toEqual({ status: 'dead', reason: 'redirected to an error page' });
+  });
+
+  it('keeps a SuccessFactors job that stays on its own address', () => {
+    const url = 'https://careers.example.edu/job/Durham-Postdoc-NC/1000000001/';
+    expect(classifyPage({ ...base, requestedUrl: url, finalUrl: url, body: '<p>Postdoc</p>' }).status).toBe('live');
+  });
+
+  it('flags a UC recruitment that redirects to the list of recruitments', () => {
+    const result = classifyPage({
+      ...base,
+      requestedUrl: 'https://recruit.example.edu/JPF05571',
+      finalUrl: 'https://recruit.example.edu/apply',
+      body: '<p>Browse Open Recruitments</p>',
+    });
+    expect(result).toEqual({ status: 'dead', reason: 'redirected away from the recruitment' });
+  });
+
+  it('does not close a UC recruitment on its review date, only on its final date', () => {
+    const body =
+      ld(',"validThrough":"2026-10-20T23:59:59-08:00"') +
+      '<p>Most recent review date: Sunday, Oct 18, 2026</p>' +
+      '<p>Final date: Tuesday, Oct 12, 2027 at 11:59pm (Pacific Time)</p>';
+    const url = 'https://recruit.example.edu/JPF05571';
+    expect(classifyPage({ ...base, requestedUrl: url, finalUrl: url, body }).status).toBe('live');
+
+    const passed = body.replace('Oct 12, 2027', 'Oct 12, 2026');
+    expect(classifyPage({ ...base, requestedUrl: url, finalUrl: url, body: passed })).toEqual({
+      status: 'closed',
+      reason: 'closing date passed (2026-10-12)',
+    });
+  });
+});

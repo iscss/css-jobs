@@ -420,7 +420,7 @@ scored: hard checks, then the AI.
 | Result | Meaning |
 |--------|---------|
 | `live` | Page loads and looks open |
-| `dead` | HTTP 404 or 410, or a redirect to the site's home page |
+| `dead` | HTTP 404 or 410, or a redirect to the site's home page, to a SuccessFactors `/errorpage/`, or from a UC `/JPF12345` page to the campus list |
 | `closed` | A past `validThrough` date, a visible "listing has expired" notice, a passed `application_deadline`, or a Workday posting with applications closed |
 | `unknown` | Blocked (403 or 429), a server error, a timeout, or a page with no readable text: **never acted on** |
 
@@ -442,6 +442,13 @@ The rule is `linkCheckAction` in `_shared/liveness.ts`. A few details learned th
 - **Oracle Recruiting** pages (Stanford) are also JavaScript apps, so they are checked through Oracle's REST service: no
   matching requisition means `dead`, and a past end date means `closed`. A made-up job id was reported live by the plain
   page check, which is why this exists.
+- **SuccessFactors** and **UC recruitment** sites answer 200 for a removed job but redirect: SuccessFactors to
+  `/errorpage/`, UC to the campus `/apply` list. Both count as `dead`. UC pages also put the *review* date in
+  `validThrough` while accepting applications until the "Final date", so the check uses the Final date for them.
+  Both were found by testing a made-up job id and a live UC job against the link check.
+- When a reader finds jobs but cannot read a single page (a block or an outage), it fails with an error in
+  `scrape_runs` rather than reporting "0 jobs". The importer reads only the first 4,000 characters of a
+  description for a deadline, so readers put their `Application deadline:` line first.
 - A **429** (rate-limited) is retried once after a few seconds; a job left `unknown` is tried again after a day
   (not the full week).
 - The word "expired" in a stylesheet is not a closed posting: the check reads only visible text, status codes,

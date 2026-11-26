@@ -63,6 +63,30 @@ function validThrough(html: string): Date | null {
   return null;
 }
 
+// University of California recruitment pages put the most recent *review* date in the
+// page's validThrough, but keep accepting applications until the "Final date". Using
+// validThrough would hide a live job as soon as its first review date passed.
+const FINAL_DATE =
+  /Final date:\s*(?:[A-Za-z]+,\s*)?([A-Z][a-z]+)\.?\s+(\d{1,2}),\s*(\d{4})/;
+
+function finalDate(text: string): Date | null {
+  const hit = text.match(FINAL_DATE);
+  if (!hit) return null;
+  const date = new Date(`${hit[1]} ${hit[2]}, ${hit[3]} 23:59:59 UTC`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+// A removed posting on some systems answers 200 but redirects somewhere else:
+// SuccessFactors sites to /errorpage/, UC recruitment sites (/JPF12345) to the list.
+function removedByRedirect(requested: URL, final: URL): string | null {
+  if (/^\/errorpage(\/|$)/i.test(final.pathname)) return 'redirected to an error page';
+  const id = requested.pathname.match(/^\/(JPF\d+)\/?$/i)?.[1];
+  if (id && requested.hostname === final.hostname && !final.pathname.includes(id)) {
+    return 'redirected away from the recruitment';
+  }
+  return null;
+}
+
 export function classifyPage(input: {
   requestedUrl: string;
   finalUrl: string;
@@ -92,11 +116,13 @@ export function classifyPage(input: {
     ) {
       return { status: 'dead', reason: 'redirected to homepage' };
     }
+    const removed = removedByRedirect(requested, final);
+    if (removed) return { status: 'dead', reason: removed };
   } catch {
     // Unparseable URL: fall through to the page checks.
   }
 
-  const closes = validThrough(body);
+  const closes = finalDate(visibleText(body)) ?? validThrough(body);
   if (closes && closes.getTime() < now.getTime()) {
     return {
       status: 'closed',

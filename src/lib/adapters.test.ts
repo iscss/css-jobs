@@ -793,6 +793,18 @@ describe('successFactorsAdapter', () => {
     await expect(successFactorsAdapter(ROOT, { institution: 'X' })).rejects.toThrow(/503/);
   });
 
+  it('reports an error, not "no jobs", when every job page fails', async () => {
+    mock((url) =>
+      url.endsWith('sitemap.xml') ? text(sitemap('A-Postdoc/1', 'B-Postdoc/2')) : text('slow down', 429),
+    );
+    await expect(successFactorsAdapter(ROOT, { institution: 'X' })).rejects.toThrow(/none of 2 job pages.*429/);
+  });
+
+  it('returns no jobs, without an error, when nothing in the sitemap matches', async () => {
+    mock(() => text(sitemap('Durham-Groundskeeper-NC/1')));
+    expect(await successFactorsAdapter(ROOT, { institution: 'X' })).toEqual([]);
+  });
+
   it('reads a title out of an address, and a description with spans inside it', () => {
     expect(successFactorsTitleFromUrl(`${ROOT}/job/Tenure-Track-Professur-f%C3%BCr-Physik/9/`)).toBe(
       'tenure track professur für physik',
@@ -860,7 +872,7 @@ describe('ucRecruitAdapter', () => {
     expect(jobs[0].description).toContain('Social Sciences / SOC');
     expect(jobs[0].description).toContain('Teach data science courses');
     expect(jobs[0].description).not.toContain('Upload a CV');
-    expect(jobs[0].description).toContain('Application deadline: 2027-10-12.');
+    expect(jobs[0].description).toContain('Application deadline: October 12, 2027.');
     expect(fn.mock.calls.map((c) => c[0] as string)).not.toContain('https://recruit.example.edu/JPF2');
   });
 
@@ -883,11 +895,33 @@ describe('ucRecruitAdapter', () => {
     expect(jobs.map((j) => j.sourceJobId)).toEqual(['JPF2']);
   });
 
+  it('reports an error, not "no jobs", when every recruitment page fails', async () => {
+    mock((url) =>
+      url === FEED ? text(list({ unit: 'U', rows: [row('JPF1', 'Lecturer A')] })) : text('busy', 503),
+    );
+    await expect(ucRecruitAdapter(FEED, { institution: 'X' })).rejects.toThrow(/none of 1 recruitment pages.*503/);
+  });
+
   it('says so when the page has no recruitments or the site refuses, and needs an institution', async () => {
     await expect(ucRecruitAdapter(FEED, {})).rejects.toThrow(/institution/);
     mock(() => text('<html>blocked</html>'));
     await expect(ucRecruitAdapter(FEED, { institution: 'X' })).rejects.toThrow(/no recruitments/);
     mock(() => text('nope', 503));
     await expect(ucRecruitAdapter(FEED, { institution: 'X' })).rejects.toThrow(/503/);
+  });
+});
+
+describe('ucRecruitAdapter deadline', () => {
+  it('lets the final date win over an "apply by" review date in the text', async () => {
+    const { extractDeadline } = await import('../../supabase/functions/_shared/ingest.ts');
+    const FEED = 'https://recruit.example.edu/apply';
+    const page = `<h3>Position overview</h3><p>Open date: October 24, 2026</p><p>Final date: Wednesday, Mar 31, 2027 at 11:59pm</p>` +
+      `<h3 id="description">Position description</h3><p>For full consideration, please apply by July 1, 2026. Teach history courses to undergraduates.</p>`;
+    vi.stubGlobal('fetch', vi.fn((url: string) => Promise.resolve(new Response(
+      url === FEED
+        ? `<tbody data-section="History / HIS"><tr id="JPF1"><td><div class='name'>Lecturer in History</div></td></tr></tbody>`
+        : page))));
+    const [job] = await ucRecruitAdapter(FEED, { institution: 'X' });
+    expect(extractDeadline(job.description, new Date('2026-11-26'))).toBe('2027-03-31');
   });
 });

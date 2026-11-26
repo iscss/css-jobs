@@ -803,15 +803,21 @@ export async function successFactorsAdapter(
   }
 
   const jobs: RawJob[] = [];
-  for (const link of links.slice(0, maxJobs)) {
+  const attempts = links.slice(0, maxJobs);
+  let lastProblem = '';
+  for (const link of attempts) {
     let html: string;
     try {
       const page = await fetch(link, {
         headers: { 'User-Agent': USER_AGENT, Accept: 'text/html' },
       });
-      if (!page.ok) continue;
+      if (!page.ok) {
+        lastProblem = `HTTP ${page.status}`;
+        continue;
+      }
       html = await page.text();
-    } catch {
+    } catch (error) {
+      lastProblem = error instanceof Error ? error.message : 'request failed';
       continue;
     }
     const title = stripHtml(
@@ -826,8 +832,9 @@ export async function successFactorsAdapter(
       title,
       institution,
       location: successFactorsLocation(html) ?? String(config.location ?? 'See posting'),
+      // First, because the importer reads only the start of a description for a deadline.
       description: deadline
-        ? `${description}\n\nApplication deadline: ${deadline.slice(0, 10)}.`
+        ? `Application deadline: ${deadline.slice(0, 10)}.\n\n${description}`
         : description,
       jobType: title,
       sourceUrl: link,
@@ -836,6 +843,10 @@ export async function successFactorsAdapter(
       postedAt: successFactorsDate(successFactorsMeta(html, 'datePosted')),
     });
     await sleep(250);
+  }
+  // Jobs were listed but not one page could be read: an outage or a block, not "no jobs".
+  if (!jobs.length && attempts.length && lastProblem) {
+    throw new Error(`SuccessFactors: none of ${attempts.length} job pages could be read (last: ${lastProblem})`);
   }
   return jobs;
 }
@@ -881,6 +892,14 @@ function ucDate(text: string, label: string): string | undefined {
   return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString().slice(0, 10);
 }
 
+// Written as "October 12, 2027" because the importer reads that form of "Application
+// deadline" before any "apply by <date>" in the text. UC postings often say "apply by
+// <review date> for full consideration" while accepting applications until the final date.
+function ucLongDate(iso: string): string {
+  const [year, month, day] = iso.split('-').map(Number);
+  return `${MONTHS.split('|')[month - 1]} ${day}, ${year}`;
+}
+
 export async function ucRecruitAdapter(
   feedUrl: string,
   config: Record<string, unknown>,
@@ -909,16 +928,22 @@ export async function ucRecruitAdapter(
   const wanted = [...matching.filter(isPriority), ...matching.filter((row) => !isPriority(row))];
 
   const jobs: RawJob[] = [];
-  for (const row of wanted.slice(0, maxJobs)) {
+  const attempts = wanted.slice(0, maxJobs);
+  let lastProblem = '';
+  for (const row of attempts) {
     const link = `${origin}/${row.id}`;
     let html: string;
     try {
       const page = await fetch(link, {
         headers: { 'User-Agent': USER_AGENT, Accept: 'text/html' },
       });
-      if (!page.ok) continue;
+      if (!page.ok) {
+        lastProblem = `HTTP ${page.status}`;
+        continue;
+      }
       html = await page.text();
-    } catch {
+    } catch (error) {
+      lastProblem = error instanceof Error ? error.message : 'request failed';
       continue;
     }
     const start = html.search(/<h3[^>]*>\s*Position overview/i);
@@ -932,7 +957,7 @@ export async function ucRecruitAdapter(
       title: row.title,
       institution,
       location: String(config.location ?? 'California, US'),
-      description: `${row.unit ? `${row.unit}. ` : ''}${text}${deadline ? `\n\nApplication deadline: ${deadline}.` : ''}`,
+      description: `${deadline ? `Application deadline: ${ucLongDate(deadline)}.\n\n` : ''}${row.unit ? `${row.unit}. ` : ''}${text}`,
       jobType: row.title,
       sourceUrl: link,
       sourceJobId: row.id,
@@ -940,6 +965,9 @@ export async function ucRecruitAdapter(
       postedAt: ucDate(text, 'Open date'),
     });
     await sleep(250);
+  }
+  if (!jobs.length && attempts.length && lastProblem) {
+    throw new Error(`UC Recruit: none of ${attempts.length} recruitment pages could be read (last: ${lastProblem})`);
   }
   return jobs;
 }
