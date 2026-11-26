@@ -349,7 +349,7 @@ production-only columns (see [Schema drift](#migrations-and-schema-drift)).
 
 Done for production on 2026-11-04. To repeat it, or to set up another project:
 
-1. **Apply the migrations** with `psql` (not `db push`), `20260803000000` to `20260823000000`, in order. These change the live database, so review them first.
+1. **Apply the migrations** with `psql` (not `db push`), `20260803000000` to `20260824000000`, in order. These change the live database, so review them first.
 2. **Deploy the functions** (above).
 3. **Set the secrets:** `ANTHROPIC_API_KEY` and a `SCHEDULER_SECRET` made with `openssl rand -hex 32`.
 4. **Tell the scheduler where to call**, with the same `SCHEDULER_SECRET` value:
@@ -548,6 +548,7 @@ Always have a new admin **verify first and request admin themselves** (or be gra
 | `20260821000000_seed_rice_and_notre_dame` | Rice (Oracle Recruiting) and Notre Dame (SmartRecruiters, a new reader: redeploy `ingest-jobs` first) |
 | `20260822000000_register_remaining_institutions` | The rest of the institutions list: DTU (Oracle) and UNC (PeopleAdmin) active, Vermont switched on, and 58 more registered but off with their reason in `config.note` |
 | `20260823000000_switch_on_successfactors_sources` | Duke, Purdue, TU Delft, Vienna and Toronto switched on with the new SuccessFactors reader (deploy `ingest-jobs` first) |
+| `20260824000000_switch_on_uc_sources` | UC Berkeley, Davis, San Diego and UCLA switched on with the new University of California reader (deploy `ingest-jobs` first) |
 
 All were applied to production with `psql`. A new migration needs a new, later timestamp.
 

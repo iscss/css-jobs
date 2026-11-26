@@ -840,6 +840,110 @@ export async function successFactorsAdapter(
   return jobs;
 }
 
+// University of California "AP Recruit" sites (Berkeley, Davis, San Diego, UCLA): one
+// piece of software, one site per campus for academic jobs.
+//   list:   <feed_url>   (the campus's /apply page: every open recruitment in one table)
+//   detail: <origin>/JPF<number>   (position overview, dates, description, qualifications)
+// feed_url is the campus's `/apply` address. The table is long and mixed, so rows are
+// kept when their title or unit contains one of `search_terms` (default below) and up to
+// `max_jobs` (default 40) pages are opened. config needs `institution`. A closed
+// recruitment answers 404, so the ordinary link check catches it.
+const UC_DEFAULT_TERMS = [
+  ...SUCCESSFACTORS_DEFAULT_TERMS, 'data science', 'computing', 'social science',
+  'information', 'statistic', 'political', 'public policy', 'sociology', 'economics',
+];
+
+// A campus lists hundreds of recruitments, so those about data, computing and the social
+// sciences are opened first and the rest only if the `max_jobs` limit leaves room.
+const UC_PRIORITY_TERMS = [
+  'data science', 'computing', 'computational', 'social science', 'information', 'statistic',
+  'political', 'public policy', 'sociology', 'economics', 'postdoc', 'data scientist',
+];
+
+export interface UcRow { id: string; title: string; unit: string }
+
+export function ucRows(html: string): UcRow[] {
+  const rows: UcRow[] = [];
+  for (const row of html.matchAll(/<tr id="(JPF\d+)"[^>]*>([\s\S]*?)<\/tr>/gi)) {
+    const unit = html.slice(0, row.index).match(/data-section="([^"]*)"(?![\s\S]*data-section=)/)?.[1] ?? '';
+    const title = stripHtml(row[2].match(/<div class='name'>([\s\S]*?)<\/div>/i)?.[1] ?? '');
+    if (title) rows.push({ id: row[1], title, unit: stripHtml(unit) });
+  }
+  return rows;
+}
+
+const MONTHS = 'January|February|March|April|May|June|July|August|September|October|November|December';
+
+function ucDate(text: string, label: string): string | undefined {
+  const m = text.match(new RegExp(`${label}:\\s*(?:[A-Za-z]+,\\s*)?(${MONTHS}|[A-Z][a-z]{2})\\s+(\\d{1,2}),\\s*(\\d{4})`));
+  if (!m) return undefined;
+  const parsed = new Date(`${m[1]} ${m[2]}, ${m[3]} 12:00:00 UTC`);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString().slice(0, 10);
+}
+
+export async function ucRecruitAdapter(
+  feedUrl: string,
+  config: Record<string, unknown>,
+): Promise<RawJob[]> {
+  const institution = String(config.institution ?? '');
+  if (!institution) throw new Error('uc-recruit source needs config.institution');
+
+  const terms = (Array.isArray(config.search_terms) && config.search_terms.length
+    ? (config.search_terms as string[])
+    : UC_DEFAULT_TERMS).map((term) => term.toLowerCase());
+  const maxJobs = Number(config.max_jobs ?? 40);
+  const origin = new URL(feedUrl).origin;
+
+  const response = await fetch(feedUrl, {
+    headers: { 'User-Agent': USER_AGENT, Accept: 'text/html' },
+  });
+  if (!response.ok) throw new Error(`UC Recruit returned HTTP ${response.status}`);
+  const rows = ucRows(await response.text());
+  if (!rows.length) {
+    throw new Error('UC Recruit page had no recruitments (the layout may have changed or the site is blocking automated requests)');
+  }
+
+  const haystackOf = (row: UcRow) => `${row.title} ${row.unit}`.toLowerCase();
+  const matching = rows.filter((row) => terms.some((term) => haystackOf(row).includes(term)));
+  const isPriority = (row: UcRow) => UC_PRIORITY_TERMS.some((term) => haystackOf(row).includes(term));
+  const wanted = [...matching.filter(isPriority), ...matching.filter((row) => !isPriority(row))];
+
+  const jobs: RawJob[] = [];
+  for (const row of wanted.slice(0, maxJobs)) {
+    const link = `${origin}/${row.id}`;
+    let html: string;
+    try {
+      const page = await fetch(link, {
+        headers: { 'User-Agent': USER_AGENT, Accept: 'text/html' },
+      });
+      if (!page.ok) continue;
+      html = await page.text();
+    } catch {
+      continue;
+    }
+    const start = html.search(/<h3[^>]*>\s*Position overview/i);
+    if (start < 0) continue;
+    const end = html.search(/<h3[^>]*id="requirements"/i);
+    const text = stripHtml(html.slice(start, end > start ? end : undefined));
+    if (!text) continue;
+
+    const deadline = ucDate(text, 'Final date');
+    jobs.push({
+      title: row.title,
+      institution,
+      location: String(config.location ?? 'California, US'),
+      description: `${row.unit ? `${row.unit}. ` : ''}${text}${deadline ? `\n\nApplication deadline: ${deadline}.` : ''}`,
+      jobType: row.title,
+      sourceUrl: link,
+      sourceJobId: row.id,
+      applicationUrl: link,
+      postedAt: ucDate(text, 'Open date'),
+    });
+    await sleep(250);
+  }
+  return jobs;
+}
+
 export const ADAPTERS: Record<
   string,
   (feedUrl: string, config: Record<string, unknown>) => Promise<RawJob[]>
@@ -853,4 +957,5 @@ export const ADAPTERS: Record<
   'smartrecruiters': smartRecruitersAdapter,
   'peopleadmin': peopleAdminAdapter,
   'successfactors': successFactorsAdapter,
+  'uc-recruit': ucRecruitAdapter,
 };

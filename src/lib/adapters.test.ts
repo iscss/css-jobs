@@ -7,6 +7,8 @@ import {
   successFactorsAdapter,
   successFactorsDescription,
   successFactorsTitleFromUrl,
+  ucRecruitAdapter,
+  ucRows,
   jobRxivAdapter,
   genericRssAdapter,
   comsesAdapter,
@@ -798,5 +800,94 @@ describe('successFactorsAdapter', () => {
     expect(
       successFactorsDescription('<span itemprop="description"><span>a <span>b</span></span> c</span> after'),
     ).toBe('<span>a <span>b</span></span> c');
+  });
+});
+
+describe('ucRecruitAdapter', () => {
+  const FEED = 'https://recruit.example.edu/apply';
+  const row = (id: string, title: string) =>
+    `<tr id="${id}" class="linked match"><td class="job-number"><a href="/${id}">${id}</a></td>` +
+    `<td class="name"><div class='name'>\n  ${title}\n</div></td></tr>`;
+  const list = (...sections: { unit: string; rows: string[] }[]) =>
+    `<html><table>${sections
+      .map((sec) => `<tbody class="matches" data-section="${sec.unit}">${sec.rows.join('')}</tbody>`)
+      .join('')}</table></html>`;
+  const detail = (extra = '') =>
+    `<html><h1>x</h1><h3>Position overview</h3><p>Position title: Lecturer</p>` +
+    `<h3>Application Window</h3><p>Open date: October 24, 2026</p>` +
+    `<p>Final date: Tuesday, Oct 12, 2027 at 11:59pm (Pacific Time)</p>` +
+    `<h3 id="description">Position description</h3><p>Teach data science courses to undergraduates.${extra}</p>` +
+    `<h3 id="requirements">Application Requirements</h3><p>Upload a CV.</p></html>`;
+  const text = (body: string, status = 200) => Promise.resolve(new Response(body, { status }));
+
+  function mock(handler: (url: string) => Promise<Response>) {
+    const fn = vi.fn((url: string) => handler(url));
+    vi.stubGlobal('fetch', fn);
+    return fn;
+  }
+
+  it('reads each row with its title and the unit it sits under', () => {
+    const rows = ucRows(
+      list(
+        { unit: 'School A / A', rows: [row('JPF1', 'Lecturer in Data Science')] },
+        { unit: 'School B / B', rows: [row('JPF2', 'Gardener')] },
+      ),
+    );
+    expect(rows).toEqual([
+      { id: 'JPF1', title: 'Lecturer in Data Science', unit: 'School A / A' },
+      { id: 'JPF2', title: 'Gardener', unit: 'School B / B' },
+    ]);
+  });
+
+  it('opens only matching rows, and maps the page with dates and no requirements section', async () => {
+    const fn = mock((url) =>
+      url === FEED
+        ? text(list(
+            { unit: 'Social Sciences / SOC', rows: [row('JPF1', 'Lecturer in Sociology')] },
+            { unit: 'Grounds / GRD', rows: [row('JPF2', 'Gardener')] },
+          ))
+        : text(detail()),
+    );
+    const jobs = await ucRecruitAdapter(FEED, { institution: 'UC Example' });
+    expect(jobs).toHaveLength(1);
+    expect(jobs[0]).toMatchObject({
+      title: 'Lecturer in Sociology',
+      institution: 'UC Example',
+      sourceUrl: 'https://recruit.example.edu/JPF1',
+      sourceJobId: 'JPF1',
+      postedAt: '2026-10-24',
+    });
+    expect(jobs[0].description).toContain('Social Sciences / SOC');
+    expect(jobs[0].description).toContain('Teach data science courses');
+    expect(jobs[0].description).not.toContain('Upload a CV');
+    expect(jobs[0].description).toContain('Application deadline: 2027-10-12.');
+    expect(fn.mock.calls.map((c) => c[0] as string)).not.toContain('https://recruit.example.edu/JPF2');
+  });
+
+  it('opens rows about data and the social sciences before the others when limited', async () => {
+    mock((url) =>
+      url === FEED
+        ? text(list({ unit: 'U', rows: [row('JPF1', 'Lecturer in Music'), row('JPF2', 'Lecturer in Data Science')] }))
+        : text(detail()),
+    );
+    const jobs = await ucRecruitAdapter(FEED, { institution: 'X', max_jobs: 1 });
+    expect(jobs.map((j) => j.sourceJobId)).toEqual(['JPF2']);
+  });
+
+  it('skips a recruitment whose page has gone', async () => {
+    mock((url) => {
+      if (url === FEED) return text(list({ unit: 'U', rows: [row('JPF1', 'Lecturer A'), row('JPF2', 'Lecturer B')] }));
+      return url.endsWith('JPF1') ? text('', 404) : text(detail());
+    });
+    const jobs = await ucRecruitAdapter(FEED, { institution: 'X' });
+    expect(jobs.map((j) => j.sourceJobId)).toEqual(['JPF2']);
+  });
+
+  it('says so when the page has no recruitments or the site refuses, and needs an institution', async () => {
+    await expect(ucRecruitAdapter(FEED, {})).rejects.toThrow(/institution/);
+    mock(() => text('<html>blocked</html>'));
+    await expect(ucRecruitAdapter(FEED, { institution: 'X' })).rejects.toThrow(/no recruitments/);
+    mock(() => text('nope', 503));
+    await expect(ucRecruitAdapter(FEED, { institution: 'X' })).rejects.toThrow(/503/);
   });
 });
