@@ -7,6 +7,8 @@ could supply more. Part of the [CSS Jobs documentation](../README.md#documentati
 - **Boards and aggregators we looked at:** [section 2](#2-boards-and-aggregators-investigated)
 - **The CSS community directory**, taken from the [Penn CSS Lab community page](https://css.engineering.upenn.edu/about/community/), [varyCSS](http://varycss.org/) and [SICSS](https://sicss.io/): [section 3](#3-css-community-directory)
 - **What to add next, and how:** [section 4](#4-adding-more-sources)
+- **The institutions Alex suggested, and where each stands:** [section 5](#5-institutions-suggested-on-2026-11-26)
+- **The curated hiring sheet:** [section 6](#6-the-hiring-sheet)
 
 How the importer works is in [INGESTION.md](INGESTION.md); how to add a source is in
 [INGESTION.md > How-to guides](INGESTION.md#how-to-guides).
@@ -49,6 +51,18 @@ local copy, not from production.
 | `wd-usc` | University of Southern California (USC Dornsife) | `workday` | `usc.wd5.myworkdayjobs.com`, site `ExternalUSCCareers` | 365 days | Local test: 26 found, 23 inserted, 5 pending |
 | `wd-yale` | Yale University (Human Nature Lab) | `workday` | `yale.wd1.myworkdayjobs.com`, site `external_career_site` (Yale's front end is Phenom People; its apply links reveal Workday) | 365 days | Local test: 9 found, 9 inserted, 1 pending |
 | `oracle-stanford` | Stanford University (IRiSS) | `oracle-recruiting` | `careersearch.stanford.edu`, site `stanford` | 365 days | Local test: 82 found, 63 inserted, 6 pending (2 accepted by the AI). **New adapter**; the link check reads Stanford's REST service |
+| `wd-american` | American University | `workday` | `american.wd1.myworkdayjobs.com`, site `AU` | 365 days | Added 2026-11-26. Search test: 2 found before filtering |
+| `wd-byu` | Brigham Young University | `workday` | `byu.wd1.myworkdayjobs.com`, site `faculty-careers` | 365 days | Added 2026-11-26. Search test: 0 found before filtering |
+| `wd-clemson` | Clemson University | `workday` | `clemson.wd12.myworkdayjobs.com`, site `Clemson_Careers` | 365 days | Added 2026-11-26. Search test: 0 found before filtering |
+| `wd-dartmouth` | Dartmouth College | `workday` | `dart.wd1.myworkdayjobs.com`, site `DART` | 365 days | Added 2026-11-26. Search test: 0 found before filtering |
+| `wd-georgetown` | Georgetown University | `workday` | `georgetown.wd1.myworkdayjobs.com`, site `Georgetown_Faculty` | 365 days | Added 2026-11-26. Search test: 0 found before filtering |
+| `wd-pennstate` | Pennsylvania State University | `workday` | `psu.wd1.myworkdayjobs.com`, site `PSU_Academic` | 365 days | Added 2026-11-26. Search test: 17 found before filtering |
+| `wd-utaustin` | University of Texas at Austin | `workday` | `utaustin.wd1.myworkdayjobs.com`, site `UTstaff` | 365 days | Added 2026-11-26. Search test: 34 found before filtering |
+| `wd-wustl` | Washington University in St. Louis | `workday` | `wustl.wd1.myworkdayjobs.com`, site `External` | 365 days | Added 2026-11-26. Search test: 8 found before filtering |
+| `wd-rochester` | University of Rochester | `workday` | `rochester.wd5.myworkdayjobs.com`, site `UR_Staff` | 365 days | Added 2026-11-26. Search test: 17 found before filtering |
+| `wd-mcgill` | McGill University | `workday` | `mcgill.wd3.myworkdayjobs.com`, site `McGill_Careers` | 365 days | Added 2026-11-26. Search test: 20 found before filtering |
+| `wd-sydney` | University of Sydney | `workday` | `usyd.wd105.myworkdayjobs.com`, site `USYD_EXTERNAL_CAREER_SITE` | 365 days | Added 2026-11-26. Search test: 1 found before filtering |
+| `wd-melbourne` | University of Melbourne | `workday` | `unimelb.wd105.myworkdayjobs.com`, site `UoM_External_Career` | 365 days | Added 2026-11-26. Search test: 4 found before filtering |
 
 The Workday and Oracle sources search for CSS terms ("computational social science", "social data science",
 "computational sociology", and for Northeastern "network science") before anything is downloaded.
@@ -419,3 +433,109 @@ The how-to steps are in [INGESTION.md > How-to guides](INGESTION.md#how-to-guide
 keep the `CSSJobsBot` user agent, and remember that every imported job still waits for an
 admin to approve it.
 
+---
+
+## 5. Institutions suggested on 2026-11-26
+
+Alex asked for these 92 institutions to be covered as job sources, as a goal. This is where each one stands. The rule for "covered" is that the importer reads the institution's own careers site every night, so its postings reach the review queue. Faculty hiring at many US universities goes through **Interfolio** instead, which has no public feed we could find (its `robots.txt` is access-denied and the pages are a JavaScript app), so those need separate work.
+
+**11 were already read** (Brown University, Cornell University, Northeastern University, Ohio State University, Stanford University, University of Chicago, University of Maryland, University of Southern California, University of Washington, University of Wisconsin–Madison, Yale University). **12 were added on 2026-11-26** (migration `20260820000000`, [section 1.1](#11-active)): American University, Brigham Young University, Clemson University, Dartmouth College, Georgetown University, McGill University, Pennsylvania State University, University of Melbourne, University of Rochester, University of Sydney, University of Texas at Austin, Washington University in St. Louis. Each was found through the tenant's `robots.txt` and tested with the importer's Workday reader. **7 are registered but off** ([section 1.2](#12-registered-but-inactive)): Columbia University (blocked by an AWS bot challenge), Harvard University (blocked (HTTP 403)), University of Massachusetts Amherst (blocked by an AWS bot challenge), GESIS – Leibniz Institute for the Social Sciences (blocked (HTTP 403)), Microsoft Research (rate limited; unreliable), University of Toronto (needs a reader for SAP SuccessFactors), Carnegie Mellon University (its Workday search returns HTTP 422). The other **62** are below.
+
+### 5.1 Not yet covered
+
+"Hiring system seen" comes from the apply links on the curated hiring sheet described in [section 6](#6-the-hiring-sheet) and is only a clue. A blank means nothing was investigated yet. A Workday probe of name guesses found nothing for these, which means they use another system or a tenant name that was not guessed.
+
+| Institution | Hiring system seen | Next step |
+|-------------|--------------------|-----------|
+| Bern University of Applied Sciences | Not investigated | Find the careers system (a short research task) |
+| Bocconi University | own site (jobmarket.unibocconi.eu) | Needs its own reader |
+| Boston University | Academic Jobs Online | Needs its own reader |
+| College of William & Mary | Not investigated | Find the careers system (a short research task) |
+| Complexity Science Hub Vienna | Not investigated | Find the careers system (a short research task) |
+| Delft University of Technology | Not investigated | Find the careers system (a short research task) |
+| Dublin City University | Not investigated | Find the careers system (a short research task) |
+| Duke University | Not investigated | Find the careers system (a short research task) |
+| École Polytechnique (LIX) | Not investigated | Find the careers system (a short research task) |
+| ETH Zurich | Not investigated | Find the careers system (a short research task) |
+| European University Institute | Not investigated | Find the careers system (a short research task) |
+| European University Viadrina | Not investigated | Find the careers system (a short research task) |
+| George Washington University | Not investigated | Find the careers system (a short research task) |
+| Georgia Institute of Technology | department pages | Needs its own reader |
+| Google | Not investigated | Find the careers system (a short research task) |
+| Heinrich Heine University Düsseldorf | Not investigated | Find the careers system (a short research task) |
+| Hertie School | Not investigated | Find the careers system (a short research task) |
+| Indiana University | Not investigated | Find the careers system (a short research task) |
+| IT University of Copenhagen | Not investigated | Find the careers system (a short research task) |
+| Johns Hopkins University | Interfolio | Needs an Interfolio reader (not yet investigated) |
+| King's College London | Not investigated | Find the careers system (a short research task) |
+| London School of Economics | Not investigated | Find the careers system (a short research task) |
+| Loughborough University | Not investigated | Find the careers system (a short research task) |
+| Massachusetts Institute of Technology (MIT) | Not investigated | Find the careers system (a short research task) |
+| Max Planck Institute for Human Development | Not investigated | Find the careers system (a short research task) |
+| Max Planck Institute for Security and Privacy | Not investigated | Find the careers system (a short research task) |
+| New York University | Interfolio | Needs an Interfolio reader (not yet investigated) |
+| Northwestern University | own faculty recruiting site | Needs its own reader |
+| Princeton University | Not investigated | Find the careers system (a short research task) |
+| Purdue University | own site (careers.purdue.edu) | Needs its own reader |
+| Queensland University of Technology | Not investigated | Find the careers system (a short research task) |
+| Rice University | Interfolio | Needs an Interfolio reader (not yet investigated) |
+| Rutgers University | Not investigated | Find the careers system (a short research task) |
+| Sapienza University of Rome | Not investigated | Find the careers system (a short research task) |
+| Syracuse University | Not investigated | Find the careers system (a short research task) |
+| Technical University of Denmark | Not investigated | Find the careers system (a short research task) |
+| Temple University | Not investigated | Find the careers system (a short research task) |
+| UC Berkeley | UC's own system (AP Recruit) | Needs a reader for the University of California's recruitment system |
+| UC Davis | Not investigated | Find the careers system (a short research task) |
+| UC San Diego | UC's own system (APOL) | Needs a reader for the University of California's recruitment system |
+| UCLA | UC's own system (APO Recruit) | Needs a reader for the University of California's recruitment system |
+| University College Dublin | Not investigated | Find the careers system (a short research task) |
+| University of Amsterdam | Not investigated | Find the careers system (a short research task) |
+| University of Bremen | Not investigated | Find the careers system (a short research task) |
+| University of Bristol | Not investigated | Find the careers system (a short research task) |
+| University of Cambridge | Not investigated | Find the careers system (a short research task) |
+| University of Colorado Boulder | Not investigated | Find the careers system (a short research task) |
+| University of Copenhagen | HR-Manager | Needs its own reader |
+| University of Groningen | Not investigated | Find the careers system (a short research task) |
+| University of Houston | own site (careers.uh.edu) | Needs its own reader |
+| University of Illinois | Not investigated | Find the careers system (a short research task) |
+| University of Konstanz | Not investigated | Find the careers system (a short research task) |
+| University of Mannheim | Not investigated | Find the careers system (a short research task) |
+| University of Michigan | Interfolio | Needs an Interfolio reader (not yet investigated) |
+| University of North Carolina | PeopleAdmin | Needs a PeopleAdmin reader (the same one Vermont needs) |
+| University of Notre Dame | Not investigated | Find the careers system (a short research task) |
+| University of Oregon | Not investigated | Find the careers system (a short research task) |
+| University of Oxford | Not investigated | Find the careers system (a short research task) |
+| University of St. Gallen | Not investigated | Find the careers system (a short research task) |
+| University of Vienna | Not investigated | Find the careers system (a short research task) |
+| University of Zurich | Not investigated | Find the careers system (a short research task) |
+| WZB Berlin Social Science Center | Not investigated | Find the careers system (a short research task) |
+
+---
+
+## 6. The hiring sheet
+
+On 2026-11-26 Alex suggested a [Google Sheet](https://docs.google.com/spreadsheets/d/e/2PACX-1vQ6hZ98e4d-lRa-E6OSyceisaalAhWJr2kktBF3JnqoaViRoToPSg5MBByVKu-5Z9NY5RHnNFugZCse/pubhtml) of academic hiring announcements. It is published to the web, so it can be read without signing in. Its title says it has **151 entries across AI, computing, society, health and behavioral science**, reviewed 25 November 2026. Each row has an institution and department, a position, a short description, a deadline, a status ("date guidance"), an application link and notes. About a quarter of the links go to Interfolio.
+
+**A reader exists for it** (adapter `csv-sheet`, [INGESTION.md](INGESTION.md#sources-and-adapters)). It reads the sheet's CSV address, skips rows the sheet itself marks as over (deadline passed, portal closed, posting unavailable), and turns the rest into postings that go through the normal importer: duplicates removed, keyword filter, AI check, then pending for an admin. It is **not switched on**, because of what it found:
+
+| Measured on 2026-11-26 with the real importer | |
+|---|---|
+| Rows in the sheet | 151 |
+| Skipped: the sheet marks them as over | 38 |
+| Dropped: a stated deadline has passed | 4 |
+| Candidates | 109 |
+| AI verdict: accept / borderline / reject | 4 / 82 / 23 |
+
+The sheet is broad hiring news, not computational social science, and its descriptions are short ("Open-rank faculty, tenure-track"), so the AI answers "borderline" for most of it. Switching it on would add about **86 pending jobs**, a few of them good, to a queue of roughly two dozen. The four accepted were Columbia (AI, data science and public policy), Saarland University, and two at UC Irvine. Decisions needed before turning it on:
+1. **Is it wanted at that volume?** Options: switch it on and let admins sort; ask the sheet's owner for a column marking the computational social science rows and read only those; or import it once.
+2. **Who maintains the sheet, and are they happy for it to be read every night?** It is public, but nothing says who runs it. Ask Alex.
+
+To switch it on (an admin runs this in the SQL Editor; it stays off until you do):
+
+```sql
+INSERT INTO job_sources (slug, name, adapter, feed_url, config, max_age_days, is_active) VALUES (
+  'hiring-sheet', 'Academic hiring sheet (2026-27)', 'csv-sheet',
+  'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ6hZ98e4d-lRa-E6OSyceisaalAhWJr2kktBF3JnqoaViRoToPSg5MBByVKu-5Z9NY5RHnNFugZCse/pub?output=csv',
+  '{"location": "See posting"}'::jsonb, NULL, true
+) ON CONFLICT (slug) DO NOTHING;
+```
