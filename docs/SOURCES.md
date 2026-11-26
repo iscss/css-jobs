@@ -68,6 +68,11 @@ local copy, not from production.
 | `oracle-dtu` | Technical University of Denmark | `oracle-recruiting` | `efzu.fa.em2.oraclecloud.com`, site `CX_2001` | 365 days | Added 2026-11-26. Search test: 36 found before filtering, including postdocs and PhD positions |
 | `peopleadmin-unc` | University of North Carolina at Chapel Hill | `peopleadmin` | `unc.peopleadmin.com` | 365 days | Added 2026-11-26. Search test: 3 found. **New reader**: redeploy `ingest-jobs` first |
 | `atom-uvm` | University of Vermont (Computational Story Lab) | `peopleadmin` | `uvmjobs.com` | 365 days | Switched on 2026-11-26 with the new PeopleAdmin reader. Search test: 0 found (nothing open for the terms) |
+| `sf-duke` | Duke University | `successfactors` | `careers.duke.edu` | 365 days | Added 2026-11-26 with the new SuccessFactors reader. Reads the sitemap, opens jobs with an academic title (up to 40). **New reader**: redeploy `ingest-jobs` first |
+| `sf-purdue` | Purdue University | `successfactors` | `careers.purdue.edu` | 365 days | Added 2026-11-26 with the new SuccessFactors reader. Reads the sitemap, opens jobs with an academic title (up to 60). **New reader**: redeploy `ingest-jobs` first |
+| `sf-delfttechnology` | Delft University of Technology | `successfactors` | `careers.tudelft.nl` | 365 days | Added 2026-11-26 with the new SuccessFactors reader. Reads the sitemap, opens jobs with an academic title (up to 50). **New reader**: redeploy `ingest-jobs` first |
+| `sf-vienna` | University of Vienna | `successfactors` | `jobs.univie.ac.at` | 365 days | Added 2026-11-26 with the new SuccessFactors reader. Reads the sitemap, opens jobs with an academic title (up to 60; German title words added). **New reader**: redeploy `ingest-jobs` first |
+| `sf-toronto` | University of Toronto | `successfactors` | `jobs.utoronto.ca` | 365 days | Added 2026-11-26 with the new SuccessFactors reader. Reads the sitemap, opens jobs with an academic title (up to 60). **New reader**: redeploy `ingest-jobs` first |
 
 The Workday and Oracle sources search for CSS terms ("computational social science", "social data science",
 "computational sociology", and for Northeastern "network science") before anything is downloaded.
@@ -82,7 +87,6 @@ and `config.note`. To switch one on after it is fixed: `UPDATE job_sources SET i
 | `pageup-columbia` | Columbia University (Data Science Institute) | PageUp | **Blocked** | An AWS bot challenge answers automated requests with HTTP 202 and a JavaScript page. Ask Columbia HR to allow `CSSJobsBot`, then write a PageUp reader |
 | `pageup-umass` | UMass Amherst (CSSI) | PageUp | **Blocked** | The same AWS bot challenge as Columbia |
 | `harvard` | Harvard (Computational Policy Lab, Kennedy School) | Not identified | **Blocked** | The jobs page answers HTTP 403 to automated requests |
-| `sf-toronto` | University of Toronto (CS) | SAP SuccessFactors | Needs an adapter | HTML pages; the search ignored the query in a first test, so a reader has to be written and checked |
 | `tugraz` | Graz University of Technology | JavaScript app (`jobs.tugraz.at`) | Needs an adapter | No public data endpoint or feed found |
 | `koc` | Koç University (CCSS) | Not identified | **Blocked** | HTTP 403 to automated requests |
 | `gesis` | GESIS | Not identified | **Blocked** | HTTP 403 to automated requests |
@@ -415,7 +419,7 @@ latest year.
 The how-to steps are in [INGESTION.md > How-to guides](INGESTION.md#how-to-guides). What to do next, by effort:
 
 1. **Switch on the blocked sources by asking the owners.** One message, from ISCSS, to Columbia, UMass Amherst, Harvard, Koç, GESIS and jobRxiv: the importer reads the public careers pages once a day and identifies itself as `CSSJobsBot`. Columbia and UMass then also need a PageUp reader.
-2. **Write the missing readers**, each about a day with tests: SAP SuccessFactors (Toronto), PeopleAdmin postings (Vermont, and many other universities), a plain page reader for labs that list openings on a static page (Human Nature Lab's Open Positions, CSSI's Join Us).
+2. **Write the missing readers**, each about a day with tests (SAP SuccessFactors and PeopleAdmin are done): the University of California recruiting system, Eploy, HR-Manager, a plain page reader for labs that list openings on a static page (Human Nature Lab's Open Positions, CSSI's Join Us).
 3. **More Workday universities** are one row each (see [INGESTION.md](INGESTION.md#add-a-source-that-an-existing-adapter-can-read)). When a university's careers site is not obviously Workday, look at a job's apply link: Yale's front end is Phenom People, but its apply links point at Workday.
 4. **Microsoft Research** needs its terms read first.
 5. **Announcing the board.** varyCSS, the SICSS location hosts and the conference lists above are where to tell people the board exists.
@@ -443,12 +447,12 @@ admin to approve it.
 
 Alex asked for these 92 institutions to be covered as job sources, as a goal. "Covered" means the importer reads the institution's own careers site every night, so its postings reach the review queue.
 
-**Every one of the 92 is now in the `job_sources` table** (migrations `20260820000000` to `20260822000000`). **27 are read every night.** The other **65 are registered but switched off**, each with its reason in `config.note`; a source cannot produce jobs until the importer has a reader for its hiring system, and flipping one on without a reader only logs an error.
+**Every one of the 92 is now in the `job_sources` table** (migrations `20260820000000` to `20260823000000`). **32 are read every night.** The other **60 are registered but switched off**, each with its reason in `config.note`; a source cannot produce jobs until the importer has a reader for its hiring system, and flipping one on without a reader only logs an error.
 
 - **11 were already read:** Brown University, Cornell University, Northeastern University, Ohio State University, Stanford University, University of Chicago, University of Maryland, University of Southern California, University of Washington, University of Wisconsin–Madison, Yale University.
-- **16 added on 2026-11-26:** American University, Brigham Young University, Clemson University, Dartmouth College, Georgetown University, McGill University, Pennsylvania State University, Rice University, Technical University of Denmark, University of Melbourne, University of North Carolina, University of Notre Dame, University of Rochester, University of Sydney, University of Texas at Austin, Washington University in St. Louis. Notes: twelve of these are on Workday (found through each tenant's `robots.txt`); Rice and the Technical University of Denmark are on Oracle Recruiting; Notre Dame is on SmartRecruiters; UNC Chapel Hill is on PeopleAdmin. Each was tested with the importer's own reader.
-- **7 off for a known reason** ([section 1.2](#12-registered-but-inactive)): Columbia University (blocked by an AWS bot challenge); Harvard University (blocked (HTTP 403)); University of Massachusetts Amherst (blocked by an AWS bot challenge); GESIS – Leibniz Institute for the Social Sciences (blocked (HTTP 403)); Microsoft Research (rate limited; unreliable); University of Toronto (needs a reader for SAP SuccessFactors); Carnegie Mellon University (its Workday search returns HTTP 422).
-- **58 registered, off, waiting for a reader** (table below).
+- **21 added or switched on 2026-11-26:** American University, Brigham Young University, Clemson University, Dartmouth College, Duke University, Delft University of Technology, Georgetown University, McGill University, Pennsylvania State University, Purdue University, Rice University, Technical University of Denmark, University of Melbourne, University of North Carolina, University of Notre Dame, University of Rochester, University of Sydney, University of Texas at Austin, University of Toronto, University of Vienna, Washington University in St. Louis. Notes: twelve of these are on Workday (found through each tenant's `robots.txt`); Rice and the Technical University of Denmark are on Oracle Recruiting; Notre Dame is on SmartRecruiters; UNC Chapel Hill is on PeopleAdmin; Duke, Purdue, Delft, Toronto and Vienna are on SuccessFactors. Each was tested with the importer's own reader.
+- **6 off for a known reason** ([section 1.2](#12-registered-but-inactive)): Columbia University (blocked by an AWS bot challenge); Harvard University (blocked (HTTP 403)); University of Massachusetts Amherst (blocked by an AWS bot challenge); GESIS – Leibniz Institute for the Social Sciences (blocked (HTTP 403)); Microsoft Research (rate limited; unreliable); Carnegie Mellon University (its Workday search returns HTTP 422).
+- **54 registered, off, waiting for a reader** (table below).
 
 **Why they are not all on.** Each hiring system needs its own small reader, and a reader then covers every institution that uses it. The groups below show how much each reader would unlock. Interfolio carries much US faculty hiring but has no public feed we could find (its `robots.txt` is access-denied and its pages are a JavaScript app). For 35 institutions the hiring system could not be identified, because the careers address tried did not load or named no system; those need someone to look up the real page.
 
@@ -463,9 +467,7 @@ Alex asked for these 92 institutions to be covered as job sources, as a goal. "C
 | Boston University | `ajo-boston` | Academic Jobs Online (faculty) | Needs a reader |
 | College of William & Mary | `todo-collegeofwilliamandmary` | Not identified | Identify the hiring system (a short research task), then a reader |
 | Complexity Science Hub Vienna | `personio-complexitysciencehubvienna` | Personio | Find the Personio feed address (reader would be small) |
-| Delft University of Technology | `sf-delfttechnology` | SAP SuccessFactors | Needs a SuccessFactors reader (one reader, five institutions with Toronto) |
 | Dublin City University | `todo-dublincity` | Not identified | Identify the hiring system (a short research task), then a reader |
-| Duke University | `sf-duke` | SAP SuccessFactors | Needs a SuccessFactors reader (one reader, five institutions with Toronto) |
 | ETH Zurich | `todo-ethzurich` | Not identified | Identify the hiring system (a short research task), then a reader |
 | European University Institute | `todo-europeaninstitute` | Not identified | Identify the hiring system (a short research task), then a reader |
 | European University Viadrina | `todo-europeanviadrina` | Not identified | Identify the hiring system (a short research task), then a reader |
@@ -486,7 +488,6 @@ Alex asked for these 92 institutions to be covered as job sources, as a goal. "C
 | New York University | `ifo-newyork` | Interfolio (faculty) | No public feed found; needs separate investigation |
 | Northwestern University | `own-northwestern` | Its own hiring site | Needs a reader written for its own site |
 | Princeton University | `todo-princeton` | Not identified | Identify the hiring system (a short research task), then a reader |
-| Purdue University | `sf-purdue` | SAP SuccessFactors | Needs a SuccessFactors reader (one reader, five institutions with Toronto) |
 | Queensland University of Technology | `todo-queenslandtechnology` | Not identified | Identify the hiring system (a short research task), then a reader |
 | Rutgers University | `todo-rutgers` | Not identified | Identify the hiring system (a short research task), then a reader |
 | Sapienza University of Rome | `todo-sapienzarome` | Not identified | Identify the hiring system (a short research task), then a reader |
@@ -512,7 +513,6 @@ Alex asked for these 92 institutions to be covered as job sources, as a goal. "C
 | University of Oregon | `pageup-oregon` | PageUp | Check whether it blocks us like Columbia, then a PageUp reader |
 | University of Oxford | `todo-oxford` | Not identified | Identify the hiring system (a short research task), then a reader |
 | University of St. Gallen | `todo-stgallen` | Not identified | Identify the hiring system (a short research task), then a reader |
-| University of Vienna | `sf-vienna` | SAP SuccessFactors | Needs a SuccessFactors reader (one reader, five institutions with Toronto) |
 | University of Zurich | `todo-zurich` | Not identified | Identify the hiring system (a short research task), then a reader |
 | WZB Berlin Social Science Center | `todo-wzbberlinsocialsciencecenter` | Not identified | Identify the hiring system (a short research task), then a reader |
 | École Polytechnique (LIX) | `todo-colepolytechnique` | Not identified | Identify the hiring system (a short research task), then a reader |

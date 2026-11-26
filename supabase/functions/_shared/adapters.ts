@@ -715,6 +715,131 @@ export async function csvSheetAdapter(
   });
 }
 
+// SAP SuccessFactors career sites (Duke, Purdue, TU Delft, Vienna, Toronto). Every such
+// site publishes a sitemap of all its jobs, and each job page carries schema.org markup.
+//   list:   <feed_url>/sitemap.xml   (one <loc> per job; the address contains the title)
+//   detail: the job page             (itemprop title, description, streetAddress, dates)
+// feed_url is the site's root address. A large employer lists a thousand jobs, mostly not
+// academic, so the title in each address is matched against `search_terms` first and only
+// matching pages are downloaded. config needs `institution`; it may have `search_terms`
+// (default: the academic and research words below) and `max_jobs` (default 40).
+// A removed job answers 404, so the ordinary link check catches closed ones.
+const SUCCESSFACTORS_DEFAULT_TERMS = [
+  'postdoc', 'post-doc', 'postdoctoral', 'phd', 'doctoral', 'professor', 'faculty',
+  'lecturer', 'tenure', 'research scientist', 'research associate', 'research fellow',
+  'research engineer', 'researcher', 'data scientist', 'computational',
+];
+
+export function successFactorsTitleFromUrl(url: string): string {
+  const slug = url.match(/\/job\/([^/]+)\//)?.[1] ?? '';
+  let decoded = slug;
+  try {
+    decoded = decodeURIComponent(slug);
+  } catch { /* keep the raw slug */ }
+  return decoded.replace(/-/g, ' ').toLowerCase();
+}
+
+function successFactorsMeta(html: string, prop: string): string | undefined {
+  return html.match(
+    new RegExp(`<meta[^>]*itemprop="${prop}"[^>]*content="([^"]*)"`, 'i'),
+  )?.[1];
+}
+
+function successFactorsDate(value?: string): string | undefined {
+  if (!value) return undefined;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? undefined : parsed.toISOString();
+}
+
+// The description sits in a <span> that holds other spans, so find its own closing tag
+// by counting opening and closing spans from the start.
+export function successFactorsDescription(html: string): string {
+  const start = html.search(/<span[^>]*itemprop="description"/i);
+  if (start < 0) return '';
+  const open = html.indexOf('>', start) + 1;
+  let depth = 1;
+  for (const tagMatch of html.slice(open).matchAll(/<(\/?)span\b[^>]*>/gi)) {
+    depth += tagMatch[1] ? -1 : 1;
+    if (depth === 0) return html.slice(open, open + (tagMatch.index ?? 0));
+  }
+  return html.slice(open);
+}
+
+function successFactorsLocation(html: string): string | undefined {
+  const parts = ['addressLocality', 'addressRegion', 'addressCountry']
+    .map((prop) => successFactorsMeta(html, prop))
+    .filter((part): part is string => Boolean(part));
+  return parts.length ? parts.join(', ') : successFactorsMeta(html, 'streetAddress');
+}
+
+export async function successFactorsAdapter(
+  feedUrl: string,
+  config: Record<string, unknown>,
+): Promise<RawJob[]> {
+  const institution = String(config.institution ?? '');
+  if (!institution) throw new Error('successfactors source needs config.institution');
+
+  const root = feedUrl.replace(/\/+$/, '');
+  const terms = (Array.isArray(config.search_terms) && config.search_terms.length
+    ? (config.search_terms as string[])
+    : SUCCESSFACTORS_DEFAULT_TERMS).map((term) => term.toLowerCase());
+  const maxJobs = Number(config.max_jobs ?? 40);
+
+  const response = await fetch(`${root}/sitemap.xml`, {
+    headers: { 'User-Agent': USER_AGENT, Accept: 'application/xml' },
+  });
+  if (!response.ok) throw new Error(`SuccessFactors returned HTTP ${response.status}`);
+  const xml = await response.text();
+  if (!/<urlset[\s>]/i.test(xml)) {
+    throw new Error('SuccessFactors did not return a sitemap (the site may be blocking automated requests)');
+  }
+
+  const links: string[] = [];
+  for (const match of xml.matchAll(/<loc>([^<]+)<\/loc>/gi)) {
+    const link = match[1].trim().replace(/&amp;/g, '&');
+    if (!/\/job\//.test(link)) continue;
+    const title = successFactorsTitleFromUrl(link);
+    if (terms.some((term) => title.includes(term))) links.push(link);
+  }
+
+  const jobs: RawJob[] = [];
+  for (const link of links.slice(0, maxJobs)) {
+    let html: string;
+    try {
+      const page = await fetch(link, {
+        headers: { 'User-Agent': USER_AGENT, Accept: 'text/html' },
+      });
+      if (!page.ok) continue;
+      html = await page.text();
+    } catch {
+      continue;
+    }
+    const title = stripHtml(
+      html.match(/itemprop="title"[^>]*>([\s\S]*?)<\/span>/i)?.[1] ??
+        html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1] ?? '',
+    );
+    const description = stripHtml(successFactorsDescription(html));
+    if (!title || !description) continue;
+
+    const deadline = successFactorsDate(successFactorsMeta(html, 'validThrough'));
+    jobs.push({
+      title,
+      institution,
+      location: successFactorsLocation(html) ?? String(config.location ?? 'See posting'),
+      description: deadline
+        ? `${description}\n\nApplication deadline: ${deadline.slice(0, 10)}.`
+        : description,
+      jobType: title,
+      sourceUrl: link,
+      sourceJobId: link.match(/\/(\d+)\/?$/)?.[1] ?? link,
+      applicationUrl: link,
+      postedAt: successFactorsDate(successFactorsMeta(html, 'datePosted')),
+    });
+    await sleep(250);
+  }
+  return jobs;
+}
+
 export const ADAPTERS: Record<
   string,
   (feedUrl: string, config: Record<string, unknown>) => Promise<RawJob[]>
@@ -727,4 +852,5 @@ export const ADAPTERS: Record<
   'csv-sheet': csvSheetAdapter,
   'smartrecruiters': smartRecruitersAdapter,
   'peopleadmin': peopleAdminAdapter,
+  'successfactors': successFactorsAdapter,
 };

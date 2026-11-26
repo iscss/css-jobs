@@ -4,6 +4,9 @@ import {
   parseCsv,
   smartRecruitersAdapter,
   peopleAdminAdapter,
+  successFactorsAdapter,
+  successFactorsDescription,
+  successFactorsTitleFromUrl,
   jobRxivAdapter,
   genericRssAdapter,
   comsesAdapter,
@@ -699,5 +702,101 @@ describe('peopleAdminAdapter', () => {
     await expect(peopleAdminAdapter(FEED, { institution: 'X' })).rejects.toThrow(/Atom feed/);
     mock(() => text('nope', 503));
     await expect(peopleAdminAdapter(FEED, { institution: 'X' })).rejects.toThrow(/503/);
+  });
+});
+
+describe('successFactorsAdapter', () => {
+  const ROOT = 'https://careers.example.edu';
+  const sitemap = (...paths: string[]) =>
+    `<?xml version="1.0"?><urlset>${paths
+      .map((p) => `<url><loc>${ROOT}/job/${p}/</loc></url>`)
+      .join('')}</urlset>`;
+  const jobPage = (o: { title?: string; body?: string; deadline?: string; city?: string } = {}) =>
+    `<html><body><h1><span itemprop="title">${o.title ?? 'Postdoctoral Associate'}   </span></h1>` +
+    `<span itemprop="jobLocation"><meta itemprop="addressLocality" content="${o.city ?? 'Durham'}">` +
+    `<meta itemprop="addressRegion" content="NC"><meta itemprop="addressCountry" content="US"></span>` +
+    `<meta itemprop="datePosted" content="Thu Oct 29 00:00:00 UTC 2026">` +
+    (o.deadline ? `<meta itemprop="validThrough" content="${o.deadline}">` : '') +
+    `<span itemprop="description" class="x"><span class="jobdescription">` +
+    `<p>${o.body ?? 'Work on computational social science projects with network data and statistics.'}</p>` +
+    `<ul><li>Apply with a CV</li></ul></span></span><div>Footer text that is not the description</div></body></html>`;
+  const text = (body: string, status = 200) => Promise.resolve(new Response(body, { status }));
+
+  function mock(handler: (url: string) => Promise<Response>) {
+    const fn = vi.fn((url: string) => handler(url));
+    vi.stubGlobal('fetch', fn);
+    return fn;
+  }
+
+  it('reads the sitemap, opens only jobs whose title matches, and maps the page', async () => {
+    const fn = mock((url) =>
+      url.endsWith('sitemap.xml')
+        ? text(sitemap('Durham-Postdoctoral-Associate-NC/111', 'Durham-Groundskeeper-NC/222'))
+        : text(jobPage({ deadline: 'Tue Dec 01 23:00:00 UTC 2026' })),
+    );
+    const jobs = await successFactorsAdapter(ROOT + '/', { institution: 'Example University' });
+    expect(jobs).toHaveLength(1);
+    expect(jobs[0]).toMatchObject({
+      title: 'Postdoctoral Associate',
+      institution: 'Example University',
+      location: 'Durham, NC, US',
+      sourceUrl: `${ROOT}/job/Durham-Postdoctoral-Associate-NC/111/`,
+      sourceJobId: '111',
+      postedAt: '2026-10-29T00:00:00.000Z',
+    });
+    expect(jobs[0].description).toContain('computational social science');
+    expect(jobs[0].description).toContain('Apply with a CV');
+    expect(jobs[0].description).not.toContain('Footer text');
+    expect(jobs[0].description).toContain('Application deadline: 2026-12-01.');
+    const pages = fn.mock.calls.map((c) => c[0] as string).filter((u) => !u.endsWith('sitemap.xml'));
+    expect(pages).toHaveLength(1);
+  });
+
+  it('uses the page heading when there is no title markup, and the configured terms', async () => {
+    mock((url) =>
+      url.endsWith('sitemap.xml')
+        ? text(sitemap('Tenure-Track-Professur-f%C3%BCr-Erkenntnistheorie/333', 'Postdoc-Chemistry/444'))
+        : text(jobPage().replace(/<span itemprop="title">[^<]*<\/span>/, 'Professur für Erkenntnistheorie')),
+    );
+    const jobs = await successFactorsAdapter(ROOT, {
+      institution: 'X',
+      search_terms: ['professur'],
+    });
+    expect(jobs.map((j) => j.title)).toEqual(['Professur für Erkenntnistheorie']);
+  });
+
+  it('stops at max_jobs', async () => {
+    mock((url) =>
+      url.endsWith('sitemap.xml')
+        ? text(sitemap('A-Postdoc/1', 'B-Postdoc/2', 'C-Postdoc/3'))
+        : text(jobPage()),
+    );
+    expect(await successFactorsAdapter(ROOT, { institution: 'X', max_jobs: 1 })).toHaveLength(1);
+  });
+
+  it('skips a job whose page has gone', async () => {
+    mock((url) => {
+      if (url.endsWith('sitemap.xml')) return text(sitemap('Gone-Postdoc/1', 'Here-Postdoc/2'));
+      return url.includes('/1/') ? text('', 404) : text(jobPage({ title: 'Here' }));
+    });
+    const jobs = await successFactorsAdapter(ROOT, { institution: 'X' });
+    expect(jobs.map((j) => j.title)).toEqual(['Here']);
+  });
+
+  it('says so when the site does not return a sitemap, and needs an institution', async () => {
+    await expect(successFactorsAdapter(ROOT, {})).rejects.toThrow(/institution/);
+    mock(() => text('<!DOCTYPE html><html>blocked</html>'));
+    await expect(successFactorsAdapter(ROOT, { institution: 'X' })).rejects.toThrow(/sitemap/);
+    mock(() => text('nope', 503));
+    await expect(successFactorsAdapter(ROOT, { institution: 'X' })).rejects.toThrow(/503/);
+  });
+
+  it('reads a title out of an address, and a description with spans inside it', () => {
+    expect(successFactorsTitleFromUrl(`${ROOT}/job/Tenure-Track-Professur-f%C3%BCr-Physik/9/`)).toBe(
+      'tenure track professur für physik',
+    );
+    expect(
+      successFactorsDescription('<span itemprop="description"><span>a <span>b</span></span> c</span> after'),
+    ).toBe('<span>a <span>b</span></span> c');
   });
 });
