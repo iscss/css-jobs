@@ -3,6 +3,7 @@ import {
   csvSheetAdapter,
   parseCsv,
   smartRecruitersAdapter,
+  peopleAdminAdapter,
   jobRxivAdapter,
   genericRssAdapter,
   comsesAdapter,
@@ -625,5 +626,78 @@ describe('smartRecruitersAdapter', () => {
     await expect(smartRecruitersAdapter(BASE, {})).rejects.toThrow(/institution/);
     mock(() => json({}, 503));
     await expect(smartRecruitersAdapter(BASE, { institution: 'X' })).rejects.toThrow(/503/);
+  });
+});
+
+describe('peopleAdminAdapter', () => {
+  const FEED = 'https://example.peopleadmin.com/postings/search.atom';
+  const atom = (...entries: { title: string; id: string }[]) =>
+    `<?xml version="1.0"?><feed xmlns="http://www.w3.org/2005/Atom">${entries
+      .map((e) => `<entry><title>${e.title}</title><link rel="alternate" href="https://example.peopleadmin.com/postings/${e.id}"/><updated>2026-11-25T10:00:00Z</updated></entry>`)
+      .join('')}</feed>`;
+  const page = (body: string) =>
+    `<html><body><nav>Skip to Main Content Home Search Jobs</nav><h1>Posting Information</h1>${body}</body></html>`;
+  const text = (body: string, status = 200) => Promise.resolve(new Response(body, { status }));
+
+  function mock(handler: (url: string) => Promise<Response>) {
+    const fn = vi.fn((url: string) => handler(url));
+    vi.stubGlobal('fetch', fn);
+    return fn;
+  }
+
+  it('maps an entry plus its page, using the text from "Posting Information" on', async () => {
+    mock((url) =>
+      url.includes('search.atom')
+        ? text(atom({ title: 'Research Associate', id: '1' }))
+        : text(page('<p>Analyse social media data with network methods for the department.</p>')),
+    );
+    const [job] = await peopleAdminAdapter(FEED, { institution: 'Example University' });
+    expect(job).toMatchObject({
+      title: 'Research Associate',
+      institution: 'Example University',
+      sourceUrl: 'https://example.peopleadmin.com/postings/1',
+      sourceJobId: '1',
+      postedAt: '2026-11-25T10:00:00Z',
+    });
+    expect(job.description).toContain('Analyse social media data');
+    expect(job.description).not.toContain('Skip to Main Content');
+  });
+
+  it('sends each search term and removes a posting found twice', async () => {
+    const fn = mock((url) =>
+      url.includes('search.atom')
+        ? text(atom({ title: 'Research Associate', id: '1' }))
+        : text(page('<p>A long enough description of the research associate role here.</p>')),
+    );
+    const jobs = await peopleAdminAdapter(FEED, {
+      institution: 'X',
+      search_terms: ['computational social science', 'network science'],
+    });
+    expect(jobs).toHaveLength(1);
+    const feeds = fn.mock.calls.map((c) => c[0] as string).filter((u) => u.includes('search.atom'));
+    expect(feeds.some((u) => u.includes('query=computational%20social%20science'))).toBe(true);
+    expect(feeds.some((u) => u.includes('query=network%20science'))).toBe(true);
+  });
+
+  it('ignores the placeholder entry a search with no results returns', async () => {
+    mock(() => text(atom({ title: 'No Positions Currently Open', id: '9' })));
+    expect(await peopleAdminAdapter(FEED, { institution: 'X' })).toEqual([]);
+  });
+
+  it('skips a posting whose page has gone', async () => {
+    mock((url) => {
+      if (url.includes('search.atom')) return text(atom({ title: 'Gone', id: '1' }, { title: 'Here', id: '2' }));
+      return url.endsWith('/1') ? text('', 404) : text(page('<p>A long enough description of the role that is here.</p>'));
+    });
+    const jobs = await peopleAdminAdapter(FEED, { institution: 'X' });
+    expect(jobs.map((j) => j.title)).toEqual(['Here']);
+  });
+
+  it('says so when the site does not return an Atom feed, and needs an institution', async () => {
+    await expect(peopleAdminAdapter(FEED, {})).rejects.toThrow(/institution/);
+    mock(() => text('<!DOCTYPE html><html>blocked</html>'));
+    await expect(peopleAdminAdapter(FEED, { institution: 'X' })).rejects.toThrow(/Atom feed/);
+    mock(() => text('nope', 503));
+    await expect(peopleAdminAdapter(FEED, { institution: 'X' })).rejects.toThrow(/503/);
   });
 });

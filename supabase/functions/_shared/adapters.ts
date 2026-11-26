@@ -3,7 +3,7 @@
 // Adapters do no validation — normalizeJob in ingest.ts owns that. An adapter's
 // only job is knowing the shape of one particular feed.
 
-import type { RawJob } from './ingest.ts';
+import { stripHtml, type RawJob } from './ingest.ts';
 
 const USER_AGENT =
   'CSSJobsBot/1.0 (+https://jobs.iscss.org; contact: admin@iscss.org)';
@@ -406,6 +406,87 @@ export async function oracleRecruitingAdapter(
   return jobs;
 }
 
+// PeopleAdmin: the hiring system behind many US university job sites (UNC Chapel Hill,
+// the University of Vermont, George Washington). Each site publishes an Atom feed of
+// postings, searchable with ?query=, but an entry carries only a title and a link, so the
+// description comes from the posting page itself.
+//   list:   <feed_url>?query=<term>   (an Atom feed of postings)
+//   detail: the entry's link, an HTML page; its text after "Posting Information" is used
+// feed_url is the site's .../postings/search.atom. config needs `institution` and may have
+// `search_terms` and `max_per_term` (default 30, the size of the first page).
+// A removed posting answers 404, so the ordinary link check catches closed ones.
+function peopleAdminDescription(html: string): string {
+  const text = stripHtml(html);
+  const at = text.search(/Posting Information/i);
+  return (at >= 0 ? text.slice(at) : text).trim();
+}
+
+export async function peopleAdminAdapter(
+  feedUrl: string,
+  config: Record<string, unknown>,
+): Promise<RawJob[]> {
+  const institution = String(config.institution ?? '');
+  if (!institution) throw new Error('peopleadmin source needs config.institution');
+
+  const terms = Array.isArray(config.search_terms) && config.search_terms.length
+    ? (config.search_terms as string[])
+    : [''];
+  const maxPerTerm = Number(config.max_per_term ?? 30);
+
+  const entries = new Map<string, { title: string; updated?: string }>();
+  for (const term of terms) {
+    const url = term ? `${feedUrl}?query=${encodeURIComponent(term)}` : feedUrl;
+    const response = await fetch(url, {
+      headers: { 'User-Agent': USER_AGENT, Accept: 'application/atom+xml' },
+    });
+    if (!response.ok) throw new Error(`PeopleAdmin returned HTTP ${response.status}`);
+    const xml = await response.text();
+    if (!/<feed[\s>]/i.test(xml)) {
+      throw new Error('PeopleAdmin did not return an Atom feed (the site may be blocking automated requests)');
+    }
+    let taken = 0;
+    for (const entry of xml.matchAll(/<entry>([\s\S]*?)<\/entry>/gi)) {
+      if (taken++ >= maxPerTerm) break;
+      const link = entry[1].match(/<link[^>]*href="([^"]+)"/i)?.[1];
+      const title = tag(entry[1], 'title');
+      if (!link || !title) continue;
+      // A search with no results returns a placeholder entry, not an empty feed.
+      if (/no positions currently open/i.test(title)) continue;
+      entries.set(link, { title, updated: tag(entry[1], 'updated') });
+    }
+    await sleep(300);
+  }
+
+  const jobs: RawJob[] = [];
+  for (const [link, entry] of entries) {
+    let html: string;
+    try {
+      const page = await fetch(link, {
+        headers: { 'User-Agent': USER_AGENT, Accept: 'text/html' },
+      });
+      if (!page.ok) continue;
+      html = await page.text();
+    } catch {
+      continue;
+    }
+    const description = peopleAdminDescription(html);
+    if (!description) continue;
+    jobs.push({
+      title: entry.title,
+      institution,
+      location: String(config.location ?? 'See posting'),
+      description,
+      jobType: entry.title,
+      sourceUrl: link,
+      sourceJobId: link.match(/\/postings\/(\d+)/)?.[1] ?? link,
+      applicationUrl: link,
+      postedAt: entry.updated,
+    });
+    await sleep(250);
+  }
+  return jobs;
+}
+
 // SmartRecruiters: a hiring platform that publishes a public, documented Posting API
 // (Notre Dame's careers site, careers.nd.edu, is hosted on it).
 //   list:   <feed_url>?q=<term>&limit=100&offset=<n>   (id, name, released date, location)
@@ -645,4 +726,5 @@ export const ADAPTERS: Record<
   'oracle-recruiting': oracleRecruitingAdapter,
   'csv-sheet': csvSheetAdapter,
   'smartrecruiters': smartRecruitersAdapter,
+  'peopleadmin': peopleAdminAdapter,
 };
