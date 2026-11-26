@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   csvSheetAdapter,
   parseCsv,
+  smartRecruitersAdapter,
   jobRxivAdapter,
   genericRssAdapter,
   comsesAdapter,
@@ -538,5 +539,91 @@ describe('csvSheetAdapter', () => {
     await expect(csvSheetAdapter(URL_, {})).rejects.toThrow(/404/);
     mock('foo,bar\n1,2\n');
     await expect(csvSheetAdapter(URL_, {})).rejects.toThrow(/heading row/);
+  });
+});
+
+describe('smartRecruitersAdapter', () => {
+  const BASE = 'https://api.smartrecruiters.com/v1/companies/ExampleUni/postings';
+  const json = (body: unknown, status = 200) =>
+    Promise.resolve(new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } }));
+
+  const detail = (id: string, extra: Record<string, unknown> = {}) => ({
+    id,
+    name: `Role ${id}`,
+    postingUrl: `https://jobs.smartrecruiters.com/ExampleUni/${id}-role`,
+    applyUrl: `https://jobs.smartrecruiters.com/ExampleUni/${id}-role?oga=true`,
+    releasedDate: '2026-11-24T10:00:00.000Z',
+    location: { fullLocation: 'Notre Dame, IN, United States' },
+    jobAd: { sections: { jobDescription: { text: '<p>Study social networks computationally.</p>' }, qualifications: { text: '<p>PhD required.</p>' } } },
+    ...extra,
+  });
+
+  function mock(handler: (url: string) => Promise<Response>) {
+    const fn = vi.fn((url: string) => handler(url));
+    vi.stubGlobal('fetch', fn);
+    return fn;
+  }
+
+  it('maps a posting from the list plus the detail', async () => {
+    mock((url) => {
+      if (url.includes('/postings/')) return json(detail('111'));
+      return json({ content: [{ id: '111', name: 'Role 111' }] });
+    });
+    const [job] = await smartRecruitersAdapter(BASE, { institution: 'Example University' });
+    expect(job).toMatchObject({
+      title: 'Role 111',
+      institution: 'Example University',
+      location: 'Notre Dame, IN, United States',
+      sourceUrl: 'https://jobs.smartrecruiters.com/ExampleUni/111-role',
+      applicationUrl: 'https://jobs.smartrecruiters.com/ExampleUni/111-role?oga=true',
+      sourceJobId: '111',
+      postedAt: '2026-11-24T10:00:00.000Z',
+    });
+    expect(job.description).toContain('Study social networks');
+    expect(job.description).toContain('PhD required');
+  });
+
+  it('sends each search term and removes a posting found by two terms', async () => {
+    const fn = mock((url) => {
+      if (url.includes('/postings/')) return json(detail('111'));
+      return json({ content: [{ id: '111', name: 'Role 111' }] });
+    });
+    const jobs = await smartRecruitersAdapter(BASE, {
+      institution: 'X',
+      search_terms: ['computational social science', 'network science'],
+    });
+    expect(jobs).toHaveLength(1);
+    const lists = fn.mock.calls.map((c) => c[0] as string).filter((u) => !u.includes('/postings/'));
+    expect(lists.some((u) => u.includes('q=computational%20social%20science'))).toBe(true);
+    expect(lists.some((u) => u.includes('q=network%20science'))).toBe(true);
+  });
+
+  it('pages through a long list', async () => {
+    const page1 = Array.from({ length: 100 }, (_, i) => ({ id: `a${i}`, name: 'x' }));
+    const fn = mock((url) => {
+      // Only the last posting has a readable detail, which keeps this test fast.
+      if (url.includes('/postings/')) return url.endsWith('/b0') ? json(detail('b0')) : json({}, 404);
+      return json({ content: url.includes('offset=0') ? page1 : [{ id: 'b0', name: 'y' }] });
+    });
+    const jobs = await smartRecruitersAdapter(BASE, { institution: 'X', max_per_term: 150 });
+    expect(jobs.map((j) => j.sourceJobId)).toEqual(['b0']);
+    expect(fn.mock.calls.some((c) => (c[0] as string).includes('offset=100'))).toBe(true);
+  });
+
+  it('skips a posting whose detail is gone or has no description', async () => {
+    mock((url) => {
+      if (url.endsWith('/gone')) return json({}, 404);
+      if (url.endsWith('/empty')) return json(detail('empty', { jobAd: { sections: {} } }));
+      if (url.includes('/postings/')) return json(detail('ok'));
+      return json({ content: [{ id: 'gone' }, { id: 'empty' }, { id: 'ok' }] });
+    });
+    const jobs = await smartRecruitersAdapter(BASE, { institution: 'X' });
+    expect(jobs.map((j) => j.sourceJobId)).toEqual(['ok']);
+  });
+
+  it('needs an institution, and surfaces a non-OK reply', async () => {
+    await expect(smartRecruitersAdapter(BASE, {})).rejects.toThrow(/institution/);
+    mock(() => json({}, 503));
+    await expect(smartRecruitersAdapter(BASE, { institution: 'X' })).rejects.toThrow(/503/);
   });
 });

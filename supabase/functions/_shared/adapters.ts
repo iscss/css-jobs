@@ -406,6 +406,100 @@ export async function oracleRecruitingAdapter(
   return jobs;
 }
 
+// SmartRecruiters: a hiring platform that publishes a public, documented Posting API
+// (Notre Dame's careers site, careers.nd.edu, is hosted on it).
+//   list:   <feed_url>?q=<term>&limit=100&offset=<n>   (id, name, released date, location)
+//   detail: <feed_url>/<id>                             (description sections, links)
+// feed_url is https://api.smartrecruiters.com/v1/companies/<CompanyId>/postings; the
+// CompanyId is the one in the careers address (jobs.smartrecruiters.com/<CompanyId>/...).
+// config needs `institution` and may have `search_terms` and `max_per_term` (default 40).
+// Closed postings answer 404 on the public page, so the ordinary link check catches them.
+interface SmartRecruitersListItem {
+  id?: string;
+  name?: string;
+}
+
+const SMARTRECRUITERS_PAGE_SIZE = 100;
+
+async function smartRecruitersGet(url: string): Promise<Record<string, unknown>> {
+  const response = await fetch(url, {
+    headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
+  });
+  if (!response.ok) {
+    throw new Error(`SmartRecruiters returned HTTP ${response.status}`);
+  }
+  return await readJson(response, 'SmartRecruiters');
+}
+
+export async function smartRecruitersAdapter(
+  feedUrl: string,
+  config: Record<string, unknown>,
+): Promise<RawJob[]> {
+  const institution = String(config.institution ?? '');
+  if (!institution) throw new Error('smartrecruiters source needs config.institution');
+
+  const terms = Array.isArray(config.search_terms) && config.search_terms.length
+    ? (config.search_terms as string[])
+    : [''];
+  const maxPerTerm = Number(config.max_per_term ?? 40);
+  const base = feedUrl.replace(/\/+$/, '');
+
+  const ids = new Map<string, string>();
+  for (const term of terms) {
+    let offset = 0;
+    let taken = 0;
+    while (taken < maxPerTerm) {
+      const query = term ? `q=${encodeURIComponent(term)}&` : '';
+      const page = await smartRecruitersGet(
+        `${base}?${query}limit=${SMARTRECRUITERS_PAGE_SIZE}&offset=${offset}`,
+      );
+      const content = (page.content as SmartRecruitersListItem[] | undefined) ?? [];
+      for (const item of content) {
+        if (taken >= maxPerTerm) break;
+        if (item.id) ids.set(item.id, item.name ?? '');
+        taken++;
+      }
+      if (content.length < SMARTRECRUITERS_PAGE_SIZE) break;
+      offset += SMARTRECRUITERS_PAGE_SIZE;
+      await sleep(300);
+    }
+  }
+
+  const jobs: RawJob[] = [];
+  for (const id of ids.keys()) {
+    let detail: Record<string, unknown>;
+    try {
+      detail = await smartRecruitersGet(`${base}/${id}`);
+    } catch {
+      continue; // a posting that vanished between the list and the detail
+    }
+    const sections = ((detail.jobAd as { sections?: Record<string, { text?: string }> } | undefined)
+      ?.sections) ?? {};
+    const description = ['jobDescription', 'qualifications', 'additionalInformation', 'companyDescription']
+      .map((k) => sections[k]?.text ?? '')
+      .filter(Boolean)
+      .join('\n\n');
+    const link = String(detail.postingUrl ?? '');
+    const title = String(detail.name ?? '');
+    if (!description || !link || !title) continue;
+
+    const place = detail.location as { fullLocation?: string; city?: string } | undefined;
+    jobs.push({
+      title,
+      institution,
+      location: place?.fullLocation || place?.city || 'See posting',
+      description,
+      jobType: title,
+      sourceUrl: link,
+      sourceJobId: id,
+      applicationUrl: String(detail.applyUrl ?? link),
+      postedAt: typeof detail.releasedDate === 'string' ? detail.releasedDate : undefined,
+    });
+    await sleep(250);
+  }
+  return jobs;
+}
+
 // A Google Sheet published to the web as CSV (File > Share > Publish to web).
 // Some people keep curated hiring lists this way, so this reads one row per
 // position. Columns are found by their heading, so a sheet with a different
@@ -550,4 +644,5 @@ export const ADAPTERS: Record<
   'workday': workdayAdapter,
   'oracle-recruiting': oracleRecruitingAdapter,
   'csv-sheet': csvSheetAdapter,
+  'smartrecruiters': smartRecruitersAdapter,
 };
