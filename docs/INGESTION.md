@@ -86,6 +86,7 @@ first production run, and the boards investigated are in [SOURCES.md](SOURCES.md
 | `workday` | University career sites on Workday (a search, then one request per posting) | `institution` (required); `search_terms`, `max_per_term` |
 | `oracle-recruiting` | Career sites on Oracle Recruiting Cloud, such as Stanford (the same search-then-detail pattern, through Oracle's public REST service) | `institution` and `site_number` (required); `search_terms`, `max_per_term` |
 | `csv-sheet` | A Google Sheet published to the web as CSV: one row per position, columns found by heading (institution, position, description, deadline, status, application link, notes). Rows the sheet marks as over are skipped | `location` (default "See posting"), `institution` |
+| `smartrecruiters` | Careers sites hosted on SmartRecruiters (Notre Dame), through its public Posting API. `feed_url` is `https://api.smartrecruiters.com/v1/companies/<CompanyId>/postings` | `institution` (required); `search_terms`, `max_per_term` |
 
 The sources the migrations create are in `20260803000000` (jobRxiv), `20260812000000` (CoMSES and the first Workday
 universities) and `20260816000000` (the university sources from the lab list).

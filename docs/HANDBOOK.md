@@ -349,7 +349,7 @@ production-only columns (see [Schema drift](#migrations-and-schema-drift)).
 
 Done for production on 2026-11-04. To repeat it, or to set up another project:
 
-1. **Apply the migrations** with `psql` (not `db push`), `20260803000000` to `20260820000000`, in order. These change the live database, so review them first.
+1. **Apply the migrations** with `psql` (not `db push`), `20260803000000` to `20260821000000`, in order. These change the live database, so review them first.
 2. **Deploy the functions** (above).
 3. **Set the secrets:** `ANTHROPIC_API_KEY` and a `SCHEDULER_SECRET` made with `openssl rand -hex 32`.
 4. **Tell the scheduler where to call**, with the same `SCHEDULER_SECRET` value:
@@ -545,6 +545,7 @@ Always have a new admin **verify first and request admin themselves** (or be gra
 | `20260818000000_deleting_an_account_keeps_its_approvals` | `approved_by`, `approved_by_admin` and `reviewed_by` clear themselves when that account is deleted, so deleting an admin who approved people works |
 | `20260819000000_ingest_each_source_separately` | The nightly import asks for each active source in its own request, so a slow source cannot cut the others off |
 | `20260820000000_seed_more_university_sources` | Twelve more university sources on Workday: American, BYU, Clemson, Dartmouth, Georgetown, Penn State, UT Austin, WashU, Rochester, McGill, Sydney, Melbourne |
+| `20260821000000_seed_rice_and_notre_dame` | Rice (Oracle Recruiting) and Notre Dame (SmartRecruiters, a new reader: redeploy `ingest-jobs` first) |
 
 All were applied to production with `psql`. A new migration needs a new, later timestamp.
 
