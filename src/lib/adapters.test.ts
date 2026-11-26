@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
+  csvSheetAdapter,
+  parseCsv,
   jobRxivAdapter,
   genericRssAdapter,
   comsesAdapter,
@@ -456,5 +458,85 @@ describe('oracleRecruitingAdapter', () => {
   it('surfaces a non-OK list response', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 503 }));
     await expect(oracleRecruitingAdapter(BASE, config)).rejects.toThrow(/503/);
+  });
+});
+
+describe('parseCsv', () => {
+  it('reads quoted cells, doubled quotes and newlines inside quotes', () => {
+    const rows = parseCsv('a,"b, with comma","say ""hi"""\n"line\nbreak",x,y\n');
+    expect(rows).toEqual([
+      ['a', 'b, with comma', 'say "hi"'],
+      ['line\nbreak', 'x', 'y'],
+    ]);
+  });
+
+  it('copes with Windows line endings and no trailing newline', () => {
+    expect(parseCsv('a,b\r\nc,d')).toEqual([['a', 'b'], ['c', 'd']]);
+  });
+});
+
+describe('csvSheetAdapter', () => {
+  const URL_ = 'https://docs.google.com/spreadsheets/d/e/X/pub?output=csv';
+  const HEAD =
+    'Institution / department,Position / announcement,Brief description,Stated deadline / review date,Date guidance,Application / details,Notes';
+  const csv = (...lines: string[]) =>
+    ['Hiring list,,,,,,', ',,,,,,', HEAD, ...lines].join('\n');
+  const mock = (body: string, status = 200) =>
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(body, { status })));
+
+  it('maps a row, splits the institution from its department, and finds the heading row', async () => {
+    mock(csv('Aarhus University — Computer Science,Assistant Professor,"Open area, including NLP and computational social science",2027-01-18 — deadline,Upcoming deadline,https://cs.au.dk/job/1,Checked Nov 25'));
+    const jobs = await csvSheetAdapter(URL_, {});
+    expect(jobs).toHaveLength(1);
+    expect(jobs[0]).toMatchObject({
+      title: 'Assistant Professor',
+      institution: 'Aarhus University',
+      location: 'See posting',
+      sourceUrl: 'https://cs.au.dk/job/1',
+      applicationUrl: 'https://cs.au.dk/job/1',
+    });
+    expect(jobs[0].description).toContain('(Computer Science)');
+    expect(jobs[0].description).toContain('Open area, including NLP');
+  });
+
+  it('turns only a clearly upcoming deadline into a closing date', async () => {
+    mock(csv(
+      'A University — X,Prof A,Some research role in the field of study,2027-01-18 — deadline,Upcoming deadline,https://a.edu/1,',
+      'B University — Y,Prof B,Another research role in the field of study,2026-10-29 — initial deadline; rolling,Rolling / later applications possible,https://b.edu/2,',
+    ));
+    const [a, b] = await csvSheetAdapter(URL_, {});
+    expect(a.description).toContain('Application deadline: 2027-01-18');
+    expect(b.description).not.toContain('Application deadline:');
+  });
+
+  it('skips rows the sheet itself marks as over', async () => {
+    mock(csv(
+      'A University — X,Prof A,Some research role in the field of study,2026-01-01,Stated deadline passed,https://a.edu/1,',
+      'B University — Y,Prof B,Another research role in the field of study,,Portal closed,https://b.edu/2,',
+      'C University — Z,Prof C,Third research role in the field of study,,Employer posting unavailable,https://c.edu/3,',
+      'D University — W,Prof D,Fourth research role in the field of study,,Rolling / later applications possible,https://d.edu/4,',
+    ));
+    const jobs = await csvSheetAdapter(URL_, {});
+    expect(jobs.map((j) => j.institution)).toEqual(['D University']);
+  });
+
+  it('skips a row with no link or no title', async () => {
+    mock(csv(
+      'A University — X,,Role without a title but a long enough description,,,https://a.edu/1,',
+      'B University — Y,Prof B,Role without a link but a long enough description,,,,',
+    ));
+    expect(await csvSheetAdapter(URL_, {})).toEqual([]);
+  });
+
+  it('says so when the sheet is not published as CSV', async () => {
+    mock('<!DOCTYPE html><html>sign in</html>');
+    await expect(csvSheetAdapter(URL_, {})).rejects.toThrow(/did not return CSV/);
+  });
+
+  it('surfaces a non-OK reply and a sheet without the expected columns', async () => {
+    mock('nope', 404);
+    await expect(csvSheetAdapter(URL_, {})).rejects.toThrow(/404/);
+    mock('foo,bar\n1,2\n');
+    await expect(csvSheetAdapter(URL_, {})).rejects.toThrow(/heading row/);
   });
 });

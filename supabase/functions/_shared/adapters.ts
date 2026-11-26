@@ -406,6 +406,140 @@ export async function oracleRecruitingAdapter(
   return jobs;
 }
 
+// A Google Sheet published to the web as CSV (File > Share > Publish to web).
+// Some people keep curated hiring lists this way, so this reads one row per
+// position. Columns are found by their heading, so a sheet with a different
+// column order still works:
+//   institution (a "University - Department" value is split), position, brief
+//   description, deadline, status ("date guidance"), application link, notes.
+// feed_url is the published CSV address (".../pub?output=csv"). config may have
+// `location` (the sheet has none; default "See posting") and `institution`
+// (used when a row has no institution cell).
+//
+// A row the sheet itself marks as over ("deadline passed", "portal closed",
+// "posting unavailable") is skipped here, so the queue is not filled with closed jobs.
+
+/** Minimal RFC 4180 parser: quoted cells, doubled quotes, newlines inside quotes. */
+export function parseCsv(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cell = '';
+  let quoted = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (quoted) {
+      if (c === '"' && text[i + 1] === '"') {
+        cell += '"';
+        i++;
+      } else if (c === '"') {
+        quoted = false;
+      } else {
+        cell += c;
+      }
+    } else if (c === '"') {
+      quoted = true;
+    } else if (c === ',') {
+      row.push(cell);
+      cell = '';
+    } else if (c === '\n' || c === '\r') {
+      if (c === '\r' && text[i + 1] === '\n') i++;
+      row.push(cell);
+      cell = '';
+      rows.push(row);
+      row = [];
+    } else {
+      cell += c;
+    }
+  }
+  if (cell.length || row.length) {
+    row.push(cell);
+    rows.push(row);
+  }
+  return rows;
+}
+
+const SHEET_CLOSED = /passed|closed|unavailable|expired|withdrawn|filled/i;
+
+export async function csvSheetAdapter(
+  feedUrl: string,
+  config: Record<string, unknown>,
+): Promise<RawJob[]> {
+  const response = await fetch(feedUrl, {
+    headers: { 'User-Agent': USER_AGENT, Accept: 'text/csv' },
+  });
+  if (!response.ok) {
+    throw new Error(`Sheet returned HTTP ${response.status}`);
+  }
+  const text = await response.text();
+  if (/^\s*<(!doctype|html)/i.test(text)) {
+    throw new Error(
+      'Sheet did not return CSV (it must be published to the web as CSV, ".../pub?output=csv")',
+    );
+  }
+
+  const rows = parseCsv(text);
+  const headerAt = rows.findIndex(
+    (r) =>
+      r.some((c) => /position|title|role/i.test(c)) &&
+      r.some((c) => /institution|employer|university|school/i.test(c)),
+  );
+  if (headerAt < 0) {
+    throw new Error('Sheet has no heading row with an institution and a position column');
+  }
+  const header = rows[headerAt];
+  const find = (re: RegExp) => header.findIndex((h) => re.test(h));
+  const cInst = find(/institution|employer|university|school/i);
+  const cTitle = find(/position|title|role/i);
+  const cDesc = find(/description/i);
+  const cDeadline = find(/deadline|review date/i);
+  const cGuide = find(/date guidance|status/i);
+  const cLink = find(/^application|^apply/i);
+  const cNotes = find(/notes/i);
+  if (cLink < 0) throw new Error('Sheet has no application link column');
+
+  const cellAt = (r: string[], i: number) => (i >= 0 ? (r[i] ?? '').trim() : '');
+  const defaultInstitution = String(config.institution ?? '');
+  const location = String(config.location ?? 'See posting');
+
+  return rows.slice(headerAt + 1).flatMap((r): RawJob[] => {
+    const guidance = cellAt(r, cGuide);
+    if (SHEET_CLOSED.test(guidance)) return [];
+
+    const link = cellAt(r, cLink).match(/https?:\/\/\S+/)?.[0];
+    const title = cellAt(r, cTitle);
+    if (!link || !title) return [];
+
+    // "Aarhus University — Computer Science" -> institution + department.
+    const [institution, ...rest] = cellAt(r, cInst).split(/\s+[—–-]\s+/);
+    const department = rest.join(' - ');
+    const deadlineText = cellAt(r, cDeadline);
+
+    const parts = [
+      `${title} at ${institution || defaultInstitution}${department ? ` (${department})` : ''}.`,
+      cellAt(r, cDesc),
+      cellAt(r, cNotes),
+      deadlineText ? `Stated deadline or review date: ${deadlineText}.` : '',
+    ];
+    // Only a clearly upcoming deadline becomes the job's closing date; rolling and
+    // "review begins" dates must not retire a job that is still taking applications.
+    const iso = deadlineText.match(/\d{4}-\d{2}-\d{2}/)?.[0];
+    if (iso && /upcoming deadline/i.test(guidance)) {
+      parts.push(`Application deadline: ${iso}.`);
+    }
+
+    return [{
+      title,
+      institution: institution || defaultInstitution,
+      location,
+      description: parts.filter(Boolean).join(' '),
+      jobType: title,
+      sourceUrl: link,
+      sourceJobId: link,
+      applicationUrl: link,
+    }];
+  });
+}
+
 export const ADAPTERS: Record<
   string,
   (feedUrl: string, config: Record<string, unknown>) => Promise<RawJob[]>
@@ -415,4 +549,5 @@ export const ADAPTERS: Record<
   'rss-generic': genericRssAdapter,
   'workday': workdayAdapter,
   'oracle-recruiting': oracleRecruitingAdapter,
+  'csv-sheet': csvSheetAdapter,
 };
