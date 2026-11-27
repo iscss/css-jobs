@@ -90,6 +90,7 @@ first production run, and the boards investigated are in [SOURCES.md](SOURCES.md
 | `peopleadmin` | PeopleAdmin job sites (UNC Chapel Hill, Vermont, George Washington). Reads the site's Atom feed (`.../postings/search.atom?query=`), then each posting page for the description. Ignores the "No Positions Currently Open" placeholder a search with no results returns | `institution` (required); `search_terms`, `max_per_term` |
 | `successfactors` | SAP SuccessFactors career sites (Duke, Purdue, TU Delft, Vienna, Toronto). Reads the site's `sitemap.xml`, keeps jobs whose title contains one of `search_terms` (default: postdoc, PhD, professor, lecturer, research scientist and similar), then opens up to `max_jobs` (default 40) of those pages for the description, location and deadline. A site in another language needs its own title words in `search_terms` |
 | `uc-recruit` | University of California "AP Recruit" sites (Berkeley, Davis, San Diego, UCLA). `feed_url` is the campus's `/apply` address, which lists every open academic recruitment in one table. Rows about data, computing, the social sciences and research are opened first (up to `max_jobs`, default 40) and each page gives the description, dates and deadline |
+| `html-jobs` | Any career site that lists jobs on an HTML page and gives each job its own page (ETH Zurich, IT University of Copenhagen, WZB). `feed_url` is the list page. Config: `institution`, `link_pattern` (a regular expression for the job links), optional `content_id` (the element holding the advert text), `title_filter` (words), `exclude_pattern`, `location`, `max_jobs`. Uses a page's standard JobPosting markup when it has one. To add a site: open its list page, find what the job links have in common, set `link_pattern`, and run it with the importer's own test (`docs/INGESTION.md` how-to) |
 
 The sources the migrations create are in `20260803000000` (jobRxiv), `20260812000000` (CoMSES and the first Workday
 universities) and `20260816000000` (the university sources from the lab list).
@@ -442,6 +443,8 @@ The rule is `linkCheckAction` in `_shared/liveness.ts`. A few details learned th
 - **Oracle Recruiting** pages (Stanford) are also JavaScript apps, so they are checked through Oracle's REST service: no
   matching requisition means `dead`, and a past end date means `closed`. A made-up job id was reported live by the plain
   page check, which is why this exists.
+- **PeopleAdmin** (UNC, Vermont, Indiana, Rutgers), **ETH Zurich** and **HR-Manager** also answer 200 for a removed job:
+  PeopleAdmin redirects `/postings/<id>` to `/postings`, ETH redirects to its front page, and HR-Manager shows "A project with ID n does not exist". All count as `dead` or `closed`.
 - **SuccessFactors** and **UC recruitment** sites answer 200 for a removed job but redirect: SuccessFactors to
   `/errorpage/`, UC to the campus `/apply` list. Both count as `dead`. UC pages also put the *review* date in
   `validThrough` while accepting applications until the "Final date", so the check uses the Final date for them.

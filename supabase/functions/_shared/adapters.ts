@@ -414,7 +414,7 @@ export async function oracleRecruitingAdapter(
 //   detail: the entry's link, an HTML page; its text after "Posting Information" is used
 // feed_url is the site's .../postings/search.atom. config needs `institution` and may have
 // `search_terms` and `max_per_term` (default 30, the size of the first page).
-// A removed posting answers 404, so the ordinary link check catches closed ones.
+// A removed posting redirects to /postings (the list), which the link check treats as dead.
 function peopleAdminDescription(html: string): string {
   const text = stripHtml(html);
   const at = text.search(/Posting Information/i);
@@ -972,6 +972,161 @@ export async function ucRecruitAdapter(
   return jobs;
 }
 
+// A generic reader for career sites that list their jobs on an HTML page and give each job
+// its own page: ETH Zurich, IT University of Copenhagen, the University of Copenhagen
+// (HR-Manager), Amsterdam, Loughborough, WZB. One reader, configured per site.
+//   list:   feed_url (and any `extra_list_urls`), an HTML page of links
+//   detail: each link whose address matches `link_pattern`
+// config needs `institution` and `link_pattern` (a regular expression tested against the full
+// address). Optional: `content_id` (the id of the element holding the advert text; otherwise a
+// JobPosting block or the page's <main>/<article> is used), `exclude_pattern`, `title_filter`
+// (words; keep a job only if its link text contains one), `location`, `max_jobs` (default 40).
+// Closed jobs answer 404 or redirect, so the ordinary link check catches them.
+function absoluteUrl(href: string, base: string): string | null {
+  try {
+    const url = new URL(href.replace(/&amp;/g, '&'), base);
+    url.hash = '';
+    return /^https?:$/.test(url.protocol) ? url.href : null;
+  } catch {
+    return null;
+  }
+}
+
+// The element with this id, found by counting opening and closing tags of its kind.
+export function elementById(html: string, id: string): string {
+  const open = html.match(new RegExp(`<([a-z0-9]+)\\b[^>]*\\bid=["']${id}["'][^>]*>`, 'i'));
+  if (!open || open.index === undefined) return '';
+  const tagName = open[1].toLowerCase();
+  const start = open.index + open[0].length;
+  let depth = 1;
+  for (const tagMatch of html.slice(start).matchAll(new RegExp(`<(/?)${tagName}\\b[^>]*>`, 'gi'))) {
+    depth += tagMatch[1] ? -1 : 1;
+    if (depth === 0) return html.slice(start, start + (tagMatch.index ?? 0));
+  }
+  return html.slice(start);
+}
+
+interface JobPostingLd {
+  title?: string;
+  description?: string;
+  datePosted?: string;
+  validThrough?: string;
+  jobLocation?: unknown;
+  hiringOrganization?: unknown;
+}
+
+export function jobPostingFromHtml(html: string): JobPostingLd | null {
+  for (const block of html.matchAll(/<script[^>]*application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)) {
+    try {
+      const data = JSON.parse(block[1]);
+      const nodes: unknown[] = Array.isArray(data) ? data : [data, ...(Array.isArray(data?.['@graph']) ? data['@graph'] : [])];
+      for (const node of nodes) {
+        const type = (node as { '@type'?: unknown })?.['@type'];
+        if (type === 'JobPosting' || (Array.isArray(type) && type.includes('JobPosting'))) {
+          return node as JobPostingLd;
+        }
+      }
+    } catch { /* not valid JSON: try the next block */ }
+  }
+  return null;
+}
+
+function htmlJobText(html: string, contentId?: string): string {
+  if (contentId) {
+    const inner = elementById(html, contentId);
+    if (inner) return stripHtml(inner);
+  }
+  const posting = jobPostingFromHtml(html);
+  if (posting?.description) return stripHtml(posting.description);
+  const main = html.match(/<(main|article)\b[^>]*>([\s\S]*?)<\/\1>/i)?.[2] ?? html;
+  return stripHtml(
+    main
+      .replace(/<(nav|header|footer|aside|form|script|style|noscript)\b[\s\S]*?<\/\1>/gi, ' '),
+  );
+}
+
+export async function htmlJobsAdapter(
+  feedUrl: string,
+  config: Record<string, unknown>,
+): Promise<RawJob[]> {
+  const institution = String(config.institution ?? '');
+  if (!institution) throw new Error('html-jobs source needs config.institution');
+  const patternSource = String(config.link_pattern ?? '');
+  if (!patternSource) throw new Error('html-jobs source needs config.link_pattern');
+  const linkPattern = new RegExp(patternSource);
+  const exclude = config.exclude_pattern ? new RegExp(String(config.exclude_pattern)) : null;
+  const filter = Array.isArray(config.title_filter)
+    ? (config.title_filter as string[]).map((word) => word.toLowerCase())
+    : [];
+  const maxJobs = Number(config.max_jobs ?? 40);
+  const lists = [feedUrl, ...(Array.isArray(config.extra_list_urls) ? (config.extra_list_urls as string[]) : [])];
+
+  const found = new Map<string, string>();
+  for (const listUrl of lists) {
+    const response = await fetch(listUrl, {
+      headers: { 'User-Agent': USER_AGENT, Accept: 'text/html' },
+    });
+    if (!response.ok) throw new Error(`Job list returned HTTP ${response.status}`);
+    const html = await response.text();
+    for (const anchor of html.matchAll(/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)) {
+      const link = absoluteUrl(anchor[1], response.url || listUrl);
+      if (!link || !linkPattern.test(link) || exclude?.test(link)) continue;
+      const text = stripHtml(anchor[2]);
+      // A job often has an image link and a title link to the same page: keep the title.
+      if (!found.has(link) || (found.get(link) ?? '').length < text.length) found.set(link, text);
+    }
+    await sleep(300);
+  }
+  if (!found.size) {
+    throw new Error('Job list had no links matching link_pattern (the layout may have changed or the site is blocking automated requests)');
+  }
+
+  const links = [...found].filter(([, text]) =>
+    !filter.length || filter.some((word) => text.toLowerCase().includes(word))
+  ).slice(0, maxJobs);
+
+  const jobs: RawJob[] = [];
+  let lastProblem = '';
+  for (const [link, listText] of links) {
+    let html: string;
+    try {
+      const page = await fetch(link, { headers: { 'User-Agent': USER_AGENT, Accept: 'text/html' } });
+      if (!page.ok) {
+        lastProblem = `HTTP ${page.status}`;
+        continue;
+      }
+      html = await page.text();
+    } catch (error) {
+      lastProblem = error instanceof Error ? error.message : 'request failed';
+      continue;
+    }
+    const posting = jobPostingFromHtml(html);
+    const heading = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1];
+    const title = stripHtml(posting?.title ?? heading ?? listText).trim() || listText;
+    const description = htmlJobText(html, config.content_id ? String(config.content_id) : undefined);
+    if (!title || !description) continue;
+    const deadline = posting?.validThrough ? new Date(posting.validThrough) : null;
+    jobs.push({
+      title,
+      institution,
+      location: String(config.location ?? 'See posting'),
+      description: deadline && !Number.isNaN(deadline.getTime())
+        ? `Application deadline: ${deadline.toISOString().slice(0, 10)}.\n\n${description}`
+        : description,
+      jobType: title,
+      sourceUrl: link,
+      sourceJobId: link.match(/(?:ProjectId|VACANCY_ID|prj|id)=([A-Za-z0-9_-]+)/i)?.[1] ?? link,
+      applicationUrl: link,
+      postedAt: posting?.datePosted,
+    });
+    await sleep(250);
+  }
+  if (!jobs.length && links.length && lastProblem) {
+    throw new Error(`Job list: none of ${links.length} job pages could be read (last: ${lastProblem})`);
+  }
+  return jobs;
+}
+
 export const ADAPTERS: Record<
   string,
   (feedUrl: string, config: Record<string, unknown>) => Promise<RawJob[]>
@@ -986,4 +1141,5 @@ export const ADAPTERS: Record<
   'peopleadmin': peopleAdminAdapter,
   'successfactors': successFactorsAdapter,
   'uc-recruit': ucRecruitAdapter,
+  'html-jobs': htmlJobsAdapter,
 };

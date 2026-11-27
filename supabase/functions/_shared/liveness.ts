@@ -36,6 +36,7 @@ const CLOSED_PHRASES: RegExp[] = [
   /(job|position|vacancy|posting|listing) (is )?no longer (open|active|posted|exists?)/i,
   /(job|position|vacancy|posting|listing) (could not|cannot|can.t|was not|wasn.t) be found/i,
   /the (page|job|position|posting|listing) you (are looking for|were looking for|requested) (does not|doesn.t|is no longer)/i,
+  /a project with id \S+ does not exist/i,
 ];
 
 
@@ -80,6 +81,20 @@ function finalDate(text: string): Date | null {
 // SuccessFactors sites to /errorpage/, UC recruitment sites (/JPF12345) to the list.
 function removedByRedirect(requested: URL, final: URL): string | null {
   if (/^\/errorpage(\/|$)/i.test(final.pathname)) return 'redirected to an error page';
+  // ETH Zurich sends a removed /job/view/<id> to its front page.
+  if (/^\/job\/view\//i.test(requested.pathname) && /^\/site\/index/i.test(final.pathname)) {
+    return 'redirected to the job portal front page';
+  }
+  // PeopleAdmin sends a removed /postings/<id> to /postings (the list): the final address is
+  // the requested one with its id cut off.
+  const asked = requested.pathname.replace(/\/+$/, '');
+  const landed = final.pathname.replace(/\/+$/, '');
+  if (
+    requested.hostname === final.hostname && /\/\d{4,}$/.test(asked) &&
+    landed !== '' && landed !== asked && asked.startsWith(`${landed}/`)
+  ) {
+    return 'redirected to the list of postings';
+  }
   const id = requested.pathname.match(/^\/(JPF\d+)\/?$/i)?.[1];
   if (id && requested.hostname === final.hostname && !final.pathname.includes(id)) {
     return 'redirected away from the recruitment';

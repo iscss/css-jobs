@@ -334,3 +334,35 @@ describe('removed postings on SuccessFactors and UC recruitment sites', () => {
     });
   });
 });
+
+describe('removed postings on PeopleAdmin, ETH Zurich and HR-Manager', () => {
+  const dead = (requestedUrl: string, finalUrl: string, body = '<p>List</p>') =>
+    classifyPage({ ...base, requestedUrl, finalUrl, body });
+
+  it('flags a PeopleAdmin posting that redirects to the list of postings', () => {
+    expect(dead('https://jobs.example.edu/postings/284842', 'https://jobs.example.edu/postings').status).toBe('dead');
+    expect(dead('https://x.peopleadmin.com/postings/99999999/', 'https://x.peopleadmin.com/postings').status).toBe('dead');
+  });
+
+  it('keeps a PeopleAdmin posting that stays at its own address', () => {
+    const url = 'https://jobs.example.edu/postings/284842';
+    expect(dead(url, url, '<p>Posting Information</p>').status).toBe('live');
+  });
+
+  it('does not treat an ordinary move to a parent path as removal when there is no id', () => {
+    expect(dead('https://example.edu/about/team', 'https://example.edu/about').status).toBe('live');
+  });
+
+  it('flags an ETH Zurich job that redirects to the portal front page', () => {
+    expect(dead('https://jobs.ethz.ch/job/view/12279', 'https://jobs.ethz.ch/site/index').status).toBe('dead');
+  });
+
+  it('flags an HR-Manager page saying the project does not exist', () => {
+    const result = dead(
+      'https://candidate.hr-manager.net/ApplicationInit.aspx?cid=119&ProjectId=1',
+      'https://candidate.hr-manager.net/ApplicationInit.aspx?cid=119&ProjectId=1',
+      '<p>A project with ID 1 does not exist - please try again.</p>',
+    );
+    expect(result.status).toBe('closed');
+  });
+});

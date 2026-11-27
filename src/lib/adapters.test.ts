@@ -9,6 +9,9 @@ import {
   successFactorsTitleFromUrl,
   ucRecruitAdapter,
   ucRows,
+  htmlJobsAdapter,
+  elementById,
+  jobPostingFromHtml,
   jobRxivAdapter,
   genericRssAdapter,
   comsesAdapter,
@@ -923,5 +926,87 @@ describe('ucRecruitAdapter deadline', () => {
         : page))));
     const [job] = await ucRecruitAdapter(FEED, { institution: 'X' });
     expect(extractDeadline(job.description, new Date('2026-11-26'))).toBe('2027-03-31');
+  });
+});
+
+describe('htmlJobsAdapter', () => {
+  const FEED = 'https://jobs.example.edu/list';
+  const list = (...paths: { href: string; text: string }[]) =>
+    `<html><body>${paths.map((p) => `<a href="${p.href}">${p.text}</a>`).join('')}<a href="/about">About us today</a></body></html>`;
+  const text = (body: string, status = 200) => Promise.resolve(new Response(body, { status }));
+  const BASE = { institution: 'Example University', link_pattern: '/job/view/' };
+
+  function mock(handler: (url: string) => Promise<Response>) {
+    const fn = vi.fn((url: string) => handler(url));
+    vi.stubGlobal('fetch', fn);
+    return fn;
+  }
+
+  it('reads the element named by content_id, the heading, and matching links only', async () => {
+    const fn = mock((url) =>
+      url === FEED
+        ? text(list({ href: '/job/view/1', text: 'Postdoc in Data Science' }, { href: '/news/2', text: 'Some news item' }))
+        : text('<html><nav>Menu Menu</nav><h1>Postdoc in Data Science</h1><div id="ad"><div><p>Join our group to study networks.</p></div><p>Apply by email.</p></div><div>Footer</div></html>'),
+    );
+    const jobs = await htmlJobsAdapter(FEED, { ...BASE, content_id: 'ad', location: 'Zurich' });
+    expect(jobs).toHaveLength(1);
+    expect(jobs[0]).toMatchObject({
+      title: 'Postdoc in Data Science',
+      institution: 'Example University',
+      location: 'Zurich',
+      sourceUrl: 'https://jobs.example.edu/job/view/1',
+    });
+    expect(jobs[0].description).toContain('study networks');
+    expect(jobs[0].description).toContain('Apply by email');
+    expect(jobs[0].description).not.toContain('Footer');
+    expect(jobs[0].description).not.toContain('Menu');
+    expect(fn.mock.calls.map((c) => c[0] as string)).not.toContain('https://jobs.example.edu/news/2');
+  });
+
+  it('prefers a JobPosting block, with its deadline placed first', async () => {
+    mock((url) =>
+      url === FEED
+        ? text(list({ href: '/job/view/9', text: 'Lecturer' }))
+        : text(
+            `<html><h1>Ignored heading</h1><script type="application/ld+json">{"@type":"JobPosting","title":"Lecturer in Sociology","description":"<p>Teach sociology to students.</p>","validThrough":"2027-03-01","datePosted":"2026-11-01"}</script></html>`,
+          ),
+    );
+    const [job] = await htmlJobsAdapter(FEED, BASE);
+    expect(job.title).toBe('Lecturer in Sociology');
+    expect(job.description.startsWith('Application deadline: 2027-03-01.')).toBe(true);
+    expect(job.description).toContain('Teach sociology');
+    expect(job.postedAt).toBe('2026-11-01');
+  });
+
+  it('keeps only jobs whose link text contains a title_filter word, and honours max_jobs', async () => {
+    mock((url) =>
+      url === FEED
+        ? text(list(
+            { href: '/job/view/1', text: 'Caretaker (m/w/d)' },
+            { href: '/job/view/2', text: 'Postdoc in Physics' },
+            { href: '/job/view/3', text: 'Postdoc in Chemistry' },
+          ))
+        : text('<html><h1>A job</h1><main><p>A long enough description of the role for the test.</p></main></html>'),
+    );
+    const jobs = await htmlJobsAdapter(FEED, { ...BASE, title_filter: ['postdoc'], max_jobs: 1 });
+    expect(jobs.map((j) => j.sourceJobId)).toEqual(['https://jobs.example.edu/job/view/2']);
+  });
+
+  it('reports an error when the list has no matching links, or every job page fails', async () => {
+    await expect(htmlJobsAdapter(FEED, { institution: 'X' })).rejects.toThrow(/link_pattern/);
+    mock(() => text(list({ href: '/other/1', text: 'Nothing relevant here' })));
+    await expect(htmlJobsAdapter(FEED, BASE)).rejects.toThrow(/no links matching/);
+    mock((url) => (url === FEED ? text(list({ href: '/job/view/1', text: 'Postdoc' })) : text('busy', 503)));
+    await expect(htmlJobsAdapter(FEED, BASE)).rejects.toThrow(/none of 1 job pages.*503/);
+    mock(() => text('nope', 500));
+    await expect(htmlJobsAdapter(FEED, BASE)).rejects.toThrow(/500/);
+  });
+
+  it('finds an element by id with nested tags, and a JobPosting inside a graph', () => {
+    expect(elementById('<div id="a"><div>x</div><p>y</p></div><div>z</div>', 'a')).toBe('<div>x</div><p>y</p>');
+    expect(elementById('<p>none</p>', 'a')).toBe('');
+    const graph = `<script type="application/ld+json">{"@graph":[{"@type":"WebPage"},{"@type":"JobPosting","title":"T"}]}</script>`;
+    expect(jobPostingFromHtml(graph)?.title).toBe('T');
+    expect(jobPostingFromHtml('<script type="application/ld+json">not json</script>')).toBeNull();
   });
 });
