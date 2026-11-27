@@ -87,7 +87,7 @@ css-jobs/
 │   ├── migrations/     # SQL migrations
 │   └── config.toml     # Local stack config; verify_jwt is off for the scheduled functions
 ├── docs/               # This documentation (+ design/ with the chosen mockup)
-├── scripts/            # Domain loading, safety checks, demo seed
+├── scripts/            # Domain loading, safety checks, live source tests, careers-site finder, demo seed
 ├── public/             # Static assets: sponsor logos, favicon, university-domains.json
 ├── index.html          # Page title, share cards, Content-Security-Policy
 └── vercel.json         # Security headers and the single-page-app rewrite

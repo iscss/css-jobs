@@ -12,7 +12,7 @@ and deploying it is in [HANDBOOK.md](HANDBOOK.md#production-setup-one-time) and
 - [The safety guarantee](#the-safety-guarantee)
 - [How it works](#how-it-works)
 - [Sources and adapters](#sources-and-adapters)
-- [How-to guides](#how-to-guides): add a source, write an adapter, edit the AI prompts, change the keyword filter
+- [How-to guides](#how-to-guides): add a source, find and test a university's careers site, write an adapter, edit the AI prompts, change the keyword filter
 - [Deduplication and freshness](#deduplication-and-freshness)
 - [The AI verdict](#the-ai-verdict)
 - [The link check](#the-link-check)
@@ -175,6 +175,101 @@ using `INSERT ... ON CONFLICT (slug) DO NOTHING` so it can run twice), as
 not have it and the next person will not know it exists.
 
 **Pause or remove:** `UPDATE job_sources SET is_active = false WHERE slug = '...'`. The jobs already imported stay.
+
+### Find, build and test a source for a university
+
+The procedure used to cover most of the 92 institutions on Alex's list. Follow it for any new institution. The tools
+are in `scripts/` and read public pages only, as `CSSJobsBot` (`discover-site.mjs` reads a handful of pages once each;
+the source tests do what the nightly import does).
+
+**1. Find the real careers page.** The homepage link is often the student career centre, not the staff and faculty jobs.
+Search inside the institution's own domain (a web search limited to that domain, for example `jobs vacancies positions`
+with only `uzh.ch` allowed) and look for a portal address such as `jobs.`, `careers.`, `stellen.` or a hiring-system
+address. General searches return unrelated employers; domain-limited ones do not.
+
+**2. Fingerprint it.** `node scripts/discover-site.mjs <address>`. It prints the hiring system it recognises, whether
+pages carry schema.org `JobPosting` markup, what `robots.txt` asks of us (crawl delay, sitemaps, disallowed paths), how
+many job-looking addresses the sitemap lists, and the repeated link shapes on the page. Then choose the reader:
+
+| What you see | Reader | Notes |
+|--------------|--------|-------|
+| `myworkdayjobs.com` or `myworkdaysite.com` | `workday` | Find the tenant: `https://<tenant>.wd<N>.myworkdayjobs.com/robots.txt` answers 200 with `Sitemap:` lines naming the site; try wd1, wd3, wd5, wd12, wd103, wd105 |
+| `oraclecloud.com` | `oracle-recruiting` | Needs the site number (`CX_...`) from the careers address |
+| `smartrecruiters.com` | `smartrecruiters` | The company id is in the address |
+| `/postings/search`, `peopleadmin.com` | `peopleadmin` | Try `<host>/postings/search.atom` |
+| `/job/<title>/<id>/` addresses, `/talentcommunity/apply/`, a `sitemap.xml` of jobs | `successfactors` | The sitemap is the list |
+| `JPF12345` addresses, "AP Recruit" | `uc-recruit` | The `/apply` page is the list |
+| A sitemap of jobs, pages with `JobPosting` markup, or a list page that repeats one link shape | `html-jobs` | One reader, configured with a `link_pattern`; see its row in the adapters table |
+| An aggregator carries the employer (jobs.ac.uk for the UK) | `html-jobs` with `employers` | One source can cover several institutions; leave the institutions' own rows off or every job is imported twice |
+| CoreHR, Taleo, Interfolio, a list built by script, PDF notices | none yet | See "When a site cannot be read" below |
+
+**3. Be polite.** Use the identified bot (the readers do). Obey `robots.txt`: a `Crawl-delay` becomes `delay_ms` in
+the config (Houston asks for 5 seconds, so it reads 15 jobs a night), and a disallowed path is never fetched. Keep one
+source under about a minute (limit `max_jobs` or `max_pages`), because the whole source runs inside one function
+call. **Never work around a bot challenge** (HTTP 202 or 403, "Just a moment"): ask the owner instead (template below).
+
+**4. Configure and test.** Add the source by migration (see "Add a source that an existing adapter can read"). Then:
+
+- `python3 scripts/list-sources.py sources.json`, then `npx tsx scripts/test-all-sources.mts sources.json --only <slug>`:
+  runs the real reader, the importer's validation and a link check on three sample jobs. Look at the jobs themselves, not
+  only the count: full descriptions, a sensible title, a location, a deadline.
+- **Test removed jobs.** `npx tsx scripts/test-link-check.mts <a real job address> <a made-up one on the same site>`. The
+  real one must be `live`, the made-up one `dead` or `closed`. Many sites answer 200 for a removed job and only redirect
+  (SuccessFactors to `/errorpage/`, UC to the list, PeopleAdmin to `/postings`, ETH to its front page) or show a notice
+  (HR-Manager). The link check hides or deletes jobs it calls dead, so one that never says dead leaves closed jobs
+  online, and one that says it too early removes live jobs.
+- Add unit tests for any new code (`src/lib/adapters.test.ts`, `src/lib/liveness.test.ts`), with the site's responses
+  mocked: the real jobs, a removed job, a page that fails, a bot-challenge page.
+
+**5. Always test the older sources too.** `adapters.ts`, `ingest.ts` and `liveness.ts` serve every source, so a change
+for one site can break another, and mocked unit tests do not show that a real site still answers. Before editing a shared
+file: `npx tsx scripts/test-all-sources.mts sources.json --save before.json`. After: `... --compare before.json`. Every
+source that worked must be unchanged (a count moving by one because a job was posted is normal); explain any other
+difference. A source that fetched jobs before and fetches none now is a regression until shown otherwise.
+
+**6. Document, then ship.** Update the tables and counts in [SOURCES.md](SOURCES.md), the adapters table above and the
+migration list in [HANDBOOK.md](HANDBOOK.md); run `npx tsc --noEmit`, `npx vitest run` and `npm run build`. Deploy in this
+order: the functions that changed (`ingest-jobs`, and `check-listings` if `liveness.ts` changed), then the SQL in the
+SQL Editor, because a source switched on before its reader exists only logs "unknown adapter". The next morning run the
+"did every source run" query in [Check that the sources are healthy](#check-that-the-sources-are-healthy).
+
+**Edge cases found while doing this** (each has a test):
+
+- The importer reads only the **first 4,000 characters** of a description for a deadline, so a reader puts its
+  `Application deadline:` line **first**. Otherwise a long description's early "apply by <review date> for full
+  consideration" wins over the real final date.
+- Some systems put the **review date** where the closing date should be (UC's `validThrough`). Use the field the site
+  itself calls the final date.
+- A closing date with no time (or midnight) means the whole day: the job stays open until the day ends.
+- An HTTP **202** is a bot challenge and must never be imported as a job; readers accept only 200.
+- If a reader finds jobs but cannot open a single page, it **fails with an error** instead of reporting "0 jobs", so an
+  outage shows in `scrape_runs`.
+- A big employer lists a thousand jobs, mostly not academic: filter by the title in the address first, open the
+  subject-word matches first, and cap the pages opened.
+- A shared aggregator source and the institutions' own rows must not both be on.
+
+**When a site cannot be read.** Say which of these it is in `config.note` and [SOURCES.md](SOURCES.md), so the next
+person does not repeat the investigation:
+
+| Cause | What to do |
+|-------|-----------|
+| Bot challenge or HTTP 403 (Princeton, Northwestern, Columbia, UMass, Harvard, GESIS, Koç, QUT) | Ask the owner to allow `CSSJobsBot` (template below) |
+| List built by script, no sitemap (Zurich, St. Gallen, Bremen, Mannheim, MIT, Temple, Groningen) | A person opens the page in a browser, watches the network tab, and sends the address that returns the job data (JSON or HTML); a reader can then be configured |
+| Search needs a submitted form (CoreHR: Oxford, UCD, DCU, King's) | A reader that submits the form; covered meanwhile by jobs.ac.uk where the institution posts there |
+| No public feed (Interfolio) | None; use the institution's own page if it has one |
+| PDF notices (EUI) | A PDF text reader |
+| No central portal (Sapienza) | Nothing to read |
+
+**Asking a university to allow the bot.** Send this to the institution's HR or web team (it has no private details):
+
+> Subject: Allowing a job-listing reader for the ISCSS CSS Jobs board
+>
+> Hello, the International Society for Computational Social Science runs a free job board at https://jobs.iscss.org that
+> lists open academic and research positions with a link back to the employer's own posting. Once a day our reader,
+> identified as CSSJobsBot (contact admin@iscss.org), reads your public jobs list. Your site currently answers it with a
+> bot challenge, so your openings cannot appear. Could you allow CSSJobsBot, or tell us if you publish a jobs feed (RSS,
+> XML or an API) that we could use instead? We read only public postings, once a day, and obey robots.txt.
+> Thank you.
 
 ### Switch on a registered but inactive source
 
@@ -590,6 +685,13 @@ an insert claiming `approved`, `published` or `featured` is clamped to pending e
 `source_url` or `content_hash` is rejected; the database constraints hold (short description or title, non-http URL);
 and the ingest endpoint rejects the anonymous key. It cleans up its own test rows. It needs Docker and
 `npx supabase start`, and was not re-run for the November 2026 documentation update.
+
+**Live source tests, `scripts/`.** These check the real sites, so they need the network and are not part of
+`npx vitest run`: `list-sources.py` (what the migrations define), `test-all-sources.mts` (every active source through
+its reader, the importer's validation and the link check, with `--save` and `--compare` to catch regressions),
+`test-link-check.mts` (what the link check says about given addresses) and `discover-site.mjs` (what a careers site
+runs on). How to use them is in [Find, build and test a source](#find-build-and-test-a-source-for-a-university).
+They do not call the AI review or write to any database.
 
 `scripts/seed-demo-jobs.sql` adds two published jobs for local demos, so the public board is not empty next to a
 queue of hidden imports. **Local use only; never run it against production.**

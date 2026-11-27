@@ -48,3 +48,8 @@ TODO.md
 
 # Supabase CLI local state
 supabase/.branches/
+
+# Output of scripts/list-sources.py and scripts/test-all-sources.mts
+sources.json
+before.json
+after.json

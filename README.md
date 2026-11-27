@@ -132,7 +132,7 @@ Detail in [HANDBOOK > Architecture](docs/HANDBOOK.md#architecture).
 src/            the site: pages, components, hooks, helpers and their tests
 supabase/       edge functions (the importer, link check, organiser) and SQL migrations
 docs/           the documentation above, and docs/design/ with the chosen mockup
-scripts/        domain loading, safety checks, the source-address check, a demo seed (local only)
+scripts/        domain loading, safety checks, live source tests and the careers-site finder, a demo seed (local only)
 public/         static files: logos, favicon, the university-domains list
 index.html      page title, share cards, Content-Security-Policy
 vercel.json     security headers
