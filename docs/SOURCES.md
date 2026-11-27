@@ -88,6 +88,19 @@ local copy, not from production.
 | `todo-coloradoboulder` | University of Colorado Boulder | `html-jobs` | `jobs.colorado.edu/jobs/SearchJobs` | 365 days | Added 2026-11-27. 25 a night from the paged list; 40 in a test. Redeploy `ingest-jobs` first |
 | `todo-konstanz` | University of Konstanz | `html-jobs` | `stellen.uni-konstanz.de/sitemap.xml.gz` | 365 days | Added 2026-11-27. 16 found in a test. Redeploy `ingest-jobs` first |
 | `todo-maxplanckinstituteforhumandeve` | Max Planck Institute for Human Development | `html-jobs` | `careers.mpib-berlin.mpg.de/jobs` | 365 days | Added 2026-11-27. 5 found in a test. Redeploy `ingest-jobs` first |
+| `todo-zurich` | University of Zurich | `prospective` | JSON service behind `jobs.uzh.ch` (Prospective career centre 1002007) | 365 days | Added 2026-11-27. 111 vacancies, 95 to 106 current in tests. Found by reading the career page's script. **New reader**. Redeploy `ingest-jobs` first |
+| `todo-bernappliedsciences` | Bern University of Applied Sciences | `prospective` | Prospective career centre 1002509 (`jobs.bfh.ch`) | 365 days | Added 2026-11-27. 37 vacancies. Same reader as Zurich |
+| `todo-stgallen` | University of St. Gallen | `html-jobs` | `jobs.unisg.ch/?limit=100` | 365 days | Added 2026-11-27. 47 jobs on one page (the list also accepts `offset`). Several were past their closing date in tests |
+| `eploy-groningen` | University of Groningen | `html-jobs` | `werkenbij.rug.nl/vacature-sitemap.xml` | 365 days | Added 2026-11-27. Reads 32 a night, academic titles first: its pages take about 2 seconds each, so a night takes about 75 seconds |
+| `todo-bremen` | University of Bremen | `html-jobs` | `uni-bremen.de/.../offene-stellen`, links `/job/<id>` | 365 days | Added 2026-11-27. About 15 job pages (the other notices are PDFs, not read). The last heading is the title; the German "Bewerbungsfrist" date is read by `deadline_pattern` |
+| `todo-heinrichheinedsseldorf` | Heinrich Heine University Düsseldorf | `html-jobs` | `karriere.hhu.de/sitemap.xml` | 365 days | Added 2026-11-27. 11 jobs (the sitemap also lists non-job pages, which the link pattern skips). Removed jobs answer HTTP 410 |
+| `todo-amsterdam` | University of Amsterdam | `html-jobs` | `werkenbij.uva.nl/vacatures`, 10 a page | 365 days | Added 2026-11-27. 23 vacancies in a test |
+| `hrm-copenhagen` | University of Copenhagen | `html-jobs` | `employment.ku.dk/all-vacancies/` | 365 days | Added 2026-11-27. 17 vacancies. A removed job shows the "All vacancies" list (200), which the link check treats as removed |
+| `todo-massachusetts` | Massachusetts Institute of Technology | `html-jobs` | PeopleClick sitemap `careers.peopleclick.com/careerscp/client_mit/external/sitemap.xml` | 365 days | Added 2026-11-27. About 290 jobs listed oldest first, so the newest 120 pages are opened (`newest_first`) and 80 kept |
+| `todo-temple` | Temple University | `taleo` | `temple.taleo.net/careersection/tu_ex_faculty` | 365 days | Added 2026-11-27. Faculty section only (22 jobs, 17 current). Staff and adjunct sections not read. **New reader**. A removed job shows the page frame with no job (200), which the link check treats as removed |
+| `tugraz` | Graz University of Technology | `tugraz` | JSON service behind `jobs.tugraz.at` | 365 days | Added 2026-11-27. 20 jobs, mostly in German. **New reader and link-check rule** (the public page answers 200 for any id, so the check asks the JSON service) |
+| `ajo-boston` | Boston University | `html-jobs` | Academic Jobs Online `/ajo/BU` | 365 days | Added 2026-11-27. Faculty and postdoc jobs. Its `robots.txt` asks for 5 seconds between requests, so it reads the newest 14 a night. A removed job shows the whole job list (200), which the link check treats as removed |
+| `todo-illinois` | University of Illinois Urbana-Champaign | `html-jobs` | Academic Jobs Online `/ajo/UIUC` | 365 days | Added 2026-11-27. **Partial**: only departments that advertise there (9 jobs). The main system (Cornerstone, `illinois.csod.com`) is a script app with no public list |
 
 The Workday and Oracle sources search for CSS terms ("computational social science", "social data science",
 "computational sociology", and for Northeastern "network science") before anything is downloaded.
@@ -102,7 +115,6 @@ and `config.note`. To switch one on after it is fixed: `UPDATE job_sources SET i
 | `pageup-columbia` | Columbia University (Data Science Institute) | PageUp | **Blocked** | An AWS bot challenge answers automated requests with HTTP 202 and a JavaScript page. Ask Columbia HR to allow `CSSJobsBot`, then write a PageUp reader |
 | `pageup-umass` | UMass Amherst (CSSI) | PageUp | **Blocked** | The same AWS bot challenge as Columbia |
 | `harvard` | Harvard (Computational Policy Lab, Kennedy School) | Not identified | **Blocked** | The jobs page answers HTTP 403 to automated requests |
-| `tugraz` | Graz University of Technology | JavaScript app (`jobs.tugraz.at`) | Needs an adapter | No public data endpoint or feed found |
 | `koc` | Koç University (CCSS) | Not identified | **Blocked** | HTTP 403 to automated requests |
 | `gesis` | GESIS | Not identified | **Blocked** | HTTP 403 to automated requests |
 | `cuhk` | The Chinese University of Hong Kong | Not identified | Unverified | The Personnel Office address did not resolve from the network it was checked on |
@@ -462,14 +474,21 @@ admin to approve it.
 
 Alex asked for these 92 institutions to be covered as job sources, as a goal. "Covered" means the importer reads the institution's own careers site every night, so its postings reach the review queue.
 
-**Every one of the 92 is now in the `job_sources` table** (migrations `20260820000000` to `20260826000000`). **52 are covered every night** (46 read directly and the 6 UK universities through jobs.ac.uk). The other **40 are registered but switched off**, each with its reason in `config.note`; a source cannot produce jobs until the importer has a reader for its hiring system, and flipping one on without a reader only logs an error.
+**Every one of the 92 is now in the `job_sources` table** (migrations `20260820000000` to `20260827000000`). **64 are covered every night** (58 read directly and the 6 UK universities through jobs.ac.uk; Illinois only partly). The other **28 are registered but switched off**, each with its reason in `config.note`; a source cannot produce jobs until the importer has a reader for its hiring system, and flipping one on without a reader only logs an error.
 
 - **11 were already read:** Brown University, Cornell University, Northeastern University, Ohio State University, Stanford University, University of Chicago, University of Maryland, University of Southern California, University of Washington, University of Wisconsin–Madison, Yale University.
-- **41 added or switched on 2026-11-26/27:** American University, Brigham Young University, Clemson University, Dartmouth College, Duke University, Delft University of Technology, ETH Zurich, IT University of Copenhagen, Indiana University, Rutgers University, William & Mary, WZB Berlin Social Science Center, University of Colorado Boulder, University of Houston (unreliable), University of Konstanz, Max Planck Institute for Human Development, and, through jobs.ac.uk, the University of Oxford, University of Cambridge, King's College London, London School of Economics, University of Bristol and Loughborough University, Georgetown University, McGill University, Pennsylvania State University, Purdue University, Rice University, Technical University of Denmark, University of Melbourne, University of North Carolina, University of Notre Dame, UC Berkeley, UC Davis, UC San Diego, UCLA, University of Rochester, University of Sydney, University of Texas at Austin, University of Toronto, University of Vienna, Washington University in St. Louis. Notes: twelve of these are on Workday (found through each tenant's `robots.txt`); Rice and the Technical University of Denmark are on Oracle Recruiting; Notre Dame is on SmartRecruiters; UNC Chapel Hill is on PeopleAdmin; Duke, Purdue, Delft, Toronto and Vienna are on SuccessFactors; UC Berkeley, Davis, San Diego and UCLA are on the University of California recruitment system. Each was tested with the importer's own reader.
+- **53 added or switched on 2026-11-26/27:** American University, Brigham Young University, Clemson University, Dartmouth College, Duke University, Delft University of Technology, ETH Zurich, IT University of Copenhagen, Indiana University, Rutgers University, William & Mary, WZB Berlin Social Science Center, University of Colorado Boulder, University of Houston (unreliable), University of Konstanz, Max Planck Institute for Human Development, and, through jobs.ac.uk, the University of Oxford, University of Cambridge, King's College London, London School of Economics, University of Bristol and Loughborough University, Georgetown University, McGill University, Pennsylvania State University, Purdue University, Rice University, Technical University of Denmark, University of Melbourne, University of North Carolina, University of Notre Dame, UC Berkeley, UC Davis, UC San Diego, UCLA, University of Rochester, University of Sydney, University of Texas at Austin, University of Toronto, University of Vienna, Washington University in St. Louis, and in the last round University of Zurich, Bern University of Applied Sciences, University of St. Gallen, University of Groningen, University of Bremen, Heinrich Heine University Düsseldorf, University of Amsterdam, University of Copenhagen, MIT, Temple University, Boston University and the University of Illinois (partly). Notes: twelve of these are on Workday (found through each tenant's `robots.txt`); Rice and the Technical University of Denmark are on Oracle Recruiting; Notre Dame is on SmartRecruiters; UNC Chapel Hill is on PeopleAdmin; Duke, Purdue, Delft, Toronto and Vienna are on SuccessFactors; Zurich and Bern UAS are on Prospective; Temple is on Taleo; Boston and Illinois are read through Academic Jobs Online; UC Berkeley, Davis, San Diego and UCLA are on the University of California recruitment system. Each was tested with the importer's own reader.
 - **6 off for a known reason** ([section 1.2](#12-registered-but-inactive)): Columbia University (blocked by an AWS bot challenge); Harvard University (blocked (HTTP 403)); University of Massachusetts Amherst (blocked by an AWS bot challenge); GESIS – Leibniz Institute for the Social Sciences (blocked (HTTP 403)); Microsoft Research (rate limited; unreliable); Carnegie Mellon University (its Workday search returns HTTP 422).
-- **34 registered, off, waiting for a reader** (table below).
+- **22 registered, off, waiting for a reader or for the owner's permission** (table below).
 
-**Why they are not all on.** Each hiring system needs its own small reader, and a reader then covers every institution that uses it. The groups below show how much each reader would unlock. Interfolio carries much US faculty hiring but has no public feed we could find (its `robots.txt` is access-denied and its pages are a JavaScript app). For 5 institutions the hiring system still could not be identified, because the careers address tried did not load or named no system; those need someone to look up the real page. For 29 more it is known but the site cannot be read yet (a bot challenge, a form-only search, or a script-built list); the table says which.
+**Why the other 28 are off (checked again on 2026-11-27).** Each hiring system needs its own reader, and a site that blocks automated requests cannot be read at all. In the last round the remaining ones were each tried by reading the page's own source, its sitemap and its script for the real data address, and 12 turned out to be readable. What is left, by cause:
+
+- **Blocked to automated requests, so only the owner can fix it** (7 in the table, plus Columbia, UMass Amherst, Harvard, GESIS and Microsoft above): Princeton and QUT (HTTP 403), UCD (HTTP 403), DCU (its CoreHR search answers 403), Oregon (the list opens but every job page and its RSS answer the HTTP 202 bot challenge), Northwestern (PeopleSoft behind a session), Syracuse (`robots.txt` disallows everything, so it is not read). Use the allow-list email in [INGESTION.md](INGESTION.md#find-build-and-test-a-source-for-a-university).
+- **PDF notices** (4): Mannheim, Viadrina, the European University Institute and Bocconi publish each job as a PDF. Reading them needs a PDF text library in the importer. That was not added because it cannot be tested here without the importer's own runtime, and a bad bundle would stop every source from importing.
+- **PeopleSoft** (Georgia Tech, and Northwestern above): the list needs a session and a submitted form.
+- **Interfolio** (Johns Hopkins, NYU, Michigan): no public feed, and its `robots.txt` denies automated access.
+- **Not worth reading or no central list** (6): Sapienza (calls scattered over department pages), the Max Planck Institute for Security and Privacy (mostly "no open positions"), Hertie (one or two postings, no links), École Polytechnique (no central portal; posts go to the CNRS job site), Complexity Science Hub (no postings of its own at the moment), Google (script-built pages).
+- **One address missing** (George Washington): the PeopleAdmin reader exists, but the site's feed address is not found.
 
 ### 5.1 Registered, off, waiting for a reader
 
@@ -477,40 +496,28 @@ Alex asked for these 92 institutions to be covered as job sources, as a goal. "C
 
 | Institution | Source slug | Hiring system | Next step |
 |-------------|-------------|---------------|-----------|
-| Bern University of Applied Sciences | `todo-bernappliedsciences` | Not identified | Identify the hiring system (a short research task), then a reader |
 | Bocconi University | `own-bocconi` | Its own hiring site | Needs a reader written for its own site |
-| Boston University | `ajo-boston` | Academic Jobs Online (faculty) | Needs a reader |
-| Complexity Science Hub Vienna | `personio-complexitysciencehubvienna` | Personio | Find the Personio feed address (reader would be small) |
-| Dublin City University | `todo-dublincity` | CoreHR (my.corehr.com/pls/dcurecruit) | Vacancies are on CoreHR, whose search needs a submitted form, so a CoreHR reader is needed (shared with Oxford and UCD) |
+| Complexity Science Hub Vienna | `personio-complexitysciencehubvienna` | Personio | csh.ac.at/engage/jobs shows no postings of its own at the moment (the links on it are for IT:U Austria) and the Personio feed answered 404. Recheck when CSH has openings |
+| Dublin City University | `todo-dublincity` | CoreHR (my.corehr.com/pls/dcurecruit) | The CoreHR search answers HTTP 403 to an automated search. Ask DCU HR to allow CSSJobsBot or give a feed |
 | European University Institute | `todo-europeaninstitute` | Own site, PDF notices | Open posts are PDF notices; needs a PDF reader |
-| European University Viadrina | `todo-europeanviadrina` | Not identified | Identify the hiring system (a short research task), then a reader |
-| George Washington University | `pa-georgewashington` | PeopleAdmin | Reader exists; find this site's Atom feed address |
-| Georgia Institute of Technology | `todo-georgia` | Unknown | career.gatech.edu is the student career centre; the staff and faculty jobs site was not found |
+| European University Viadrina | `todo-europeanviadrina` | Own site, PDF notices | Postings are PDF notices and the application system (jobs.europa-uni.de) is a script app. Needs a PDF reader |
+| George Washington University | `pa-georgewashington` | PeopleAdmin | Reader exists, but neither gwu.peopleadmin.com nor careers.gwu.edu answers at /postings/search.atom. Find this site's feed address |
+| Georgia Institute of Technology | `todo-georgia` | PeopleSoft (University System of Georgia careers) | Jobs are on careers.hprod.onehcm.usg.edu, which needs a session and a submitted form. Needs a PeopleSoft reader |
 | Google | `todo-google` | Not identified | Identify the hiring system (a short research task), then a reader |
-| Heinrich Heine University Düsseldorf | `todo-heinrichheinedsseldorf` | Not identified | Identify the hiring system (a short research task), then a reader |
 | Hertie School | `todo-hertieschool` | Own site | Lists one or two postings without links; low volume |
-| Johns Hopkins University | `ifo-johnshopkins` | Interfolio (faculty) | No public feed found; needs separate investigation |
-| Massachusetts Institute of Technology (MIT) | `todo-massachusetts` | Own site (hr.mit.edu/jobs/search) | The job search shows no job links in plain HTML; needs its data address found |
+| Johns Hopkins University | `ifo-johnshopkins` | Interfolio (faculty) | No public feed; its robots.txt denies automated access |
 | Max Planck Institute for Security and Privacy | `todo-maxplanckinstituteforsecuritya` | Own site | Career pages mostly say no open positions (calls run in cycles); low value |
-| New York University | `ifo-newyork` | Interfolio (faculty) | No public feed found; needs separate investigation |
-| Northwestern University | `own-northwestern` | Own site behind Cloudflare | careers.northwestern.edu answers a Cloudflare challenge. Ask Northwestern HR to allow CSSJobsBot |
+| New York University | `ifo-newyork` | Interfolio (faculty) | No public feed; its robots.txt denies automated access |
+| Northwestern University | `own-northwestern` | PeopleSoft eRecruit | careers.northwestern.edu redirects to a PeopleSoft site that needs a session and a form. Needs a PeopleSoft reader, or a feed from Northwestern HR |
 | Princeton University | `todo-princeton` | Own site behind Cloudflare | Both princeton.edu/acad-positions and jobs.princeton.edu answer a Cloudflare challenge. Ask Princeton HR to allow CSSJobsBot |
 | Queensland University of Technology | `todo-queenslandtechnology` | Unknown | qut.edu.au answers HTTP 403 to automated requests. Ask QUT to allow CSSJobsBot |
 | Sapienza University of Rome | `todo-sapienzarome` | No central portal found | Calls are scattered over department pages |
-| Syracuse University | `todo-syracuse` | sujobopps.com | Staff and faculty postings are on sujobopps.com, which did not answer a plain request; retry from another network |
-| Temple University | `todo-temple` | Taleo (temple.taleo.net) | temple.taleo.net/careersection/ex/jobsearch.ftl returns a small JavaScript shell. Needs a Taleo reader |
-| University College Dublin | `todo-collegedublin` | CoreHR (my.corehr.com) | The careers page links to CoreHR. The CoreHR search needs a submitted form, so a CoreHR reader is needed (shared with Oxford and DCU) |
-| University of Amsterdam | `todo-amsterdam` | Own site (werkenbij.uva.nl) | The site lists job families (for example "Assistant / Associate professor"), not individual vacancies, in its plain HTML |
-| University of Bremen | `todo-bremen` | Own central list (job pages /job/<id>) | The list shows no job links in plain HTML; needs its data address found |
-| University of Copenhagen | `hrm-copenhagen` | HR-Manager (state recruitment portal) | The portal answers but its vacancy list was empty or used another layout in a test; the same html-jobs reader that works for ITU needs the right list address |
-| University of Groningen | `eploy-groningen` | Eploy / own site (werkenbij.rug.nl) | werkenbij.rug.nl lists vacancies by script, with no job links in its plain HTML |
-| University of Illinois | `todo-illinois` | Unknown | jobs.illinois.edu answered HTTP 500 and illinois.edu did not load in a test. Retry from another network |
-| University of Mannheim | `todo-mannheim` | Own central list (Stellenanzeigen) | The list shows no job links in plain HTML; needs its data address found |
-| University of Michigan | `ifo-michigan` | Interfolio (faculty) | No public feed found; needs separate investigation |
-| University of Oregon | `pageup-oregon` | PageUp | Check whether it blocks us like Columbia, then a PageUp reader |
-| University of St. Gallen | `todo-stgallen` | Own portal (jobs.unisg.ch), script-built list | Script-built list, no sitemap; job pages are /offene-stellen/<title>/<id>. Needs its data address found with a browser |
-| University of Zurich | `todo-zurich` | Own portal (jobs.uzh.ch), script-built list | Lists about 127 vacancies with script and has no sitemap; needs its data address found with a browser |
-| École Polytechnique (LIX) | `todo-colepolytechnique` | Not identified | Identify the hiring system (a short research task), then a reader |
+| Syracuse University | `todo-syracuse` | PeopleAdmin (sujobopps.com) | robots.txt disallows all automated access, so it is not read. Ask Syracuse HR for a feed |
+| University College Dublin | `todo-collegedublin` | CoreHR (my.corehr.com) | ucd.ie answers HTTP 403 to automated requests. Ask UCD to allow CSSJobsBot |
+| University of Mannheim | `todo-mannheim` | Own site, PDF notices | About 40 jobs, each a PDF linked from the Stellenanzeigen page. Needs a PDF reader |
+| University of Michigan | `ifo-michigan` | Interfolio (faculty) | No public feed; its robots.txt denies automated access |
+| University of Oregon | `pageup-oregon` | PageUp | The list opens but every job page and the RSS feed answer the HTTP 202 bot challenge. Ask Oregon to allow CSSJobsBot |
+| École Polytechnique (LIX) | `todo-colepolytechnique` | No central portal | No careers portal found on polytechnique.edu; research posts mostly go to emploi.cnrs.fr and lab pages |
 
 ---
 

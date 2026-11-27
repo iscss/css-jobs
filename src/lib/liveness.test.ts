@@ -8,6 +8,8 @@ import {
   linkCheckAction,
   oracleDetailUrl,
   classifyOracle,
+  tugrazApiUrl,
+  classifyTugraz,
 } from '../../supabase/functions/_shared/liveness';
 
 const now = new Date('2026-10-26T00:00:00Z');
@@ -380,5 +382,61 @@ describe('a closing date without a time', () => {
   it('closes it the next day, and still honours a real closing time', () => {
     expect(run('2026-11-27', '2026-11-28T00:30:00Z')).toBe('closed');
     expect(run('2026-11-27T12:00:00Z', '2026-11-27T13:00:00Z')).toBe('closed');
+  });
+});
+
+describe('removed postings that still answer 200 on Taleo, Academic Jobs Online and Copenhagen', () => {
+  const taleo = 'https://uni.taleo.net/careersection/ex_faculty/jobdetail.ftl?job=1&lang=en';
+  const frame = '<input id="ftlpageid" value="requisitionDescriptionPage"><p>Careers at the university for everyone here.</p>';
+  const check = (url: string, body: string) =>
+    classifyPage({ requestedUrl: url, finalUrl: url, status: 200, body, now });
+
+  it('calls a Taleo page with no JobPosting removed, and one with it live', () => {
+    expect(check(taleo, frame)).toMatchObject({ status: 'dead' });
+    expect(check(taleo, `${frame}${ld(',"title":"Lecturer"')}`)).toEqual({ status: 'live', reason: 'ok' });
+  });
+
+  it('does not call a Taleo "career section unavailable" page removed', () => {
+    expect(check(taleo, '<title>Career Section Unavailable</title><p>Please try again later today.</p>').status)
+      .toBe('live');
+  });
+
+  it('calls an Academic Jobs Online address that shows the job list removed', () => {
+    const url = 'https://academicjobsonline.org/ajo/jobs/99999999';
+    expect(check(url, '<p>Job Listings for all of the employers here</p>')).toMatchObject({ status: 'dead' });
+    expect(check(url, `<p>Position</p>${ld(',"title":"Postdoc"')}`).status).toBe('live');
+  });
+
+  it('calls a Copenhagen address that shows the "All vacancies" list removed', () => {
+    const url = 'https://employment.ku.dk/all-vacancies/?show=1';
+    expect(check(url, '<h1>\n  All vacancies\n</h1><p>Search all vacancies here</p>')).toMatchObject({ status: 'dead' });
+    expect(check(url, '<h1>PhD position in Geoscience</h1><p>Apply to join our team now.</p>').status).toBe('live');
+  });
+});
+
+describe('TU Graz links', () => {
+  const id = '414e2d9b-318c-4c2a-b3e8-0d419a0e8831';
+  it('maps a public page to its JSON address, and ignores other sites', () => {
+    expect(tugrazApiUrl(`https://jobs.tugraz.at/en/jobs/${id}`))
+      .toBe(`https://personal.tugraz.at/api/erec/public/job-postings/${id}`);
+    expect(tugrazApiUrl('https://jobs.tugraz.at/en/')).toBeNull();
+    expect(tugrazApiUrl('https://example.org/jobs/' + id)).toBeNull();
+  });
+
+  it('judges the JSON answer: gone, unpublished, closed, open', () => {
+    expect(classifyTugraz(404, null)).toMatchObject({ status: 'dead' });
+    expect(classifyTugraz(500, null).status).toBe('unknown');
+    expect(classifyTugraz(200, { is_published: false })).toMatchObject({ status: 'dead' });
+    expect(classifyTugraz(200, { application_deadline: '2026-10-25' }, now)).toMatchObject({ status: 'closed' });
+    expect(classifyTugraz(200, { application_deadline: '2026-10-26' }, now)).toEqual({ status: 'live', reason: 'ok' });
+    expect(classifyTugraz(200, {}, now).status).toBe('live');
+    expect(classifyTugraz(200, null, now).status).toBe('unknown');
+  });
+
+  it('asks the JSON service, not the page, in checkListing', async () => {
+    const fetchFn = vi.fn().mockResolvedValue({ status: 404, url: '', json: async () => ({}), text: async () => '' });
+    const result = await checkListing(`https://jobs.tugraz.at/en/jobs/${id}`, fetchFn as never, now);
+    expect(result.status).toBe('dead');
+    expect(fetchFn.mock.calls[0][0]).toContain('/api/erec/public/job-postings/');
   });
 });

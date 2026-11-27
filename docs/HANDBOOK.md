@@ -349,7 +349,7 @@ production-only columns (see [Schema drift](#migrations-and-schema-drift)).
 
 Done for production on 2026-11-04. To repeat it, or to set up another project:
 
-1. **Apply the migrations** with `psql` (not `db push`), `20260803000000` to `20260826000000`, in order. These change the live database, so review them first.
+1. **Apply the migrations** with `psql` (not `db push`), `20260803000000` to `20260827000000`, in order. These change the live database, so review them first.
 2. **Deploy the functions** (above).
 3. **Set the secrets:** `ANTHROPIC_API_KEY` and a `SCHEDULER_SECRET` made with `openssl rand -hex 32`.
 4. **Tell the scheduler where to call**, with the same `SCHEDULER_SECRET` value:
@@ -551,6 +551,7 @@ Always have a new admin **verify first and request admin themselves** (or be gra
 | `20260824000000_switch_on_uc_sources` | UC Berkeley, Davis, San Diego and UCLA switched on with the new University of California reader (deploy `ingest-jobs` first) |
 | `20260825000000_switch_on_more_university_sources` | William & Mary, Indiana, Rutgers, ETH Zurich, IT University of Copenhagen and WZB switched on; notes recorded for the institutions investigated but not yet readable |
 | `20260826000000_switch_on_more_sources_and_jobs_ac_uk` | Houston, Colorado Boulder, Konstanz and Max Planck (Human Development) switched on; a new `jobsacuk` source reads Oxford, Cambridge, King's, LSE, Bristol and Loughborough from jobs.ac.uk; notes for institutions still unreadable |
+| `20260827000000_switch_on_thirteen_more_sources` | Zurich, Bern UAS, St. Gallen, Groningen, Bremen, Düsseldorf, Amsterdam, Copenhagen, MIT, Temple, TU Graz, Boston and Illinois (partly) switched on with the new `prospective`, `taleo` and `tugraz` readers; notes for what is still unreadable. Deploy `ingest-jobs` and `check-listings` first |
 
 All were applied to production with `psql`. A new migration needs a new, later timestamp.
 

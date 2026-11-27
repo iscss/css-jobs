@@ -987,8 +987,13 @@ export async function ucRecruitAdapter(
 // address; then `slug_terms` (keep addresses whose title contains one), `priority_terms` (open
 // those first), `max_pages` (pages to open, default max_jobs), `delay_ms` (pause between requests,
 // default 250; set it to a site's robots.txt Crawl-delay), `title_from: "list"` (use the link
-// text on the list page as the title, for sites whose job pages share one banner heading) and `employers` (keep a job only if
-// its JobPosting's hiringOrganization contains one of these words) apply. A sitemap is how
+// text on the list page as the title, for sites whose job pages share one banner heading) or
+// `title_from: "last-h1"` (the last <h1> on the page, for sites whose first heading is the section
+// name), `newest_first` (open the addresses with the highest number first: sitemaps usually list
+// the oldest jobs first), `deadline_pattern` (a regular expression whose first group is the
+// closing date written as 18.12.2026, 18/12/2026 or 2026-12-18, for sites that give it as text
+// in another language: it is rewritten as "Application deadline: 2026-12-18.") and `employers`
+// (keep a job only if its JobPosting's hiringOrganization contains one of these words) apply. A sitemap is how
 // jobs.ac.uk (UK universities, many employers on one site) and Houston are read.
 // Closed jobs answer 404 or redirect, so the ordinary link check catches them.
 function absoluteUrl(href: string, base: string): string | null {
@@ -999,6 +1004,22 @@ function absoluteUrl(href: string, base: string): string | null {
   } catch {
     return null;
   }
+}
+
+// "18.12.2026", "18/12/2026" or "2026-12-18" as YYYY-MM-DD; null when it is not a real date.
+export function dayMonthYear(text: string): string | null {
+  const iso = text.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+  const eu = text.match(/(\d{1,2})[./](\d{1,2})[./](\d{4})/);
+  const [year, month, day] = iso
+    ? [iso[1], iso[2], iso[3]].map(Number)
+    : eu
+    ? [eu[3], eu[2], eu[1]].map(Number)
+    : [0, 0, 0];
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (!year || date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) {
+    return null;
+  }
+  return date.toISOString().slice(0, 10);
 }
 
 // The element with this id, found by counting opening and closing tags of its kind.
@@ -1091,6 +1112,9 @@ export async function htmlJobsAdapter(
   const slugTerms = lower(config.slug_terms);
   const priorityTerms = lower(config.priority_terms);
   const employers = lower(config.employers);
+  const deadlinePattern = config.deadline_pattern ? new RegExp(String(config.deadline_pattern), 'i') : null;
+  const numberIn = (link: string) =>
+    Math.max(0, ...[...link.matchAll(/\d+/g)].map((digits) => Number(digits[0])).filter((n) => n < 1e9));
   const slugOf = (link: string) => {
     try {
       return decodeURIComponent(new URL(link).pathname.replace(/\/+$/, '').split('/').pop() ?? '')
@@ -1137,9 +1161,12 @@ export async function htmlJobsAdapter(
   // Jobs about the community's subjects first, so the page limit does not cut them off.
   const isPriority = ([, text]: [string, string]) =>
     priorityTerms.some((term) => text.toLowerCase().includes(term));
+  const ordered = config.newest_first
+    ? [...wanted].sort((a, b) => numberIn(b[0]) - numberIn(a[0]))
+    : wanted;
   const links = (priorityTerms.length
-    ? [...wanted.filter(isPriority), ...wanted.filter((entry) => !isPriority(entry))]
-    : wanted
+    ? [...ordered.filter(isPriority), ...ordered.filter((entry) => !isPriority(entry))]
+    : ordered
   ).slice(0, Number(config.max_pages ?? maxJobs));
 
   const jobs: RawJob[] = [];
@@ -1165,13 +1192,19 @@ export async function htmlJobsAdapter(
         .toLowerCase();
       if (!employers.some((word) => name.includes(word))) continue;
     }
-    const heading = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1];
+    const headings = [...html.matchAll(/<h1[^>]*>([\s\S]*?)<\/h1>/gi)].map((match) => match[1]);
+    const heading = config.title_from === 'last-h1' ? headings[headings.length - 1] : headings[0];
     const title = config.title_from === 'list' && listText
       ? listText
       : stripHtml(posting?.title ?? heading ?? listText).trim() || listText;
     const description = htmlJobText(html, config.content_id ? String(config.content_id) : undefined);
     if (!title || !description) continue;
-    const deadline = posting?.validThrough ? new Date(posting.validThrough) : null;
+    let deadline = posting?.validThrough ? new Date(posting.validThrough) : null;
+    if (!deadline && deadlinePattern) {
+      const written = description.match(deadlinePattern)?.[1];
+      const day = written ? dayMonthYear(written) : null;
+      deadline = day ? new Date(`${day}T00:00:00Z`) : null;
+    }
     jobs.push({
       title,
       institution,
@@ -1194,6 +1227,265 @@ export async function htmlJobsAdapter(
   return jobs;
 }
 
+// Prospective (prospective.ch) career centres: the University of Zurich and other Swiss employers.
+// The public career page is a script app that reads this JSON address, which is the feed_url:
+//   https://ohws.prospective.ch/public/v1/medium/<number>/jobs
+// (find <number> in the iframe address "ohws.prospective.ch/public/v2/careercenter/<number>/").
+// Each job carries its text in a few fields; its public page is `links.directlink`, which answers
+// 404 once the job is gone. config: `institution` (required), `lang` (default "en"),
+// `page_size` (default 50), `max_jobs` (default 150), `location` (used when the job has none).
+const PROSPECTIVE_TEXT_FIELDS = [
+  'sza_department',
+  'sza_workplace',
+  'sza_introduction',
+  'sza_tasks',
+  'sza_requirements',
+  'sza_benefits',
+];
+
+export async function prospectiveAdapter(
+  feedUrl: string,
+  config: Record<string, unknown>,
+): Promise<RawJob[]> {
+  const institution = String(config.institution ?? '');
+  if (!institution) throw new Error('prospective source needs config.institution');
+  const lang = String(config.lang ?? 'en');
+  const pageSize = Number(config.page_size ?? 50);
+  const maxJobs = Number(config.max_jobs ?? 150);
+
+  const jobs: RawJob[] = [];
+  let total = Infinity;
+  for (let offset = 0; offset < total && jobs.length < maxJobs; offset += pageSize) {
+    const response = await fetch(`${feedUrl}?lang=${lang}&offset=${offset}&limit=${pageSize}`, {
+      headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
+    });
+    if (response.status !== 200) throw new Error(`Prospective returned HTTP ${response.status}`);
+    const data = await response.json() as {
+      total?: number;
+      jobs?: Array<{
+        id?: string;
+        title?: string;
+        start_date?: string;
+        end_date?: string;
+        links?: { directlink?: string };
+        szas?: Record<string, unknown>;
+      }>;
+    };
+    if (!Array.isArray(data.jobs)) throw new Error('Prospective answer had no jobs list');
+    total = Number(data.total ?? data.jobs.length);
+    if (!data.jobs.length) break;
+    for (const job of data.jobs) {
+      const link = job.links?.directlink;
+      const title = stripHtml(job.title ?? '').trim();
+      if (!link || !title) continue;
+      const fields = job.szas ?? {};
+      const text = PROSPECTIVE_TEXT_FIELDS
+        .map((key) => (typeof fields[key] === 'string' ? stripHtml(fields[key] as string).trim() : ''))
+        .filter(Boolean)
+        .join('\n\n');
+      if (!text) continue;
+      const end = job.end_date ? new Date(job.end_date) : null;
+      const place = [fields['sza_location.city'], fields['sza_location.country']]
+        .filter((part): part is string => typeof part === 'string' && part.length > 0)
+        .join(', ');
+      jobs.push({
+        title,
+        institution,
+        location: place || String(config.location ?? 'See posting'),
+        description: end && !Number.isNaN(end.getTime())
+          ? `Application deadline: ${end.toISOString().slice(0, 10)}.\n\n${text}`
+          : text,
+        jobType: title,
+        sourceUrl: link,
+        sourceJobId: job.id ? String(job.id) : link,
+        applicationUrl: link,
+        postedAt: job.start_date,
+      });
+      if (jobs.length >= maxJobs) break;
+    }
+  }
+  return jobs;
+}
+
+// Oracle Taleo career sections (Temple University). The section's own search page is a script
+// app, but it reads a JSON address that anyone can call, and each job has a page with a JobPosting
+// block. feed_url is the section's search page:
+//   https://<host>/careersection/<section>/jobsearch.ftl
+// config: `institution` (required), `portal` (required: the number after "portal=" in that page's
+// source), `max_jobs` (default 60), `location`, `delay_ms` (default 300). A removed job's page
+// answers 200 but has no JobPosting block, which the link check treats as removed.
+export async function taleoAdapter(
+  feedUrl: string,
+  config: Record<string, unknown>,
+): Promise<RawJob[]> {
+  const institution = String(config.institution ?? '');
+  if (!institution) throw new Error('taleo source needs config.institution');
+  const portal = String(config.portal ?? '');
+  if (!/^\d+$/.test(portal)) throw new Error('taleo source needs config.portal (digits)');
+  const url = new URL(feedUrl);
+  const section = url.pathname.match(/\/careersection\/([^/]+)\//i)?.[1];
+  if (!section) throw new Error('taleo feed_url must look like https://host/careersection/<section>/jobsearch.ftl');
+  const maxJobs = Number(config.max_jobs ?? 60);
+  const delay = Number(config.delay_ms ?? 300);
+
+  const filters = (ids: string[]) => ({ searchFilterSelections: ids.map((id) => ({ id, selectedValues: [] })) });
+  const search = (pageNo: number) => ({
+    multilineEnabled: false,
+    sortingSelection: { sortBySelectionParam: '3', ascendingSortingOrder: 'false' },
+    fieldData: { fields: { KEYWORD: '', LOCATION: '' }, valid: true },
+    filterSelectionParam: filters(['POSTING_DATE', 'LOCATION', 'JOB_FIELD', 'JOB_TYPE', 'JOB_SCHEDULE']),
+    advancedSearchFiltersSelectionParam: filters([
+      'ORGANIZATION', 'LOCATION', 'JOB_FIELD', 'JOB_NUMBER', 'URGENT_JOB', 'EMPLOYEE_STATUS',
+      'STUDY_LEVEL', 'WILL_TRAVEL', 'JOB_SHIFT',
+    ]),
+    pageNo,
+  });
+
+  const requisitions: Array<{ contestNo: string; title: string }> = [];
+  let total = Infinity;
+  for (let pageNo = 1; requisitions.length < total && requisitions.length < maxJobs; pageNo++) {
+    const response = await fetch(`${url.origin}/careersection/rest/jobboard/searchjobs?lang=en&portal=${portal}`, {
+      method: 'POST',
+      headers: {
+        'User-Agent': USER_AGENT,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        tz: 'GMT-05:00', // Taleo answers HTTP 500 without a time zone header
+      },
+      body: JSON.stringify(search(pageNo)),
+    });
+    if (response.status !== 200) throw new Error(`Taleo returned HTTP ${response.status}`);
+    const data = await response.json() as {
+      requisitionList?: Array<{ contestNo?: string; column?: string[] }>;
+      pagingData?: { totalCount?: number };
+      careerSectionUnAvailable?: boolean;
+    };
+    if (data.careerSectionUnAvailable) throw new Error('Taleo career section is unavailable');
+    if (!Array.isArray(data.requisitionList)) throw new Error('Taleo answer had no requisition list');
+    total = Number(data.pagingData?.totalCount ?? data.requisitionList.length);
+    if (!data.requisitionList.length) break;
+    for (const item of data.requisitionList) {
+      const contestNo = item.contestNo ?? item.column?.[1];
+      const title = (item.column?.[0] ?? '').trim();
+      if (contestNo && title) requisitions.push({ contestNo: String(contestNo), title });
+    }
+    await sleep(delay);
+  }
+
+  const jobs: RawJob[] = [];
+  let lastProblem = '';
+  for (const { contestNo, title } of requisitions.slice(0, maxJobs)) {
+    const link = `${url.origin}/careersection/${section}/jobdetail.ftl?job=${encodeURIComponent(contestNo)}&lang=en`;
+    try {
+      const page = await fetch(link, { headers: { 'User-Agent': USER_AGENT, Accept: 'text/html' } });
+      if (page.status !== 200) {
+        lastProblem = `HTTP ${page.status}`;
+        continue;
+      }
+      const posting = jobPostingFromHtml(await page.text());
+      const description = posting?.description ? stripHtml(posting.description) : '';
+      if (!description) {
+        lastProblem = 'job page had no JobPosting description';
+        continue;
+      }
+      const deadline = posting?.validThrough ? new Date(posting.validThrough) : null;
+      jobs.push({
+        title: stripHtml(posting?.title ?? title).trim() || title,
+        institution,
+        location: jobPostingLocation(posting) ?? String(config.location ?? 'See posting'),
+        description: deadline && !Number.isNaN(deadline.getTime())
+          ? `Application deadline: ${deadline.toISOString().slice(0, 10)}.\n\n${description}`
+          : description,
+        jobType: title,
+        sourceUrl: link,
+        sourceJobId: contestNo,
+        applicationUrl: link,
+        postedAt: posting?.datePosted,
+      });
+    } catch (error) {
+      lastProblem = error instanceof Error ? error.message : 'request failed';
+    }
+    await sleep(delay);
+  }
+  if (!jobs.length && requisitions.length && lastProblem) {
+    throw new Error(`Taleo: none of ${requisitions.length} job pages could be read (last: ${lastProblem})`);
+  }
+  return jobs;
+}
+
+// TU Graz's job portal (jobs.tugraz.at) is a script app on a public JSON service. feed_url is the
+// list: https://personal.tugraz.at/api/erec/public/job-postings, and each job is at the same
+// address plus "/<id>". The public page for a job is https://jobs.tugraz.at/en/jobs/<id>, which
+// answers 200 for any id, so the link check asks the JSON service instead (see liveness.ts).
+// config: `institution` (required), `location` (default Graz, Austria), `max_jobs` (default 60).
+const TUGRAZ_TEXT_FIELDS = [
+  'organisational_unit',
+  'position_tasks',
+  'desired_qualification',
+  'admission_requirements',
+  'job_benefits',
+  'employer_description',
+];
+
+export async function tugrazAdapter(
+  feedUrl: string,
+  config: Record<string, unknown>,
+): Promise<RawJob[]> {
+  const institution = String(config.institution ?? '');
+  if (!institution) throw new Error('tugraz source needs config.institution');
+  const maxJobs = Number(config.max_jobs ?? 60);
+  const delay = Number(config.delay_ms ?? 300);
+  const get = (url: string) =>
+    fetch(url, { headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' } });
+
+  const response = await get(feedUrl);
+  if (response.status !== 200) throw new Error(`TU Graz list returned HTTP ${response.status}`);
+  const list = await response.json() as Array<{ id?: string }>;
+  if (!Array.isArray(list)) throw new Error('TU Graz list was not a list of jobs');
+
+  const jobs: RawJob[] = [];
+  let lastProblem = '';
+  for (const item of list.slice(0, maxJobs)) {
+    if (!item.id) continue;
+    try {
+      const detail = await get(`${feedUrl.replace(/\/+$/, '')}/${item.id}`);
+      if (detail.status !== 200) {
+        lastProblem = `HTTP ${detail.status}`;
+        continue;
+      }
+      const job = await detail.json() as Record<string, unknown>;
+      if (job.is_published === false) continue;
+      const title = stripHtml(String(job.job_title ?? '')).trim();
+      const text = TUGRAZ_TEXT_FIELDS
+        .map((key) => (typeof job[key] === 'string' ? stripHtml(job[key] as string).trim() : ''))
+        .filter(Boolean)
+        .join('\n\n');
+      if (!title || !text) continue;
+      const deadline = dayMonthYear(String(job.application_deadline ?? ''));
+      const link = `https://jobs.tugraz.at/en/jobs/${item.id}`;
+      jobs.push({
+        title,
+        institution,
+        location: String(config.location ?? 'Graz, Austria'),
+        description: deadline ? `Application deadline: ${deadline}.\n\n${text}` : text,
+        jobType: String(job.job_profile ?? title),
+        sourceUrl: link,
+        sourceJobId: item.id,
+        applicationUrl: link,
+        postedAt: typeof job.publish_from === 'string' ? job.publish_from : undefined,
+      });
+    } catch (error) {
+      lastProblem = error instanceof Error ? error.message : 'request failed';
+    }
+    await sleep(delay);
+  }
+  if (!jobs.length && list.length && lastProblem) {
+    throw new Error(`TU Graz: none of ${list.length} jobs could be read (last: ${lastProblem})`);
+  }
+  return jobs;
+}
+
 export const ADAPTERS: Record<
   string,
   (feedUrl: string, config: Record<string, unknown>) => Promise<RawJob[]>
@@ -1209,4 +1501,7 @@ export const ADAPTERS: Record<
   'successfactors': successFactorsAdapter,
   'uc-recruit': ucRecruitAdapter,
   'html-jobs': htmlJobsAdapter,
+  'prospective': prospectiveAdapter,
+  'taleo': taleoAdapter,
+  'tugraz': tugrazAdapter,
 };

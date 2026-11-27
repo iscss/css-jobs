@@ -107,6 +107,31 @@ function removedByRedirect(requested: URL, final: URL): string | null {
   return null;
 }
 
+// Some systems answer 200 for a job that is gone and show something else instead. What they show
+// instead is the signal, and it differs per system:
+//  - Taleo (/careersection/<section>/jobdetail.ftl): the page frame without a JobPosting block (a
+//    live job always has one). Only judged on the job-description page, so an unavailable career
+//    section is never read as "removed".
+//  - Academic Jobs Online (/ajo/jobs/<id>): the list of all jobs, with no JobPosting block.
+//  - University of Copenhagen (/all-vacancies/?show=<id>): the "All vacancies" list page.
+function removedByContent(requestedUrl: string, body: string): string | null {
+  const hasPosting = /"@type"\s*:\s*"JobPosting"/.test(body);
+  if (
+    /\/careersection\/[^/]+\/jobdetail\.ftl/i.test(requestedUrl) &&
+    /requisitionDescriptionPage/.test(body) && !hasPosting
+  ) {
+    return 'job page has no posting (removed)';
+  }
+  if (/^https:\/\/academicjobsonline\.org\/ajo\/jobs\/\d+/i.test(requestedUrl) && !hasPosting) {
+    return 'page shows the job list instead of the job (removed)';
+  }
+  if (/^https:\/\/employment\.ku\.dk\/all-vacancies\/\?show=\d+/i.test(requestedUrl)) {
+    const heading = body.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1]?.replace(/<[^>]+>|\s+/g, ' ').trim();
+    if (heading && /^all vacancies$/i.test(heading)) return 'page shows the vacancy list instead of the job (removed)';
+  }
+  return null;
+}
+
 export function classifyPage(input: {
   requestedUrl: string;
   finalUrl: string;
@@ -141,6 +166,9 @@ export function classifyPage(input: {
   } catch {
     // Unparseable URL: fall through to the page checks.
   }
+
+  const gone = removedByContent(requestedUrl, body);
+  if (gone) return { status: 'dead', reason: gone };
 
   const closes = finalDate(visibleText(body)) ?? validThrough(body);
   if (closes && closes.getTime() < now.getTime()) {
@@ -320,6 +348,32 @@ export function classifyOracle(
   return { status: 'live', reason: 'ok' };
 }
 
+// TU Graz's job pages (jobs.tugraz.at/en/jobs/<id>) are a script app that answers 200 for any id,
+// so ask the public JSON service behind it, which answers 404 for a job that is gone.
+export function tugrazApiUrl(url: string): string | null {
+  const id = url.match(/^https:\/\/jobs\.tugraz\.at\/(?:[a-z]{2}\/)?jobs\/([0-9a-f-]{36})/i)?.[1];
+  return id ? `https://personal.tugraz.at/api/erec/public/job-postings/${id}` : null;
+}
+
+export function classifyTugraz(
+  status: number,
+  json: unknown,
+  now: Date = new Date(),
+): LinkCheck {
+  if (status === 404 || status === 410) return { status: 'dead', reason: `HTTP ${status}` };
+  if (status !== 200) return { status: 'unknown', reason: `HTTP ${status}` };
+  const job = json as { is_published?: boolean; application_deadline?: string } | null;
+  if (!job || typeof job !== 'object') return { status: 'unknown', reason: 'no posting data returned' };
+  if (job.is_published === false) return { status: 'dead', reason: 'no longer published' };
+  const day = job.application_deadline?.match(/^\d{4}-\d{2}-\d{2}/)?.[0];
+  // The deadline is a calendar day, so the job is open until that day ends.
+  const ends = day ? new Date(`${day}T23:59:59Z`) : null;
+  if (ends && !Number.isNaN(ends.getTime()) && ends.getTime() < now.getTime()) {
+    return { status: 'closed', reason: `closing date passed (${day})` };
+  }
+  return { status: 'live', reason: 'ok' };
+}
+
 export type LinkAction = 'delete' | 'hide' | 'record';
 
 /**
@@ -380,6 +434,23 @@ export async function checkListing(
         }
       }
       return classifyOracle(response.status, json, now);
+    }
+
+    const tugraz = tugrazApiUrl(url);
+    if (tugraz) {
+      const response = await fetchFn(tugraz, {
+        headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
+        signal: AbortSignal.timeout(15000),
+      });
+      let json: unknown = null;
+      if (response.status === 200) {
+        try {
+          json = await response.json();
+        } catch {
+          return { status: 'unknown', reason: 'unreadable response' };
+        }
+      }
+      return classifyTugraz(response.status, json, now);
     }
 
     const response = await fetchWithRetry(fetchFn, url, {

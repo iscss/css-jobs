@@ -7,6 +7,7 @@
 //   npx tsx scripts/test-all-sources.mts sources.json --only wd-brown,sf-duke
 //   npx tsx scripts/test-all-sources.mts sources.json --save before.json   # keep the result
 //   npx tsx scripts/test-all-sources.mts sources.json --compare before.json  # show what changed
+//   npx tsx scripts/test-all-sources.mts sources.json --only a --all-links    # link-check every job, not three
 //
 // Per source it prints: jobs fetched, how many passed the importer's validation, how many were
 // stale or skipped, and whether up to three sample job links are still "live". It does not call
@@ -61,7 +62,8 @@ async function worker() {
           else r.other!++;
         }
       }
-      for (const job of jobs.slice(0, 3)) {
+      // --all-links checks every job's address, to prove no live job is ever called removed.
+      for (const job of args.includes('--all-links') ? jobs : jobs.slice(0, 3)) {
         const check = await checkListing(job.sourceUrl);
         r.links!.push(check.status === 'live' ? 'live' : `${check.status}: ${check.reason}`);
       }

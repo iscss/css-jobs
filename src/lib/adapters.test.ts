@@ -17,6 +17,10 @@ import {
   comsesAdapter,
   workdayAdapter,
   oracleRecruitingAdapter,
+  prospectiveAdapter,
+  taleoAdapter,
+  tugrazAdapter,
+  dayMonthYear,
 } from '../../supabase/functions/_shared/adapters.ts';
 
 // A trimmed copy of a real jobRxiv item, including the CDATA wrapping and the
@@ -1049,5 +1053,226 @@ describe('htmlJobsAdapter', () => {
     const graph = `<script type="application/ld+json">{"@graph":[{"@type":"WebPage"},{"@type":"JobPosting","title":"T"}]}</script>`;
     expect(jobPostingFromHtml(graph)?.title).toBe('T');
     expect(jobPostingFromHtml('<script type="application/ld+json">not json</script>')).toBeNull();
+  });
+});
+
+describe('htmlJobsAdapter options for German-language and sitemap sites', () => {
+  const FEED = 'https://uni.example/jobs';
+  const BASE = { institution: 'Example University', link_pattern: '/job/\\d+', delay_ms: 0 };
+  const text = (body: string) => Promise.resolve(new Response(body, { status: 200 }));
+  const mock = (handler: (url: string) => Promise<Response>) => {
+    const fn = vi.fn((url: string) => handler(url));
+    vi.stubGlobal('fetch', fn);
+    return fn;
+  };
+  const jobPage = (title: string, extra = '') =>
+    `<html><h1>Offene Stellen</h1><main><h1>${title}</h1><p>Kennziffer A1 ${extra} Wir suchen eine Person fuer ein Forschungsprojekt zu Netzwerken.</p></main></html>`;
+
+  it('takes the last heading as the title with title_from "last-h1"', async () => {
+    mock((url) =>
+      url === FEED ? text('<a href="/job/4">x</a>') : text(jobPage('Wissenschaftliche:r Mitarbeiter:in')),
+    );
+    const [job] = await htmlJobsAdapter(FEED, { ...BASE, title_from: 'last-h1' });
+    expect(job.title).toBe('Wissenschaftliche:r Mitarbeiter:in');
+    const [first] = await htmlJobsAdapter(FEED, BASE);
+    expect(first.title).toBe('Offene Stellen');
+  });
+
+  it('writes a day.month.year deadline from deadline_pattern as an ISO deadline line first', async () => {
+    mock((url) =>
+      url === FEED ? text('<a href="/job/4">x</a>') : text(jobPage('Stelle', 'Bewerbungsfrist: 18.12.2026')),
+    );
+    const [job] = await htmlJobsAdapter(FEED, { ...BASE, deadline_pattern: 'Bewerbungsfrist:?\\s*([0-9./]{8,10})' });
+    expect(job.description.startsWith('Application deadline: 2026-12-18.')).toBe(true);
+    const [none] = await htmlJobsAdapter(FEED, BASE);
+    expect(none.description).not.toContain('Application deadline');
+  });
+
+  it('ignores a deadline that is not a real date', async () => {
+    mock((url) =>
+      url === FEED ? text('<a href="/job/4">x</a>') : text(jobPage('Stelle', 'Bewerbungsfrist: 45.13.2026')),
+    );
+    const [job] = await htmlJobsAdapter(FEED, { ...BASE, deadline_pattern: 'Bewerbungsfrist:?\\s*([0-9./]{8,10})' });
+    expect(job.description).not.toContain('Application deadline');
+  });
+
+  it('opens the highest-numbered addresses first with newest_first', async () => {
+    const sitemap = `<urlset>${[101, 999, 500, 7].map((n) => `<url><loc>https://uni.example/job/${n}</loc></url>`).join('')}</urlset>`;
+    const fn = mock((url) => (url === FEED ? text(sitemap) : text(jobPage(`Job ${url.split('/').pop()}`))));
+    const jobs = await htmlJobsAdapter(FEED, { ...BASE, newest_first: true, max_pages: 2 });
+    expect(jobs.map((j) => j.sourceUrl)).toEqual(['https://uni.example/job/999', 'https://uni.example/job/500']);
+    expect(fn).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe('dayMonthYear', () => {
+  it('reads day.month.year, day/month/year and ISO dates', () => {
+    expect(dayMonthYear('18.12.2026')).toBe('2026-12-18');
+    expect(dayMonthYear('1.2.2027')).toBe('2027-02-01');
+    expect(dayMonthYear('18/12/2026')).toBe('2026-12-18');
+    expect(dayMonthYear('2026-12-18')).toBe('2026-12-18');
+  });
+  it('rejects dates that do not exist', () => {
+    expect(dayMonthYear('31.02.2026')).toBeNull();
+    expect(dayMonthYear('45.13.2026')).toBeNull();
+    expect(dayMonthYear('soon')).toBeNull();
+  });
+});
+
+describe('prospectiveAdapter', () => {
+  const FEED = 'https://ohws.prospective.example/public/v1/medium/1/jobs';
+  const job = (id: string, over: Record<string, unknown> = {}) => ({
+    id,
+    title: `Postdoc ${id}`,
+    start_date: '2026-11-01T00:00:00Z',
+    end_date: '2026-12-20T22:59:59Z',
+    links: { directlink: `https://jobs.example/job-vacancies/postdoc-${id}/key-${id}` },
+    szas: {
+      sza_introduction: '<p>Join our group studying social networks.</p>',
+      sza_tasks: '<ul><li>Analyse data</li></ul>',
+      'sza_location.city': 'Zurich',
+      'sza_location.country': 'Switzerland',
+    },
+    ...over,
+  });
+  const page = (jobs: unknown[], total: number) => Promise.resolve(new Response(JSON.stringify({ total, jobs }), { status: 200 }));
+
+  it('reads every page, with the deadline first and the text of each field', async () => {
+    const fn = vi.fn((url: string) =>
+      url.includes('offset=0') ? page([job('1'), job('2')], 3) : page([job('3')], 3)
+    );
+    vi.stubGlobal('fetch', fn);
+    const jobs = await prospectiveAdapter(FEED, { institution: 'Example University', page_size: 2 });
+    expect(jobs.map((j) => j.sourceJobId)).toEqual(['1', '2', '3']);
+    expect(jobs[0]).toMatchObject({
+      title: 'Postdoc 1',
+      location: 'Zurich, Switzerland',
+      sourceUrl: 'https://jobs.example/job-vacancies/postdoc-1/key-1',
+    });
+    expect(jobs[0].description.startsWith('Application deadline: 2026-12-20.')).toBe(true);
+    expect(jobs[0].description).toContain('social networks');
+    expect(jobs[0].description).toContain('Analyse data');
+    expect(fn).toHaveBeenCalledTimes(2);
+  });
+
+  it('skips a job with no public link or no text, and stops at max_jobs', async () => {
+    vi.stubGlobal('fetch', vi.fn(() => page([job('1', { links: {} }), job('2', { szas: {} }), job('3'), job('4')], 4)));
+    const jobs = await prospectiveAdapter(FEED, { institution: 'X', max_jobs: 1 });
+    expect(jobs.map((j) => j.sourceJobId)).toEqual(['3']);
+  });
+
+  it('fails clearly when the service errors or answers without a job list', async () => {
+    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response('no', { status: 503 }))));
+    await expect(prospectiveAdapter(FEED, { institution: 'X' })).rejects.toThrow('HTTP 503');
+    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response('{}', { status: 200 }))));
+    await expect(prospectiveAdapter(FEED, { institution: 'X' })).rejects.toThrow('no jobs list');
+    await expect(prospectiveAdapter(FEED, {})).rejects.toThrow('institution');
+  });
+});
+
+describe('taleoAdapter', () => {
+  const FEED = 'https://uni.taleo.example/careersection/ex_faculty/jobsearch.ftl?lang=en';
+  const CONFIG = { institution: 'Example University', portal: '123456', delay_ms: 0 };
+  const posting = (title: string, extra = '') =>
+    `<html><script type="application/ld+json">{"@type":"JobPosting","title":"${title}","description":"<p>${title} teaches and does research for the department.</p>","datePosted":"2026-11-20","jobLocation":[{"address":{"addressLocality":"Philadelphia","addressRegion":"Pennsylvania","addressCountry":"United States"}}]${extra}}</script></html>`;
+  const requisition = (contestNo: string, title: string) => ({ contestNo, column: [title, contestNo, '[]'] });
+
+  function mock(list: unknown, detail: (url: string) => Response) {
+    const fn = vi.fn((url: string, init?: RequestInit) =>
+      Promise.resolve(
+        url.includes('/rest/jobboard/searchjobs')
+          ? new Response(JSON.stringify(list), { status: 200 })
+          : detail(url),
+      ),
+    );
+    vi.stubGlobal('fetch', fn);
+    return fn;
+  }
+
+  it('lists requisitions with the portal and time zone, then reads each job page', async () => {
+    const fn = mock(
+      { requisitionList: [requisition('26001', 'Professor of Sociology'), requisition('26002', 'Lecturer')], pagingData: { totalCount: 2 } },
+      (url) => new Response(posting(url.includes('26001') ? 'Professor of Sociology' : 'Lecturer'), { status: 200 }),
+    );
+    const jobs = await taleoAdapter(FEED, CONFIG);
+    expect(jobs.map((j) => j.title)).toEqual(['Professor of Sociology', 'Lecturer']);
+    expect(jobs[0]).toMatchObject({
+      location: 'Philadelphia, Pennsylvania, United States',
+      sourceUrl: 'https://uni.taleo.example/careersection/ex_faculty/jobdetail.ftl?job=26001&lang=en',
+      sourceJobId: '26001',
+    });
+    const [listUrl, init] = fn.mock.calls[0] as [string, RequestInit];
+    expect(listUrl).toBe('https://uni.taleo.example/careersection/rest/jobboard/searchjobs?lang=en&portal=123456');
+    expect(init.method).toBe('POST');
+    expect((init.headers as Record<string, string>).tz).toBeDefined();
+  });
+
+  it('puts a posting deadline first when the job has one', async () => {
+    mock(
+      { requisitionList: [requisition('1', 'Lecturer')], pagingData: { totalCount: 1 } },
+      () => new Response(posting('Lecturer', ',"validThrough":"2027-02-01"'), { status: 200 }),
+    );
+    const [job] = await taleoAdapter(FEED, CONFIG);
+    expect(job.description.startsWith('Application deadline: 2027-02-01.')).toBe(true);
+  });
+
+  it('refuses bad setup, an unavailable section, and a site where no job page can be read', async () => {
+    await expect(taleoAdapter(FEED, { institution: 'X' })).rejects.toThrow('portal');
+    await expect(taleoAdapter('https://x.example/', { ...CONFIG })).rejects.toThrow('careersection');
+    mock({ requisitionList: [], careerSectionUnAvailable: true }, () => new Response('', { status: 200 }));
+    await expect(taleoAdapter(FEED, CONFIG)).rejects.toThrow('unavailable');
+    mock(
+      { requisitionList: [requisition('1', 'Lecturer')], pagingData: { totalCount: 1 } },
+      () => new Response('busy', { status: 503 }),
+    );
+    await expect(taleoAdapter(FEED, CONFIG)).rejects.toThrow('none of 1 job pages could be read');
+  });
+});
+
+describe('tugrazAdapter', () => {
+  const FEED = 'https://personal.tugraz.example/api/erec/public/job-postings';
+  const detail = (id: string, over: Record<string, unknown> = {}) => ({
+    id,
+    is_published: true,
+    job_title: `Stelle ${id}`,
+    organisational_unit: 'Institut fuer Soziologie',
+    position_tasks: '<p>Forschung zu sozialen Netzwerken.</p>',
+    desired_qualification: '<p>Doktorat.</p>',
+    application_deadline: '2026-11-30',
+    publish_from: '2026-10-07',
+    job_profile: 'Postdoc',
+    ...over,
+  });
+  function mock(list: unknown[], details: Record<string, unknown>) {
+    const fn = vi.fn((url: string) => {
+      if (url === FEED) return Promise.resolve(new Response(JSON.stringify(list), { status: 200 }));
+      const id = url.split('/').pop() as string;
+      return Promise.resolve(
+        details[id] ? new Response(JSON.stringify(details[id]), { status: 200 }) : new Response('', { status: 404 }),
+      );
+    });
+    vi.stubGlobal('fetch', fn);
+    return fn;
+  }
+  const CONFIG = { institution: 'Graz University of Technology', delay_ms: 0 };
+
+  it('reads each job from its detail address and builds the public page link', async () => {
+    mock([{ id: 'a' }, { id: 'b' }], { a: detail('a'), b: detail('b', { is_published: false }) });
+    const jobs = await tugrazAdapter(FEED, CONFIG);
+    expect(jobs).toHaveLength(1);
+    expect(jobs[0]).toMatchObject({
+      title: 'Stelle a',
+      location: 'Graz, Austria',
+      sourceUrl: 'https://jobs.tugraz.at/en/jobs/a',
+      postedAt: '2026-10-07',
+    });
+    expect(jobs[0].description.startsWith('Application deadline: 2026-11-30.')).toBe(true);
+    expect(jobs[0].description).toContain('sozialen Netzwerken');
+  });
+
+  it('fails when nothing can be read, and refuses a missing institution', async () => {
+    mock([{ id: 'a' }], {});
+    await expect(tugrazAdapter(FEED, CONFIG)).rejects.toThrow('none of 1 jobs could be read');
+    await expect(tugrazAdapter(FEED, {})).rejects.toThrow('institution');
   });
 });

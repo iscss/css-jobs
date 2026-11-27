@@ -90,7 +90,10 @@ first production run, and the boards investigated are in [SOURCES.md](SOURCES.md
 | `peopleadmin` | PeopleAdmin job sites (UNC Chapel Hill, Vermont, George Washington). Reads the site's Atom feed (`.../postings/search.atom?query=`), then each posting page for the description. Ignores the "No Positions Currently Open" placeholder a search with no results returns | `institution` (required); `search_terms`, `max_per_term` |
 | `successfactors` | SAP SuccessFactors career sites (Duke, Purdue, TU Delft, Vienna, Toronto). Reads the site's `sitemap.xml`, keeps jobs whose title contains one of `search_terms` (default: postdoc, PhD, professor, lecturer, research scientist and similar), then opens up to `max_jobs` (default 40) of those pages for the description, location and deadline. A site in another language needs its own title words in `search_terms` |
 | `uc-recruit` | University of California "AP Recruit" sites (Berkeley, Davis, San Diego, UCLA). `feed_url` is the campus's `/apply` address, which lists every open academic recruitment in one table. Rows about data, computing, the social sciences and research are opened first (up to `max_jobs`, default 40) and each page gives the description, dates and deadline |
-| `html-jobs` | Any career site that lists jobs on an HTML page and gives each job its own page (ETH Zurich, IT University of Copenhagen, WZB). `feed_url` is the list page. Config: `institution`, `link_pattern` (a regular expression for the job links), optional `content_id` (the element holding the advert text), `title_filter` (words), `exclude_pattern`, `location`, `max_jobs`, `extra_list_urls` (more list pages), `title_from: "list"`, and `delay_ms` (set it to a site's robots.txt Crawl-delay). If `feed_url` is a sitemap, the addresses are the list, and `slug_terms`, `priority_terms`, `max_pages` and `employers` (keep only jobs whose JobPosting employer contains one of the words) apply; that is how `jobsacuk` reads six UK universities from jobs.ac.uk. Uses a page's standard JobPosting markup when it has one. Only an HTTP 200 reply counts as a job page: a 202 is a bot challenge and is never imported. To add a site: open its list page, find what the job links have in common, set `link_pattern`, and run it with the importer's own test (`docs/INGESTION.md` how-to) |
+| `html-jobs` | Any career site that lists jobs on an HTML page and gives each job its own page (ETH Zurich, IT University of Copenhagen, WZB, St. Gallen, Groningen, Bremen, Düsseldorf, Amsterdam, Copenhagen, MIT, Boston and Illinois through Academic Jobs Online). `feed_url` is the list page. Config: `institution`, `link_pattern` (a regular expression for the job links), optional `content_id` (the element holding the advert text), `title_filter` (words), `exclude_pattern`, `location`, `max_jobs`, `extra_list_urls` (more list pages), `title_from` (`"list"` for the link text, `"last-h1"` when the first heading on the page is the section name), `deadline_pattern` (a regular expression whose first group is a closing date written day.month.year, as German and Dutch sites do) and `delay_ms` (set it to a site's robots.txt Crawl-delay). If `feed_url` is a sitemap, the addresses are the list, and `slug_terms`, `priority_terms`, `max_pages` `newest_first` (open the highest-numbered addresses first, because sitemaps list the oldest jobs first) and `employers` (keep only jobs whose JobPosting employer contains one of the words) apply; that is how `jobsacuk` reads six UK universities from jobs.ac.uk. Uses a page's standard JobPosting markup when it has one. Only an HTTP 200 reply counts as a job page: a 202 is a bot challenge and is never imported. To add a site: open its list page, find what the job links have in common, set `link_pattern`, and run it with the importer's own test (`docs/INGESTION.md` how-to) |
+| `prospective` | Swiss "Prospective" career centres (University of Zurich, Bern University of Applied Sciences). `feed_url` is `https://ohws.prospective.ch/public/v1/medium/<number>/jobs`, the JSON address the career page's script calls (the number is in the page's iframe address `.../careercenter/<number>/`). Reads every page of the list; the job's text comes from its fields (`sza_introduction`, `sza_tasks`, `sza_requirements`), the deadline from `end_date`. Config: `institution` (required), `lang`, `page_size`, `max_jobs`, `location` |
+| `taleo` | Oracle Taleo career sections (Temple). `feed_url` is the section's `jobsearch.ftl` address. Calls Taleo's JSON search (needs the `portal` number from that page's source and a time-zone header) and reads each job's page, which carries `JobPosting` markup. Config: `institution`, `portal` (required), `max_jobs`, `location` |
+| `tugraz` | The TU Graz job portal, through the JSON service behind it (`personal.tugraz.at/api/erec/public/job-postings`): a list, then each job by id. The public page `jobs.tugraz.at/en/jobs/<id>` is a script app that answers 200 for any id, so the link check also asks the JSON service. Config: `institution` (required), `location`, `max_jobs` |
 
 The sources the migrations create are in `20260803000000` (jobRxiv), `20260812000000` (CoMSES and the first Workday
 universities) and `20260816000000` (the university sources from the lab list).
@@ -201,7 +204,12 @@ many job-looking addresses the sitemap lists, and the repeated link shapes on th
 | `JPF12345` addresses, "AP Recruit" | `uc-recruit` | The `/apply` page is the list |
 | A sitemap of jobs, pages with `JobPosting` markup, or a list page that repeats one link shape | `html-jobs` | One reader, configured with a `link_pattern`; see its row in the adapters table |
 | An aggregator carries the employer (jobs.ac.uk for the UK) | `html-jobs` with `employers` | One source can cover several institutions; leave the institutions' own rows off or every job is imported twice |
-| CoreHR, Taleo, Interfolio, a list built by script, PDF notices | none yet | See "When a site cannot be read" below |
+| `ohws.prospective.ch`, `direktlink.prospective.ch`, an iframe "careercenter" | `prospective` | The number is in the iframe address; the list is `.../public/v1/medium/<number>/jobs` |
+| `taleo.net/careersection/<section>/` | `taleo` | Open the section's `jobsearch.ftl` and look for `portal=<digits>` in its source. The Taleo section name varies (Temple uses `tu_ex_faculty`, not `ex`) |
+| `academicjobsonline.org/ajo/<code>` | `html-jobs` | List page of one institution; links `/ajo/jobs/<id>`; its `robots.txt` asks for 5 seconds between requests |
+| A WordPress site with a `/vacature/` or `/job/` post type | `html-jobs` | `wp-sitemap.xml` or `<type>-sitemap.xml` lists the jobs (Groningen) |
+| An Angular or React page that shows no jobs | a reader for its JSON | Download the page's `main.*.js`, search it for the API address (`apiUrl`, `baseUrl`, a `/jobs?` call) and open its lazy chunks (`runtime.*.js` names them) for the routes (TU Graz, Zurich) |
+| CoreHR, PeopleSoft, Interfolio, PDF notices | none yet | See "When a site cannot be read" below |
 
 **3. Be polite.** Use the identified bot (the readers do). Obey `robots.txt`: a `Crawl-delay` becomes `delay_ms` in
 the config (Houston asks for 5 seconds, so it reads 15 jobs a night), and a disallowed path is never fetched. Keep one
@@ -213,6 +221,8 @@ call. **Never work around a bot challenge** (HTTP 202 or 403, "Just a moment"): 
 - `python3 scripts/list-sources.py sources.json`, then `npx tsx scripts/test-all-sources.mts sources.json --only <slug>`:
   runs the real reader, the importer's validation and a link check on three sample jobs. Look at the jobs themselves, not
   only the count: full descriptions, a sensible title, a location, a deadline.
+  Add `--all-links` to link-check every job it fetched instead of three: a rule that calls removed jobs "dead" by their
+  page content must never fire on a live one, and only checking them all proves it.
 - **Test removed jobs.** `npx tsx scripts/test-link-check.mts <a real job address> <a made-up one on the same site>`. The
   real one must be `live`, the made-up one `dead` or `closed`. Many sites answer 200 for a removed job and only redirect
   (SuccessFactors to `/errorpage/`, UC to the list, PeopleAdmin to `/postings`, ETH to its front page) or show a notice
@@ -247,17 +257,24 @@ SQL Editor, because a source switched on before its reader exists only logs "unk
 - A big employer lists a thousand jobs, mostly not academic: filter by the title in the address first, open the
   subject-word matches first, and cap the pages opened.
 - A shared aggregator source and the institutions' own rows must not both be on.
+- A **sitemap lists the oldest jobs first** (MIT). With a page cap you would only ever see the oldest: use `newest_first`.
+- **German and Dutch dates** ("Bewerbungsfrist: 18.12.2026") are not understood by the importer. Use `deadline_pattern`, which rewrites the date as an `Application deadline:` line; a date that does not exist (31.02.2026) is ignored.
+- A page's **first heading can be the section name** ("Offene Stellen"), not the job: use `title_from: "last-h1"`.
+- A sitemap can list **non-job pages** (HHU lists events and the login page): the `link_pattern` is what keeps them out.
+- A list page may accept **`limit` and `offset`** in its address (St. Gallen: `?limit=100` returns all 47 jobs in one request). Try it before writing paging code.
+- A site whose `robots.txt` disallows everything (Syracuse) is **not read**, and a bot challenge on the job pages only (Oregon: the list opens, the job pages answer 202) leaves nothing to read.
 
 **When a site cannot be read.** Say which of these it is in `config.note` and [SOURCES.md](SOURCES.md), so the next
 person does not repeat the investigation:
 
 | Cause | What to do |
 |-------|-----------|
-| Bot challenge or HTTP 403 (Princeton, Northwestern, Columbia, UMass, Harvard, GESIS, Koç, QUT) | Ask the owner to allow `CSSJobsBot` (template below) |
-| List built by script, no sitemap (Zurich, St. Gallen, Bremen, Mannheim, MIT, Temple, Groningen) | A person opens the page in a browser, watches the network tab, and sends the address that returns the job data (JSON or HTML); a reader can then be configured |
-| Search needs a submitted form (CoreHR: Oxford, UCD, DCU, King's) | A reader that submits the form; covered meanwhile by jobs.ac.uk where the institution posts there |
+| Bot challenge or HTTP 403 (Princeton, Columbia, UMass, Oregon, Harvard, GESIS, Koç, QUT, UCD, DCU) | Ask the owner to allow `CSSJobsBot` (template below) |
+| List built by script, no sitemap | Read the page's own source and scripts for the data address (this found the sources for Zurich, Bern, TU Graz, Temple, St. Gallen, Groningen, MIT and Amsterdam). If that fails, a person watches the browser's network tab and sends the address that returns the job data |
+| Search needs a submitted form or a session (CoreHR: Oxford, UCD, DCU, King's; PeopleSoft: Northwestern, Georgia Tech) | A reader that submits the form (CoreHR answered an automated search with 403 at DCU); covered meanwhile by jobs.ac.uk where the institution posts there |
 | No public feed (Interfolio) | None; use the institution's own page if it has one |
-| PDF notices (EUI) | A PDF text reader |
+| PDF notices (EUI, Mannheim, Viadrina, Bocconi) | A PDF text reader in the importer. Not added yet: it would be an `npm:` library in the edge function, which cannot be tested without Deno and Docker here, and a bundle that fails to build would stop every source |
+| `robots.txt` disallows everything (Syracuse) | Do not read it; ask the owner for a feed |
 | No central portal (Sapienza) | Nothing to read |
 
 **Asking a university to allow the bot.** Send this to the institution's HR or web team (it has no private details):
@@ -540,6 +557,12 @@ The rule is `linkCheckAction` in `_shared/liveness.ts`. A few details learned th
   page check, which is why this exists.
 - **PeopleAdmin** (UNC, Vermont, Indiana, Rutgers), **ETH Zurich** and **HR-Manager** also answer 200 for a removed job:
   PeopleAdmin redirects `/postings/<id>` to `/postings`, ETH redirects to its front page, and HR-Manager shows "A project with ID n does not exist". All count as `dead` or `closed`.
+- **Taleo** (Temple), **Academic Jobs Online** (Boston, Illinois) and the **University of Copenhagen** also answer 200 for a
+  removed job, with a different page: Taleo the page frame with no `JobPosting` block (a live job always has one), AJO the
+  whole job list with no `JobPosting`, Copenhagen the "All vacancies" list. All count as `dead`. **TU Graz** pages are a
+  script app that answers 200 for any id, so the check asks the JSON service (`/api/erec/public/job-postings/<id>`),
+  which answers 404 for a removed job and carries the closing date. Found the same way: a live job and a made-up
+  one through `scripts/test-link-check.mts`, then every fetched job through `test-all-sources.mts --all-links`.
 - **SuccessFactors** and **UC recruitment** sites answer 200 for a removed job but redirect: SuccessFactors to
   `/errorpage/`, UC to the campus `/apply` list. Both count as `dead`. UC pages also put the *review* date in
   `validThrough` while accepting applications until the "Final date", so the check uses the Final date for them.
