@@ -14,9 +14,17 @@
 // the AI review or write to any database. It takes about 3 minutes for all sources (the
 // readers pause between requests on purpose).
 import { readFileSync, writeFileSync } from 'node:fs';
-import { ADAPTERS } from '../supabase/functions/_shared/adapters.ts';
+import { ADAPTERS, setPdfTextReader } from '../supabase/functions/_shared/adapters.ts';
 import { normalizeJob, SkippedJobError, StaleJobError } from '../supabase/functions/_shared/ingest.ts';
 import { checkListing } from '../supabase/functions/_shared/liveness.ts';
+
+// The importer reads PDF notices with the `unpdf` library (supabase/functions/_shared/pdf.ts, run by
+// Deno); this script runs in Node, so it hands the same library to the `pdf-jobs` adapter here.
+const { extractText, getDocumentProxy } = await import('unpdf');
+setPdfTextReader(async (bytes) => {
+  const { text } = await extractText(await getDocumentProxy(bytes), { mergePages: true });
+  return text;
+});
 
 const args = process.argv.slice(2);
 const file = args.find((a) => !a.startsWith('--') && a.endsWith('.json'));

@@ -114,6 +114,8 @@ function removedByRedirect(requested: URL, final: URL): string | null {
 //    section is never read as "removed".
 //  - Academic Jobs Online (/ajo/jobs/<id>): the list of all jobs, with no JobPosting block.
 //  - University of Copenhagen (/all-vacancies/?show=<id>): the "All vacancies" list page.
+//  - Bocconi job market (?id=<id>): the page frame ("All positions") without the position's own
+//    table row.
 function removedByContent(requestedUrl: string, body: string): string | null {
   const hasPosting = /"@type"\s*:\s*"JobPosting"/.test(body);
   if (
@@ -128,6 +130,10 @@ function removedByContent(requestedUrl: string, body: string): string | null {
   if (/^https:\/\/employment\.ku\.dk\/all-vacancies\/\?show=\d+/i.test(requestedUrl)) {
     const heading = body.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1]?.replace(/<[^>]+>|\s+/g, ' ').trim();
     if (heading && /^all vacancies$/i.test(heading)) return 'page shows the vacancy list instead of the job (removed)';
+  }
+  const bocconi = requestedUrl.match(/^https:\/\/jobmarket\.unibocconi\.eu\/\?id=(\d+)/i);
+  if (bocconi && /All positions/.test(body) && !new RegExp(`<tr id="${bocconi[1]}"`).test(body)) {
+    return 'page shows no such position (removed)';
   }
   return null;
 }
@@ -453,11 +459,18 @@ export async function checkListing(
       return classifyTugraz(response.status, json, now);
     }
 
+    // A PDF notice (Mannheim, Viadrina, EUI): ask for a PDF (EUI answers 406 to "text/html" only),
+    // and judge it by the status alone; a PDF has no page text to read.
+    const isPdf = /\.pdf$/i.test(new URL(url).pathname);
     const response = await fetchWithRetry(fetchFn, url, {
-      headers: { 'User-Agent': USER_AGENT, Accept: 'text/html' },
+      headers: {
+        'User-Agent': USER_AGENT,
+        Accept: isPdf ? 'application/pdf,text/html;q=0.9,*/*;q=0.8' : 'text/html',
+      },
       redirect: 'follow',
       signal: AbortSignal.timeout(15000),
     });
+    if (isPdf && response.status === 200) return { status: 'live', reason: 'ok' };
     const body = response.status === 200 ? await response.text() : '';
     return classifyPage({
       requestedUrl: url,

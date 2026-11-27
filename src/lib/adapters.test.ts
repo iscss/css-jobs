@@ -21,6 +21,11 @@ import {
   taleoAdapter,
   tugrazAdapter,
   dayMonthYear,
+  writtenDate,
+  noticeDeadline,
+  pdfJobsAdapter,
+  bocconiAdapter,
+  setPdfTextReader,
 } from '../../supabase/functions/_shared/adapters.ts';
 
 // A trimmed copy of a real jobRxiv item, including the CDATA wrapping and the
@@ -1274,5 +1279,152 @@ describe('tugrazAdapter', () => {
     mock([{ id: 'a' }], {});
     await expect(tugrazAdapter(FEED, CONFIG)).rejects.toThrow('none of 1 jobs could be read');
     await expect(tugrazAdapter(FEED, {})).rejects.toThrow('institution');
+  });
+});
+
+describe('writtenDate and noticeDeadline', () => {
+  it('reads English and German written dates, and rejects impossible ones', () => {
+    expect(writtenDate('30 November 2026')).toBe('2026-11-30');
+    expect(writtenDate('am 2. Dezember 2026')).toBe('2026-12-02');
+    expect(writtenDate('1. März 2027')).toBe('2027-03-01');
+    expect(writtenDate('November 30, 2026')).toBe('2026-11-30');
+    expect(writtenDate('15.12.2026')).toBe('2026-12-15');
+    expect(writtenDate('31 February 2026')).toBeNull();
+    expect(writtenDate('no date here')).toBeNull();
+  });
+
+  it('finds the application deadline after its label, in English and German', () => {
+    expect(noticeDeadline('Key information\nApplication deadline:\n30 November 2026\nReference')).toBe('2026-11-30');
+    expect(noticeDeadline('Bewerbungsfrist: 21.04.2026')).toBe('2026-04-21');
+    expect(noticeDeadline('Bitte senden Sie Ihre Bewerbung als PDF per E-Mail bis zum 02.12.2026 an uns')).toBe('2026-12-02');
+    expect(noticeDeadline('Closing date: 11 January 2027')).toBe('2027-01-11');
+  });
+
+  it('does not take the end of the contract as the deadline', () => {
+    expect(noticeDeadline('Die Stelle ist befristet bis zum 31.12.2030 zu besetzen.')).toBeNull();
+    expect(noticeDeadline('The contract runs until 31 December 2030.')).toBeNull();
+  });
+});
+
+describe('pdfJobsAdapter', () => {
+  const LIST = 'https://uni.example/jobs/';
+  const NOTICE = (extra: string) =>
+    `The Chair of Sociology is offering a position as Postdoctoral Researcher in network science. ${extra} `.repeat(6);
+  function mock(pages: Record<string, { status?: number; body: string }>) {
+    const fn = vi.fn((url: string) => {
+      const page = pages[url];
+      if (!page) return Promise.resolve(new Response('', { status: 404 }));
+      return Promise.resolve(new Response(page.body, { status: page.status ?? 200 }));
+    });
+    vi.stubGlobal('fetch', fn);
+    return fn;
+  }
+  const html =
+    '<a href="_dateien/a-2026-10-27.pdf">Postdoc&shy;toral researcher (m/f/d)</a>' +
+    '<a href="_dateien/b.pdf">zur Stellenausschreibung (PDF)</a>' +
+    '<a href="_dateien/skip.pdf">Hier</a><a href="/about.html">About</a>';
+  const CONFIG = {
+    institution: 'Example University',
+    location: 'Exampletown',
+    exclude_pattern: 'skip',
+    title_pattern: 'position as (.{5,60}?) in',
+    delay_ms: 0,
+  };
+  afterEach(() => setPdfTextReader(null));
+
+  it('reads each PDF: title from the text or the link, deadline first, address is the PDF', async () => {
+    setPdfTextReader(async (bytes) => new TextDecoder().decode(bytes).replace('%PDF', ''));
+    mock({
+      [LIST]: { body: html },
+      'https://uni.example/jobs/_dateien/a-2026-10-27.pdf': { body: '%PDF' + NOTICE('Application deadline: 30 November 2026.') },
+      'https://uni.example/jobs/_dateien/b.pdf': { body: '%PDF' + NOTICE('Bewerbungsfrist: 2.12.2026') },
+    });
+    const jobs = await pdfJobsAdapter(LIST, CONFIG);
+    expect(jobs).toHaveLength(2);
+    expect(jobs[0]).toMatchObject({
+      title: 'Postdoctoral Researcher',
+      institution: 'Example University',
+      location: 'Exampletown',
+      sourceUrl: 'https://uni.example/jobs/_dateien/a-2026-10-27.pdf',
+      postedAt: '2026-10-27',
+    });
+    expect(jobs[0].description.startsWith('Application deadline: 2026-11-30.\n\n')).toBe(true);
+    expect(jobs[1].description.startsWith('Application deadline: 2026-12-02.')).toBe(true);
+  });
+
+  it('uses the link text when no title pattern is given, minus soft hyphens', async () => {
+    setPdfTextReader(async (bytes) => new TextDecoder().decode(bytes).replace('%PDF', ''));
+    mock({
+      [LIST]: { body: html },
+      'https://uni.example/jobs/_dateien/a-2026-10-27.pdf': { body: '%PDF' + NOTICE('') },
+      'https://uni.example/jobs/_dateien/b.pdf': { body: '%PDF' + NOTICE('') },
+    });
+    const jobs = await pdfJobsAdapter(LIST, { institution: 'Example University', exclude_pattern: 'skip', delay_ms: 0 });
+    expect(jobs[0].title).toBe('Postdoctoral researcher (m/f/d)');
+    expect(jobs[1].title.startsWith('The Chair of Sociology')).toBe(true);
+  });
+
+  it('skips a PDF that is gone, is not a PDF, or has no text, and fails if none can be read', async () => {
+    setPdfTextReader(async () => 'short');
+    mock({
+      [LIST]: { body: html },
+      'https://uni.example/jobs/_dateien/a-2026-10-27.pdf': { body: '<html>not a pdf</html>' },
+    });
+    await expect(pdfJobsAdapter(LIST, CONFIG)).rejects.toThrow('none of 2 PDFs could be read');
+  });
+
+  it('keeps going when one PDF fails, and errors without a reader or institution', async () => {
+    setPdfTextReader(async (bytes) => new TextDecoder().decode(bytes));
+    mock({
+      [LIST]: { body: html },
+      'https://uni.example/jobs/_dateien/b.pdf': { body: '%PDF' + NOTICE('') },
+    });
+    expect(await pdfJobsAdapter(LIST, CONFIG)).toHaveLength(1);
+    await expect(pdfJobsAdapter(LIST, {})).rejects.toThrow('institution');
+    setPdfTextReader(null);
+    await expect(pdfJobsAdapter(LIST, CONFIG)).rejects.toThrow('No PDF text reader');
+  });
+
+  it('errors when the list has no PDF links or does not load', async () => {
+    setPdfTextReader(async () => '');
+    mock({ [LIST]: { body: '<a href="/x.html">x</a>' } });
+    await expect(pdfJobsAdapter(LIST, CONFIG)).rejects.toThrow('no PDF links');
+    mock({ [LIST]: { status: 403, body: '' } });
+    await expect(pdfJobsAdapter(LIST, CONFIG)).rejects.toThrow('HTTP 403');
+  });
+});
+
+describe('bocconiAdapter', () => {
+  const FEED = 'https://jobmarket.example/';
+  const row = (id: number, dept: string, deadline: string, field = '&nbsp;ECON-06/A Accounting') =>
+    `<tr id="${id}"><td><div><a href="https://jobmarket.example/?id=${id}">ID&nbsp;${id}</a></div>` +
+    `<div>G.U.&nbsp;nr.&nbsp;91&nbsp; 24/11/2026</div><div>Deadline&nbsp; ${deadline}</div></td>` +
+    `<td><div>Assistant Professor</div><div><a href="?dep=X">Dept. ${dept}</a></div></td><td>${field}</td></tr>`;
+  const page = `<div id="jmtab"><table>${row(1034, 'Accounting', '27/12/2026')}${row(1022, 'Computing Sciences', '11/01/2027', '')}</table></div>`;
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('turns each table row into a job with its deadline first and its own page as the address', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(page, { status: 200 })));
+    const jobs = await bocconiAdapter(FEED, {});
+    expect(jobs).toHaveLength(2);
+    expect(jobs[0]).toMatchObject({
+      title: 'Assistant Professor, Accounting',
+      institution: 'Bocconi University',
+      location: 'Milan, Italy',
+      sourceUrl: 'https://jobmarket.unibocconi.eu/?id=1034',
+      sourceJobId: '1034',
+      postedAt: '2026-11-24',
+    });
+    expect(jobs[0].description.startsWith('Application deadline: 2026-12-27.\n\n')).toBe(true);
+    expect(jobs[0].description).toContain('scientific field ECON-06/A Accounting');
+    expect(jobs[1].title).toBe('Assistant Professor, Computing Sciences');
+    expect(jobs[1].description).not.toContain('scientific field');
+  });
+
+  it('errors when the page has no rows or does not load', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('<p>none</p>', { status: 200 })));
+    await expect(bocconiAdapter(FEED, {})).rejects.toThrow('no position rows');
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('', { status: 500 })));
+    await expect(bocconiAdapter(FEED, {})).rejects.toThrow('HTTP 500');
   });
 });

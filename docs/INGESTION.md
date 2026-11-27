@@ -94,6 +94,8 @@ first production run, and the boards investigated are in [SOURCES.md](SOURCES.md
 | `prospective` | Swiss "Prospective" career centres (University of Zurich, Bern University of Applied Sciences). `feed_url` is `https://ohws.prospective.ch/public/v1/medium/<number>/jobs`, the JSON address the career page's script calls (the number is in the page's iframe address `.../careercenter/<number>/`). Reads every page of the list; the job's text comes from its fields (`sza_introduction`, `sza_tasks`, `sza_requirements`), the deadline from `end_date`. Config: `institution` (required), `lang`, `page_size`, `max_jobs`, `location` |
 | `taleo` | Oracle Taleo career sections (Temple). `feed_url` is the section's `jobsearch.ftl` address. Calls Taleo's JSON search (needs the `portal` number from that page's source and a time-zone header) and reads each job's page, which carries `JobPosting` markup. Config: `institution`, `portal` (required), `max_jobs`, `location` |
 | `tugraz` | The TU Graz job portal, through the JSON service behind it (`personal.tugraz.at/api/erec/public/job-postings`): a list, then each job by id. The public page `jobs.tugraz.at/en/jobs/<id>` is a script app that answers 200 for any id, so the link check also asks the JSON service. Config: `institution` (required), `location`, `max_jobs` |
+| `pdf-jobs` | Sites that publish each job as a PDF linked from a plain page (Mannheim, Viadrina, the European University Institute). `feed_url` is the page; each PDF is downloaded (8 MB limit) and its text read with the `unpdf` library (`_shared/pdf.ts`, registered by `ingest-jobs` through `setPdfTextReader`, so the adapter file stays loadable in Node). The PDF's own address is the job's address, and it answers 404 once taken down. `config`: `institution` (required), `link_pattern` (default any `.pdf`), `exclude_pattern`, `title_pattern` (a regular expression whose first group is the title in the PDF text, for sites whose link text is only "Vacancy notice"; otherwise the link text, then the first line), `location`, `max_jobs` (30), `delay_ms` (500). The deadline is read from the text ("Application deadline", "Closing date", "Bewerbungsfrist", "per E-Mail bis zum ...", English and German month names; a bare "bis zum" is not used because it usually ends the contract) and put first as `Application deadline: YYYY-MM-DD.`. A PDF with under 200 characters of text (a scan) is skipped |
+| `bocconi` | The Bocconi University job market (`jobmarket.unibocconi.eu`). One request: each position is a table row (id, Gazzetta Ufficiale number and date, deadline `dd/mm/yyyy`, role, department, field). The full call is a PDF under `/include/`, which `robots.txt` disallows, so only the row is read and the job's address is its own page `?id=<id>`. Most rows are past their deadline and are dropped as stale |
 
 The sources the migrations create are in `20260803000000` (jobRxiv), `20260812000000` (CoMSES and the first Workday
 universities) and `20260816000000` (the university sources from the lab list).
@@ -209,7 +211,10 @@ many job-looking addresses the sitemap lists, and the repeated link shapes on th
 | `academicjobsonline.org/ajo/<code>` | `html-jobs` | List page of one institution; links `/ajo/jobs/<id>`; its `robots.txt` asks for 5 seconds between requests |
 | A WordPress site with a `/vacature/` or `/job/` post type | `html-jobs` | `wp-sitemap.xml` or `<type>-sitemap.xml` lists the jobs (Groningen) |
 | An Angular or React page that shows no jobs | a reader for its JSON | Download the page's `main.*.js`, search it for the API address (`apiUrl`, `baseUrl`, a `/jobs?` call) and open its lazy chunks (`runtime.*.js` names them) for the routes (TU Graz, Zurich) |
-| CoreHR, PeopleSoft, Interfolio, PDF notices | none yet | See "When a site cannot be read" below |
+| A plain page with a link to a PDF per job (Mannheim, Viadrina, EUI) | `pdf-jobs` | Set `link_pattern` to the PDFs' folder and, if the link text is only "Vacancy notice", a `title_pattern` that finds the title in the PDF text |
+| `jobmarket.unibocconi.eu` | `bocconi` | One list page; the row is the job |
+| An iCIMS site (`*.icims.com/jobs/<id>/<title>/job`) | none | Its list and sitemap are readable, but the job page has no job text without scripts; see "When a site cannot be read" |
+| CoreHR, PeopleSoft, Interfolio | none yet | See "When a site cannot be read" below |
 
 **3. Be polite.** Use the identified bot (the readers do). Obey `robots.txt`: a `Crawl-delay` becomes `delay_ms` in
 the config (Houston asks for 5 seconds, so it reads 15 jobs a night), and a disallowed path is never fetched. Keep one
@@ -237,6 +242,15 @@ file: `npx tsx scripts/test-all-sources.mts sources.json --save before.json`. Af
 source that worked must be unchanged (a count moving by one because a job was posted is normal); explain any other
 difference. A source that fetched jobs before and fetches none now is a regression until shown otherwise.
 
+**Check the edge functions under Deno before deploying.** The functions run on Deno, and `npx tsc --noEmit` does not
+cover them (it missed a duplicate `const` in `adapters.ts` that Deno rejected at load). Deno needs no Docker and no
+account: in an empty folder run `npm i deno`, then from the repository
+`<that folder>/node_modules/.bin/deno check --node-modules-dir=none supabase/functions/ingest-jobs/index.ts` (repeat for
+`check-listings`, `rescore-jobs`, `structure-jobs`). Deno refuses an `npm:` version published less than a day ago, so pin
+a version that is at least a few days old (`unpdf@1.9.1`). To run a reader exactly as production does, write a small
+`.ts` file that imports `ADAPTERS` and `setPdfTextReader` from `_shared/adapters.ts`, registers `readPdfText` from
+`_shared/pdf.ts`, and run it with `deno run -A --node-modules-dir=none`. Delete the `deno.lock` it leaves in the repository.
+
 **6. Document, then ship.** Update the tables and counts in [SOURCES.md](SOURCES.md), the adapters table above and the
 migration list in [HANDBOOK.md](HANDBOOK.md); run `npx tsc --noEmit`, `npx vitest run` and `npm run build`. Deploy in this
 order: the functions that changed (`ingest-jobs`, and `check-listings` if `liveness.ts` changed), then the SQL in the
@@ -262,6 +276,12 @@ SQL Editor, because a source switched on before its reader exists only logs "unk
 - A page's **first heading can be the section name** ("Offene Stellen"), not the job: use `title_from: "last-h1"`.
 - A sitemap can list **non-job pages** (HHU lists events and the login page): the `link_pattern` is what keeps them out.
 - A list page may accept **`limit` and `offset`** in its address (St. Gallen: `?limit=100` returns all 47 jobs in one request). Try it before writing paging code.
+- A **sitemap URL can end in a fixed word** (iCIMS: `/jobs/<id>/<title>/job`): the title for `slug_terms` and `priority_terms` is taken from the part before it.
+- A job page can carry **placeholder structured data**: NYU's iCIMS pages say `"description": "UNAVAILABLE"` and a deadline one year ahead, and the real text only appears when scripts run. A source like that cannot be read; do not import the placeholder.
+- A list on a site's own **`/search/` pages can be disallowed while another path is not** (Michigan: `/search/` is disallowed, `/search-jobs?keyword=` is not): read `robots.txt` path by path, not only the first line.
+- A **robots.txt that allows only named search engines** (`User-agent: *` / `Disallow: /`, then `Googlebot: Allow: /`) is a refusal for us, even if the site publishes an Atom feed (George Washington, Harvard): ask the owner.
+- A **bot challenge that appears only after a few requests** (Columbia, UMass: the first page loads, later ones answer 202) is a rate-based challenge, so the source stays off; do not slow down or vary the client to get past it.
+- A server can answer **406 to `Accept: text/html`** for a PDF (EUI); the link check asks for `application/pdf` first.
 - A site whose `robots.txt` disallows everything (Syracuse) is **not read**, and a bot challenge on the job pages only (Oregon: the list opens, the job pages answer 202) leaves nothing to read.
 
 **When a site cannot be read.** Say which of these it is in `config.note` and [SOURCES.md](SOURCES.md), so the next
@@ -269,11 +289,11 @@ person does not repeat the investigation:
 
 | Cause | What to do |
 |-------|-----------|
-| Bot challenge or HTTP 403 (Princeton, Columbia, UMass, Oregon, Harvard, GESIS, Koç, QUT, UCD, DCU) | Ask the owner to allow `CSSJobsBot` (template below) |
+| Bot challenge or HTTP 403 (Princeton, Columbia, UMass, Oregon, Harvard, GESIS, Koç, QUT, UCD, DCU, JHU) | Ask the owner to allow `CSSJobsBot` (template below) |
 | List built by script, no sitemap | Read the page's own source and scripts for the data address (this found the sources for Zurich, Bern, TU Graz, Temple, St. Gallen, Groningen, MIT and Amsterdam). If that fails, a person watches the browser's network tab and sends the address that returns the job data |
 | Search needs a submitted form or a session (CoreHR: Oxford, UCD, DCU, King's; PeopleSoft: Northwestern, Georgia Tech) | A reader that submits the form (CoreHR answered an automated search with 403 at DCU); covered meanwhile by jobs.ac.uk where the institution posts there |
 | No public feed (Interfolio) | None; use the institution's own page if it has one |
-| PDF notices (EUI, Mannheim, Viadrina, Bocconi) | A PDF text reader in the importer. Not added yet: it would be an `npm:` library in the edge function, which cannot be tested without Deno and Docker here, and a bundle that fails to build would stop every source |
+| PDF notices (EUI, Mannheim, Viadrina) | Adapter `pdf-jobs`: a configuration only. Bocconi is not a PDF case: its job market rows are read by `bocconi` |
 | `robots.txt` disallows everything (Syracuse) | Do not read it; ask the owner for a feed |
 | No central portal (Sapienza) | Nothing to read |
 
@@ -557,6 +577,9 @@ The rule is `linkCheckAction` in `_shared/liveness.ts`. A few details learned th
   page check, which is why this exists.
 - **PeopleAdmin** (UNC, Vermont, Indiana, Rutgers), **ETH Zurich** and **HR-Manager** also answer 200 for a removed job:
   PeopleAdmin redirects `/postings/<id>` to `/postings`, ETH redirects to its front page, and HR-Manager shows "A project with ID n does not exist". All count as `dead` or `closed`.
+- A **PDF notice** (Mannheim, Viadrina, EUI) is judged by its status alone: the link check asks for `application/pdf` (EUI answers
+  406 to `Accept: text/html`), calls an answering PDF `live` without reading it, and a 404 `dead`. The **Bocconi** job page
+  (`?id=<id>`) answers 200 for any id; a removed position shows the page frame without its own table row, which counts as `dead`.
 - **Taleo** (Temple), **Academic Jobs Online** (Boston, Illinois) and the **University of Copenhagen** also answer 200 for a
   removed job, with a different page: Taleo the page frame with no `JobPosting` block (a live job always has one), AJO the
   whole job list with no `JobPosting`, Copenhagen the "All vacancies" list. All count as `dead`. **TU Graz** pages are a

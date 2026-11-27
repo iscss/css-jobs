@@ -414,6 +414,33 @@ describe('removed postings that still answer 200 on Taleo, Academic Jobs Online 
   });
 });
 
+describe('Bocconi job market links', () => {
+  const url = 'https://jobmarket.unibocconi.eu/?id=1034';
+  const check = (body: string) => classifyPage({ requestedUrl: url, finalUrl: url, status: 200, body, now });
+  it('calls a page without the position row removed, and one with it live', () => {
+    expect(check('<button>All positions</button><p>No session online.</p>')).toMatchObject({ status: 'dead' });
+    expect(check('<button>All positions</button><table><tr id="1034"><td>ID 1034 Position text for the call</td></tr></table>').status)
+      .toBe('live');
+  });
+  it('does not judge a page that is not the job market at all', () => {
+    expect(check('<h1>Down for maintenance</h1><p>Please come back later this afternoon.</p>').status).toBe('live');
+  });
+});
+
+describe('PDF notice links', () => {
+  const url = 'https://www.eui.example/Documents/2026/V-1-2026.pdf';
+  const reply = (status: number) => vi.fn().mockResolvedValue({ status, url, text: vi.fn().mockResolvedValue('') });
+  it('asks for a PDF, and calls an answering one live without reading it', async () => {
+    const fetchFn = reply(200);
+    expect(await checkListing(url, fetchFn as never, now)).toEqual({ status: 'live', reason: 'ok' });
+    expect(fetchFn.mock.calls[0][1].headers.Accept).toContain('application/pdf');
+  });
+  it('calls a missing one dead, and a refusal unknown', async () => {
+    expect((await checkListing(url, reply(404) as never, now)).status).toBe('dead');
+    expect((await checkListing(url, reply(406) as never, now)).status).toBe('unknown');
+  });
+});
+
 describe('TU Graz links', () => {
   const id = '414e2d9b-318c-4c2a-b3e8-0d419a0e8831';
   it('maps a public page to its JSON address, and ignores other sites', () => {

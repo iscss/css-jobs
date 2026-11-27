@@ -1117,8 +1117,12 @@ export async function htmlJobsAdapter(
     Math.max(0, ...[...link.matchAll(/\d+/g)].map((digits) => Number(digits[0])).filter((n) => n < 1e9));
   const slugOf = (link: string) => {
     try {
-      return decodeURIComponent(new URL(link).pathname.replace(/\/+$/, '').split('/').pop() ?? '')
-        .replace(/[-_+]/g, ' ').toLowerCase();
+      // The title is the last part of the path, except where the path ends in a fixed word
+      // (iCIMS: /jobs/<id>/<title>/job).
+      const parts = new URL(link).pathname.replace(/\/+$/, '').split('/');
+      const last = parts[parts.length - 1] ?? '';
+      const part = /^(?:job|view|details?|apply)$/i.test(last) && parts.length > 1 ? parts[parts.length - 2] : last;
+      return decodeURIComponent(part).replace(/[-_+]/g, ' ').toLowerCase();
     } catch {
       return '';
     }
@@ -1486,10 +1490,233 @@ export async function tugrazAdapter(
   return jobs;
 }
 
+// ---------------------------------------------------------------------------------------------
+// PDF notices: Mannheim, Viadrina and the European University Institute publish each job as a PDF
+// linked from a plain page.
+//
+// The PDF text reader is handed in rather than imported here, so this file stays loadable by
+// every runtime that tests it. The importer (supabase/functions/ingest-jobs/index.ts) registers
+// the real one (_shared/pdf.ts, the `unpdf` library); the test script registers a Node one.
+export type PdfTextReader = (bytes: Uint8Array) => Promise<string>;
+let pdfTextReader: PdfTextReader | null = null;
+export function setPdfTextReader(reader: PdfTextReader | null): void {
+  pdfTextReader = reader;
+}
+
+const MONTH_NUMBERS: Record<string, number> = {
+  january: 1, jan: 1, januar: 1, february: 2, feb: 2, februar: 2, march: 3, mar: 3, 'märz': 3, maerz: 3,
+  april: 4, apr: 4, may: 5, mai: 5, june: 6, jun: 6, juni: 6, july: 7, jul: 7, juli: 7,
+  august: 8, aug: 8, september: 9, sep: 9, sept: 9, october: 10, oct: 10, oktober: 10, okt: 10,
+  november: 11, nov: 11, december: 12, dec: 12, dezember: 12, dez: 12,
+};
+
+function realDate(year: number, month: number, day: number): string | null {
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (!year || date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) {
+    return null;
+  }
+  return date.toISOString().slice(0, 10);
+}
+
+// A date written as "30 November 2026", "30. November 2026", "November 30, 2026", "30.11.2026",
+// "30/11/2026" or "2026-11-30" (English or German month names) as YYYY-MM-DD; null if none.
+export function writtenDate(text: string): string | null {
+  const dayFirst = text.match(/(\d{1,2})\.?\s*(?:of\s+)?([A-Za-zäöüÄÖÜ]{3,9})\.?,?\s+(\d{4})/);
+  if (dayFirst && MONTH_NUMBERS[dayFirst[2].toLowerCase()]) {
+    const found = realDate(Number(dayFirst[3]), MONTH_NUMBERS[dayFirst[2].toLowerCase()], Number(dayFirst[1]));
+    if (found) return found;
+  }
+  const monthFirst = text.match(/([A-Za-z]{3,9})\.?\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})/);
+  if (monthFirst && MONTH_NUMBERS[monthFirst[1].toLowerCase()]) {
+    const found = realDate(Number(monthFirst[3]), MONTH_NUMBERS[monthFirst[1].toLowerCase()], Number(monthFirst[2]));
+    if (found) return found;
+  }
+  return dayMonthYear(text);
+}
+
+// The application deadline stated in a notice: a date shortly after a label such as "Application
+// deadline", "closing date" or "Bewerbungsfrist". A bare "bis zum 31.12.2027" is not used: in
+// these notices it usually ends the contract, not the application.
+export function noticeDeadline(text: string): string | null {
+  const label = new RegExp(
+    '(?:application\\s+deadline|closing\\s+date|deadline\\s+for\\s+(?:applications?|submission)|' +
+      'applications?\\s+(?:must\\s+be\\s+(?:received|submitted)\\s+)?(?:by|until|before)|apply\\s+by|' +
+      'bewerbungsfrist|bewerbungsschluss|einsendeschluss|' +
+      '(?:bewerbung\\w*|per\\s+e-?mail|elektronisch|einzureichen|einzusenden)[^.\\n]{0,60}?\\bbis\\s+(?:spätestens\\s+)?(?:zum\\s+)?|deadline)',
+    'gi',
+  );
+  for (const match of text.matchAll(label)) {
+    const end = (match.index ?? 0) + match[0].length;
+    const found = writtenDate(text.slice(end, end + 70));
+    if (found) return found;
+  }
+  return null;
+}
+
+const GENERIC_LINK_TEXT = /^(?:zur\s|hier\b|here\b|vacancy notice|further particulars|download|pdf\b|mehr\b|more\b|read more|info\b|link\b)/i;
+
+// config: `institution` (required), `link_pattern` (default any .pdf), `exclude_pattern`,
+// `title_pattern` (a regular expression whose first group is the job title in the PDF text, for
+// sites whose link text is only "Vacancy notice"), `location`, `max_jobs` (default 30),
+// `delay_ms` (default 500). Each PDF's own address is the job's address: it answers 404 once the
+// notice is taken down, which the ordinary link check treats as removed.
+export async function pdfJobsAdapter(
+  feedUrl: string,
+  config: Record<string, unknown>,
+): Promise<RawJob[]> {
+  const institution = String(config.institution ?? '');
+  if (!institution) throw new Error('pdf-jobs source needs config.institution');
+  if (!pdfTextReader) throw new Error('No PDF text reader is registered');
+  const linkPattern = new RegExp(String(config.link_pattern ?? '\\.pdf(?:[?#]|$)'), 'i');
+  const exclude = config.exclude_pattern ? new RegExp(String(config.exclude_pattern), 'i') : null;
+  const titlePattern = config.title_pattern ? new RegExp(String(config.title_pattern), 'i') : null;
+  const maxJobs = Number(config.max_jobs ?? 30);
+  const delay = Number(config.delay_ms ?? 500);
+  const maxBytes = 8 * 1024 * 1024;
+
+  const listResponse = await fetch(feedUrl, {
+    headers: { 'User-Agent': USER_AGENT, Accept: 'text/html' },
+  });
+  if (listResponse.status !== 200) throw new Error(`Notice list returned HTTP ${listResponse.status}`);
+  const html = await listResponse.text();
+  const found = new Map<string, string>();
+  for (const anchor of html.matchAll(/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)) {
+    const link = absoluteUrl(anchor[1], listResponse.url || feedUrl);
+    if (!link || !linkPattern.test(link) || exclude?.test(link)) continue;
+    const text = stripHtml(anchor[2].replace(/&shy;/gi, '')).replace(/\u00ad/g, '').trim();
+    if (!found.has(link) || (found.get(link) ?? '').length < text.length) found.set(link, text);
+  }
+  if (!found.size) {
+    throw new Error('Notice list had no PDF links matching link_pattern (the layout may have changed)');
+  }
+  await sleep(delay);
+
+  const jobs: RawJob[] = [];
+  let lastProblem = '';
+  for (const [link, linkText] of [...found].slice(0, Number(config.max_pages ?? maxJobs * 2))) {
+    let text = '';
+    try {
+      const response = await fetch(link, { headers: { 'User-Agent': USER_AGENT, Accept: 'application/pdf' } });
+      if (response.status !== 200) {
+        lastProblem = `HTTP ${response.status}`;
+        continue;
+      }
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      if (bytes.length > maxBytes || String.fromCharCode(...bytes.slice(0, 4)) !== '%PDF') {
+        lastProblem = 'not a PDF or too large';
+        continue;
+      }
+      text = await pdfTextReader(bytes);
+    } catch (error) {
+      lastProblem = error instanceof Error ? error.message : 'request failed';
+      continue;
+    }
+    const body = text.replace(/\u00ad/g, '').replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+    if (body.length < 200) {
+      lastProblem = 'PDF had no readable text';
+      continue;
+    }
+    const flat = body.replace(/\s+/g, ' ');
+    const fromText = titlePattern ? flat.match(titlePattern)?.[1]?.trim() : undefined;
+    const title = (
+      fromText ||
+      (linkText.length >= 8 && !GENERIC_LINK_TEXT.test(linkText) ? linkText : '') ||
+      body.split('\n').map((line) => line.trim()).find((line) => line.length >= 8) ||
+      ''
+    ).slice(0, 200);
+    if (!title) continue;
+    const deadline = noticeDeadline(body);
+    const fileDate = link.match(/(20\d{2})[_-]?(0[1-9]|1[0-2])[_-]?(0[1-9]|[12]\d|3[01])/);
+    jobs.push({
+      title,
+      institution,
+      location: String(config.location ?? 'See posting'),
+      description: `${deadline ? `Application deadline: ${deadline}.\n\n` : ''}${body.slice(0, 9000)}`,
+      jobType: title,
+      sourceUrl: link,
+      sourceJobId: link,
+      applicationUrl: link,
+      postedAt: fileDate ? `${fileDate[1]}-${fileDate[2]}-${fileDate[3]}` : undefined,
+    });
+    if (jobs.length >= maxJobs) break;
+    await sleep(delay);
+  }
+  if (!jobs.length && lastProblem) {
+    throw new Error(`Notice list: none of ${found.size} PDFs could be read (last: ${lastProblem})`);
+  }
+  return jobs;
+}
+
+// Bocconi University's job market (jobmarket.unibocconi.eu). The list page has one table row per
+// call: id, Gazzetta Ufficiale number and date, deadline (dd/mm/yyyy), role, department and the
+// scientific field. The full call is a PDF under /include/, which its robots.txt disallows, so the
+// row is all that is read; the job's address is its own page (?id=<id>), where the university's
+// "Apply online" button is. config: `institution` (default Bocconi University), `max_jobs` (60).
+export async function bocconiAdapter(
+  feedUrl: string,
+  config: Record<string, unknown>,
+): Promise<RawJob[]> {
+  const institution = String(config.institution ?? 'Bocconi University');
+  const response = await fetch(feedUrl, { headers: { 'User-Agent': USER_AGENT, Accept: 'text/html' } });
+  if (response.status !== 200) throw new Error(`Job market page returned HTTP ${response.status}`);
+  const html = await response.text();
+  const rows = [...html.matchAll(/<tr id="(\d+)">([\s\S]*?)<\/tr>/gi)];
+  if (!rows.length) throw new Error('Job market page had no position rows (the layout may have changed)');
+
+  const jobs: RawJob[] = [];
+  for (const [, id, row] of rows) {
+    const cells = stripHtmlCells(row);
+    const deadlineText = cells.find((cell) => /^Deadline/i.test(cell));
+    const deadline = deadlineText ? dayMonthYear(deadlineText) : null;
+    const gazette = cells.find((cell) => /^G\.U\./i.test(cell));
+    const gazetteDate = gazette?.match(/(\d{2}\/\d{2}\/\d{4})/)?.[1];
+    const deptIndex = cells.findIndex((cell) => /^Dept\./i.test(cell));
+    if (deptIndex < 1) continue;
+    const department = cells[deptIndex].replace(/^Dept\.\s*/i, '').trim();
+    const role = cells[deptIndex - 1].trim();
+    const field = (cells[deptIndex + 1] ?? '').trim();
+    const link = `https://jobmarket.unibocconi.eu/?id=${id}`;
+    const title = `${role}, ${department}`;
+    const description =
+      (deadline ? `Application deadline: ${deadline}.\n\n` : '') +
+      [
+        `${institution} invites applications for a ${role} position in the Department of ${department}` +
+          `${field ? `, scientific field ${field}` : ''}.`,
+        gazette ? `The call was published in the Gazzetta Ufficiale (${gazette.replace(/\s+/g, ' ')}).` : '',
+        `Applications are made online on the university's job market page: ${link}`,
+        'The full call is available there in Italian and English. Location: Milan, Italy.',
+      ].filter(Boolean).join('\n');
+    jobs.push({
+      title,
+      institution,
+      location: 'Milan, Italy',
+      description,
+      jobType: role,
+      sourceUrl: link,
+      sourceJobId: id,
+      applicationUrl: link,
+      postedAt: gazetteDate ? dayMonthYear(gazetteDate) ?? undefined : undefined,
+    });
+    if (jobs.length >= Number(config.max_jobs ?? 60)) break;
+  }
+  return jobs;
+}
+
+// The text of each <td> and <div> of one table row, with entities and blanks removed.
+function stripHtmlCells(row: string): string[] {
+  return row
+    .replace(/<\/?(?:div|td|tr|br|p|li)\b[^>]*>/gi, '|')
+    .split('|')
+    .map((part) => stripHtml(part).replace(/ /g, ' ').replace(/\s+/g, ' ').trim())
+    .filter(Boolean);
+}
+
 export const ADAPTERS: Record<
   string,
   (feedUrl: string, config: Record<string, unknown>) => Promise<RawJob[]>
 > = {
+  'pdf-jobs': pdfJobsAdapter,
+  'bocconi': bocconiAdapter,
   'rss-jobrxiv': jobRxivAdapter,
   'rss-comses': comsesAdapter,
   'rss-generic': genericRssAdapter,

@@ -21,7 +21,8 @@
 import { isAuthorized } from '../_shared/auth.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.2';
 import Anthropic from 'npm:@anthropic-ai/sdk';
-import { ADAPTERS } from '../_shared/adapters.ts';
+import { ADAPTERS, setPdfTextReader } from '../_shared/adapters.ts';
+import { readPdfText } from '../_shared/pdf.ts';
 import {
   autoRejects,
   normalizeJob,
@@ -35,6 +36,9 @@ import {
   scoreWithLlm,
   type MessagesClient,
 } from '../_shared/llm.ts';
+
+// The `pdf-jobs` adapter reads PDF notices (Mannheim, Viadrina, EUI) with this.
+setPdfTextReader(readPdfText);
 
 const BOT_ID = '00000000-0000-4000-a000-000000000b07';
 
