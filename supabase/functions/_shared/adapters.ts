@@ -464,7 +464,7 @@ export async function peopleAdminAdapter(
       const page = await fetch(link, {
         headers: { 'User-Agent': USER_AGENT, Accept: 'text/html' },
       });
-      if (!page.ok) continue;
+      if (page.status !== 200) continue;
       html = await page.text();
     } catch {
       continue;
@@ -788,7 +788,7 @@ export async function successFactorsAdapter(
   const response = await fetch(`${root}/sitemap.xml`, {
     headers: { 'User-Agent': USER_AGENT, Accept: 'application/xml' },
   });
-  if (!response.ok) throw new Error(`SuccessFactors returned HTTP ${response.status}`);
+  if (response.status !== 200) throw new Error(`SuccessFactors returned HTTP ${response.status}`);
   const xml = await response.text();
   if (!/<urlset[\s>]/i.test(xml)) {
     throw new Error('SuccessFactors did not return a sitemap (the site may be blocking automated requests)');
@@ -811,7 +811,8 @@ export async function successFactorsAdapter(
       const page = await fetch(link, {
         headers: { 'User-Agent': USER_AGENT, Accept: 'text/html' },
       });
-      if (!page.ok) {
+      // 200 only: a 202 is a bot-challenge page, which must never be imported as a job.
+      if (page.status !== 200) {
         lastProblem = `HTTP ${page.status}`;
         continue;
       }
@@ -916,7 +917,7 @@ export async function ucRecruitAdapter(
   const response = await fetch(feedUrl, {
     headers: { 'User-Agent': USER_AGENT, Accept: 'text/html' },
   });
-  if (!response.ok) throw new Error(`UC Recruit returned HTTP ${response.status}`);
+  if (response.status !== 200) throw new Error(`UC Recruit returned HTTP ${response.status}`);
   const rows = ucRows(await response.text());
   if (!rows.length) {
     throw new Error('UC Recruit page had no recruitments (the layout may have changed or the site is blocking automated requests)');
@@ -937,7 +938,8 @@ export async function ucRecruitAdapter(
       const page = await fetch(link, {
         headers: { 'User-Agent': USER_AGENT, Accept: 'text/html' },
       });
-      if (!page.ok) {
+      // 200 only: a 202 is a bot-challenge page, which must never be imported as a job.
+      if (page.status !== 200) {
         lastProblem = `HTTP ${page.status}`;
         continue;
       }
@@ -981,6 +983,13 @@ export async function ucRecruitAdapter(
 // address). Optional: `content_id` (the id of the element holding the advert text; otherwise a
 // JobPosting block or the page's <main>/<article> is used), `exclude_pattern`, `title_filter`
 // (words; keep a job only if its link text contains one), `location`, `max_jobs` (default 40).
+// If feed_url is a sitemap (<urlset>), its addresses are the list and the title is taken from the
+// address; then `slug_terms` (keep addresses whose title contains one), `priority_terms` (open
+// those first), `max_pages` (pages to open, default max_jobs), `delay_ms` (pause between requests,
+// default 250; set it to a site's robots.txt Crawl-delay), `title_from: "list"` (use the link
+// text on the list page as the title, for sites whose job pages share one banner heading) and `employers` (keep a job only if
+// its JobPosting's hiringOrganization contains one of these words) apply. A sitemap is how
+// jobs.ac.uk (UK universities, many employers on one site) and Houston are read.
 // Closed jobs answer 404 or redirect, so the ordinary link check catches them.
 function absoluteUrl(href: string, base: string): string | null {
   try {
@@ -1031,6 +1040,21 @@ export function jobPostingFromHtml(html: string): JobPostingLd | null {
   return null;
 }
 
+// "City, Region, Country" from a JobPosting's jobLocation, when it has an address.
+function jobPostingLocation(posting: JobPostingLd | null): string | undefined {
+  const place = Array.isArray(posting?.jobLocation) ? posting?.jobLocation[0] : posting?.jobLocation;
+  const address = (place as { address?: unknown } | undefined)?.address;
+  if (typeof address === 'string') return address || undefined;
+  if (!address || typeof address !== 'object') return undefined;
+  const a = address as Record<string, unknown>;
+  const country = typeof a.addressCountry === 'object' && a.addressCountry
+    ? (a.addressCountry as { name?: unknown }).name
+    : a.addressCountry;
+  const parts = [a.addressLocality, a.addressRegion, country]
+    .filter((part): part is string => typeof part === 'string' && part.length > 0);
+  return parts.length ? parts.join(', ') : undefined;
+}
+
 function htmlJobText(html: string, contentId?: string): string {
   if (contentId) {
     const inner = elementById(html, contentId);
@@ -1059,15 +1083,41 @@ export async function htmlJobsAdapter(
     ? (config.title_filter as string[]).map((word) => word.toLowerCase())
     : [];
   const maxJobs = Number(config.max_jobs ?? 40);
+  const delay = Number(config.delay_ms ?? 250);
   const lists = [feedUrl, ...(Array.isArray(config.extra_list_urls) ? (config.extra_list_urls as string[]) : [])];
+
+  const lower = (value: unknown) =>
+    (Array.isArray(value) ? (value as string[]) : []).map((word) => word.toLowerCase());
+  const slugTerms = lower(config.slug_terms);
+  const priorityTerms = lower(config.priority_terms);
+  const employers = lower(config.employers);
+  const slugOf = (link: string) => {
+    try {
+      return decodeURIComponent(new URL(link).pathname.replace(/\/+$/, '').split('/').pop() ?? '')
+        .replace(/[-_+]/g, ' ').toLowerCase();
+    } catch {
+      return '';
+    }
+  };
 
   const found = new Map<string, string>();
   for (const listUrl of lists) {
     const response = await fetch(listUrl, {
-      headers: { 'User-Agent': USER_AGENT, Accept: 'text/html' },
+      headers: { 'User-Agent': USER_AGENT, Accept: 'text/html,application/xml' },
     });
-    if (!response.ok) throw new Error(`Job list returned HTTP ${response.status}`);
+    if (response.status !== 200) throw new Error(`Job list returned HTTP ${response.status}`);
     const html = await response.text();
+    if (/<urlset[\s>]/i.test(html)) {
+      for (const loc of html.matchAll(/<loc>([^<]+)<\/loc>/gi)) {
+        const link = absoluteUrl(loc[1].trim(), response.url || listUrl);
+        if (!link || !linkPattern.test(link) || exclude?.test(link)) continue;
+        const slug = slugOf(link);
+        if (slugTerms.length && !slugTerms.some((term) => slug.includes(term))) continue;
+        found.set(link, slug);
+      }
+      await sleep(delay);
+      continue;
+    }
     for (const anchor of html.matchAll(/<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)) {
       const link = absoluteUrl(anchor[1], response.url || listUrl);
       if (!link || !linkPattern.test(link) || exclude?.test(link)) continue;
@@ -1075,15 +1125,22 @@ export async function htmlJobsAdapter(
       // A job often has an image link and a title link to the same page: keep the title.
       if (!found.has(link) || (found.get(link) ?? '').length < text.length) found.set(link, text);
     }
-    await sleep(300);
+    await sleep(delay);
   }
   if (!found.size) {
     throw new Error('Job list had no links matching link_pattern (the layout may have changed or the site is blocking automated requests)');
   }
 
-  const links = [...found].filter(([, text]) =>
+  const wanted = [...found].filter(([, text]) =>
     !filter.length || filter.some((word) => text.toLowerCase().includes(word))
-  ).slice(0, maxJobs);
+  );
+  // Jobs about the community's subjects first, so the page limit does not cut them off.
+  const isPriority = ([, text]: [string, string]) =>
+    priorityTerms.some((term) => text.toLowerCase().includes(term));
+  const links = (priorityTerms.length
+    ? [...wanted.filter(isPriority), ...wanted.filter((entry) => !isPriority(entry))]
+    : wanted
+  ).slice(0, Number(config.max_pages ?? maxJobs));
 
   const jobs: RawJob[] = [];
   let lastProblem = '';
@@ -1091,7 +1148,8 @@ export async function htmlJobsAdapter(
     let html: string;
     try {
       const page = await fetch(link, { headers: { 'User-Agent': USER_AGENT, Accept: 'text/html' } });
-      if (!page.ok) {
+      // 200 only: a 202 is a bot-challenge page, which must never be imported as a job.
+      if (page.status !== 200) {
         lastProblem = `HTTP ${page.status}`;
         continue;
       }
@@ -1101,15 +1159,23 @@ export async function htmlJobsAdapter(
       continue;
     }
     const posting = jobPostingFromHtml(html);
+    if (employers.length) {
+      const org = posting?.hiringOrganization;
+      const name = String(typeof org === 'object' && org ? (org as { name?: unknown }).name ?? '' : org ?? '')
+        .toLowerCase();
+      if (!employers.some((word) => name.includes(word))) continue;
+    }
     const heading = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1];
-    const title = stripHtml(posting?.title ?? heading ?? listText).trim() || listText;
+    const title = config.title_from === 'list' && listText
+      ? listText
+      : stripHtml(posting?.title ?? heading ?? listText).trim() || listText;
     const description = htmlJobText(html, config.content_id ? String(config.content_id) : undefined);
     if (!title || !description) continue;
     const deadline = posting?.validThrough ? new Date(posting.validThrough) : null;
     jobs.push({
       title,
       institution,
-      location: String(config.location ?? 'See posting'),
+      location: jobPostingLocation(posting) ?? String(config.location ?? 'See posting'),
       description: deadline && !Number.isNaN(deadline.getTime())
         ? `Application deadline: ${deadline.toISOString().slice(0, 10)}.\n\n${description}`
         : description,
@@ -1119,7 +1185,8 @@ export async function htmlJobsAdapter(
       applicationUrl: link,
       postedAt: posting?.datePosted,
     });
-    await sleep(250);
+    if (jobs.length >= maxJobs) break;
+    await sleep(delay);
   }
   if (!jobs.length && links.length && lastProblem) {
     throw new Error(`Job list: none of ${links.length} job pages could be read (last: ${lastProblem})`);

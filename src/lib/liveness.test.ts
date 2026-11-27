@@ -366,3 +366,19 @@ describe('removed postings on PeopleAdmin, ETH Zurich and HR-Manager', () => {
     expect(result.status).toBe('closed');
   });
 });
+
+describe('a closing date without a time', () => {
+  const run = (validThrough: string, at: string) =>
+    classifyPage({ ...base, now: new Date(at), body: ld(`,"validThrough":"${validThrough}"`) }).status;
+
+  it('keeps the job open all through the closing day', () => {
+    expect(run('2026-11-27', '2026-11-27T15:00:00Z')).toBe('live');
+    expect(run('2026-11-27T00:00:00+00:00', '2026-11-27T15:00:00Z')).toBe('live');
+    expect(run('2026-11-27T00:00:00.000Z', '2026-11-27T23:00:00Z')).toBe('live');
+  });
+
+  it('closes it the next day, and still honours a real closing time', () => {
+    expect(run('2026-11-27', '2026-11-28T00:30:00Z')).toBe('closed');
+    expect(run('2026-11-27T12:00:00Z', '2026-11-27T13:00:00Z')).toBe('closed');
+  });
+});

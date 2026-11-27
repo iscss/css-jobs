@@ -1002,6 +1002,47 @@ describe('htmlJobsAdapter', () => {
     await expect(htmlJobsAdapter(FEED, BASE)).rejects.toThrow(/500/);
   });
 
+  it('never imports a bot-challenge page (HTTP 202) as a job', async () => {
+    mock((url) =>
+      url === FEED ? text(list({ href: '/job/view/1', text: 'Postdoc' })) : text('<html><h1>Checking your browser</h1><main><p>Please wait while we verify.</p></main></html>', 202),
+    );
+    await expect(htmlJobsAdapter(FEED, BASE)).rejects.toThrow(/none of 1 job pages.*202/);
+    mock(() => text('<html>challenge</html>', 202));
+    await expect(htmlJobsAdapter(FEED, BASE)).rejects.toThrow(/202/);
+  });
+
+  it('reads a sitemap, filters addresses by title words, puts priority words first, and limits employers', async () => {
+    const fn = mock((url) => {
+      if (url.endsWith('sitemap.xml')) {
+        return text('<urlset><url><loc>https://x.example/job/A1/groundskeeper-wanted</loc></url><url><loc>https://x.example/job/A2/lecturer-in-music</loc></url><url><loc>https://x.example/job/A3/postdoc-in-data-science</loc></url><url><loc>https://x.example/job/A4/postdoc-in-data-science-other-employer</loc></url></urlset>');
+      }
+      const org = url.includes('A4') ? 'Another College' : 'Example University';
+      return text(`<script type="application/ld+json">{"@type":"JobPosting","title":"T-${url.slice(-12)}","description":"<p>A description that is long enough to count here.</p>","hiringOrganization":{"name":"${org}"},"jobLocation":{"address":{"addressLocality":"Leeds","addressCountry":"UK"}}}</script>`);
+    });
+    const jobs = await htmlJobsAdapter('https://x.example/sitemap.xml', {
+      institution: 'X', link_pattern: '/job/', slug_terms: ['postdoc', 'lecturer'],
+      priority_terms: ['data science'], employers: ['example university'], max_pages: 3, delay_ms: 0,
+    });
+    // groundskeeper is dropped by slug_terms; the data-science postdocs open before the lecturer;
+    // A4 belongs to another employer and is dropped after it is opened.
+    expect(jobs.map((j) => j.sourceUrl)).toEqual([
+      'https://x.example/job/A3/postdoc-in-data-science',
+      'https://x.example/job/A2/lecturer-in-music',
+    ]);
+    expect(jobs[0].location).toBe('Leeds, UK');
+    expect(fn.mock.calls.map((c) => c[0] as string).some((u) => u.includes('A1'))).toBe(false);
+  });
+
+  it('uses the list link text as the title when title_from is "list"', async () => {
+    mock((url) =>
+      url === FEED
+        ? text(list({ href: '/job/view/1', text: 'Postdoc in Sociology' }))
+        : text('<html><h1>Jobs UNIVERSITY BANNER</h1><main><p>A description long enough to count as one here.</p></main></html>'),
+    );
+    const [job] = await htmlJobsAdapter(FEED, { ...BASE, title_from: 'list' });
+    expect(job.title).toBe('Postdoc in Sociology');
+  });
+
   it('finds an element by id with nested tags, and a JobPosting inside a graph', () => {
     expect(elementById('<div id="a"><div>x</div><p>y</p></div><div>z</div>', 'a')).toBe('<div>x</div><p>y</p>');
     expect(elementById('<p>none</p>', 'a')).toBe('');

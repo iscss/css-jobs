@@ -58,7 +58,12 @@ function validThrough(html: string): Date | null {
     const hit = block[1].match(/"validThrough"\s*:\s*"([^"]+)"/);
     if (hit) {
       const date = new Date(hit[1]);
-      if (!Number.isNaN(date.getTime())) return date;
+      if (Number.isNaN(date.getTime())) continue;
+      // A bare date, or midnight exactly, names the closing day: the job is open all that day.
+      if (/^\d{4}-\d{2}-\d{2}$/.test(hit[1]) || /T00:00:00(?:\.0+)?(?:Z|[+-]00:?00)?$/.test(hit[1])) {
+        return new Date(date.getTime() + 86400000 - 1000);
+      }
+      return date;
     }
   }
   return null;
